@@ -21,6 +21,7 @@ Date: 2025-08-20
 - Données OHLCV Binance via ccxt, cache local `data/`, timeframe principal **2h**.
 - Optimisation **Optuna** (pruner **ASHA**), **walk‑forward annuel**, contraintes Tenkan ≤ Kijun ≤ SenkouB, score multi‑critères (Sharpe/CAGR/MaxDD/Stabilité).
 - Exports contrôlés dans `outputs/` (HTML/CSV/JSON, images), génération d’un MASTER REPORT consolidé.
+ - Formules et exemples (LaTeX): voir `docs/FORMULES_ET_EXEMPLES.md`.
 
 ### 4) Performances — extraits chiffrés
 - Source: `docs/TESTS_AND_RESULTS.md` et archives MASTER REPORT.

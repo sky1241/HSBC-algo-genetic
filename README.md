@@ -32,6 +32,7 @@ Structure
 - outputs/: scripts auxiliaires (génération rapports, Monte Carlo, robustesse, etc.) et résultats
 - run_full_analysis.ps1: orchestration bout‑en‑bout (venv, deps, run, post‑traitements, archivage)
 - docs/: documentation produit (roadmap, mode d’emploi, résultats, robustesse, live)
+ - docs/FORMULES_ET_EXEMPLES.md: formules (LaTeX), définitions (pourquoi/comment) et exemples chiffrés
 
 Résultats récents (extraits)
 ----------------------------
