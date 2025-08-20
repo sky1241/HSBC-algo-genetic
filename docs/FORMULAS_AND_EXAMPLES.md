@@ -2,6 +2,24 @@ Formulas, definitions and examples (pipeline_web6) — HSBC
 Date: 2025-08-20
 
 ### 0) Quick context
+Flow diagram (recap):
+
+```mermaid
+flowchart LR
+  A["Binance data (ccxt)"] --> B["Local cache data/*.csv"]
+  B --> C["Data validation (quality, gaps, volumes)"]
+  C --> D["Ichimoku + ATR computation"]
+  D --> E["Long/Short backtest (risk, costs, execution)"]
+  E --> F["Metrics (CAGR, Sharpe, Calmar, VaR, etc.)"]
+  F --> G["CSV exports outputs/"]
+  E -. Optuna optimization (ASHA, annual folds) .-> D
+```
+
+Useful charts:
+
+![Equity timeline](../outputs/graphs/equity_timeline_pipeline_web6.png)
+
+![Drawdown timeline](../outputs/graphs/dd_timeline_pipeline_web6.png)
 - Data: Binance (OHLCV, 2h tf), Ichimoku + ATR trailing strategy, realistic costs/execution (fees, funding/rollover, slippage, latency, halts, margins).
 - Reference risk settings: Leverage 10×, Position 1%, up to 3 positions per side.
 - Results excerpts: sets n1 and n2 (see `docs/HSBC_REPORT_EN.md`, `docs/TESTS_AND_RESULTS.md`).

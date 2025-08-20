@@ -23,11 +23,30 @@ Date: 2025-08-20
 - Exports contrôlés dans `outputs/` (HTML/CSV/JSON, images), génération d’un MASTER REPORT consolidé.
  - Formules et exemples (LaTeX): voir `docs/FORMULES_ET_EXEMPLES.md`.
 
+Diagramme de flux (aperçu):
+
+```mermaid
+flowchart LR
+  A["Données Binance (ccxt)"] --> B["Cache local data/*.csv"]
+  B --> C["Validation données (qualité, gaps, volumes)"]
+  C --> D["Calcul Ichimoku + ATR"]
+  D --> E["Backtest Long/Short (risk, coûts, exécution)"]
+  E --> F["Métriques (CAGR, Sharpe, Calmar, VaR, etc.)"]
+  F --> G["Exports CSV outputs/"]
+  E -. Optimisation Optuna (ASHA, folds annuels) .-> D
+```
+
 ### 4) Performances — extraits chiffrés
 - Source: `docs/TESTS_AND_RESULTS.md` et archives MASTER REPORT.
 - n2 (1% / 10× / 3 pos): Equity 59 103 €, Max DD 4,8%, Min 952 €, Sharpe* 3,05, Trades 1 023.
 - n1 (1% / 10× / 3 pos): Equity 24 536 €, Max DD 1,6%, Min 984 €, Sharpe* 3,67, Trades 884.
 - Lecture: n2 offre un **p50** de Monte Carlo bien supérieur pour une DD médiane similaire, ce qui améliore la probabilité d’atteindre les objectifs de performance sous variations de chemin.
+
+Courbes (échantillon):
+
+![Equity timeline](../outputs/graphs/equity_timeline_pipeline_web6.png)
+
+![Drawdown timeline](../outputs/graphs/dd_timeline_pipeline_web6.png)
 
 ### 5) Risques et contrôle
 - Max DD empirique faible dans les extraits (≤ ~5%) mais **DD médiane Monte Carlo ~22%**: la simulation de chemins pénalise les séquences défavorables, approche plus conservative.

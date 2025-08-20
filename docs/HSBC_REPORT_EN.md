@@ -23,11 +23,30 @@ Date: 2025-08-20
 - Controlled exports in `outputs/` (HTML/CSV/JSON, images), consolidated MASTER REPORT generation.
 - Formulas and examples (LaTeX): see `docs/FORMULAS_AND_EXAMPLES.md`.
 
+Flow diagram (overview):
+
+```mermaid
+flowchart LR
+  A["Binance data (ccxt)"] --> B["Local cache data/*.csv"]
+  B --> C["Data validation (quality, gaps, volumes)"]
+  C --> D["Ichimoku + ATR computation"]
+  D --> E["Long/Short backtest (risk, costs, execution)"]
+  E --> F["Metrics (CAGR, Sharpe, Calmar, VaR, etc.)"]
+  F --> G["CSV exports outputs/"]
+  E -. Optuna optimization (ASHA, annual folds) .-> D
+```
+
 ### 4) Performance — selected figures
 - Source: `docs/TESTS_AND_RESULTS.md` and archived MASTER REPORTs.
 - n2 (1% / 10× / 3 pos): Equity €59,103; Max DD 4.8%; Min €952; Sharpe* 3.05; Trades 1,023.
 - n1 (1% / 10× / 3 pos): Equity €24,536; Max DD 1.6%; Min €984; Sharpe* 3.67; Trades 884.
 - Reading: n2 shows a much better Monte Carlo median p50 at similar median DD, improving odds of achieving targets across path variations.
+
+Charts (sample):
+
+![Equity timeline](../outputs/graphs/equity_timeline_pipeline_web6.png)
+
+![Drawdown timeline](../outputs/graphs/dd_timeline_pipeline_web6.png)
 
 ### 5) Risks and controls
 - Empirical Max DD in the extracts is low (≤ ~5%) but MC median DD is ~22%: bootstrapped paths penalize adverse sequences — conservative view.

@@ -2,6 +2,24 @@ Formules, définitions et exemples (pipeline_web6) — HSBC
 Date: 2025-08-20
 
 ### 0) Contexte rapide
+Diagramme de flux (rappel):
+
+```mermaid
+flowchart LR
+  A["Données Binance (ccxt)"] --> B["Cache local data/*.csv"]
+  B --> C["Validation données (qualité, gaps, volumes)"]
+  C --> D["Calcul Ichimoku + ATR"]
+  D --> E["Backtest Long/Short (risk, coûts, exécution)"]
+  E --> F["Métriques (CAGR, Sharpe, Calmar, VaR, etc.)"]
+  F --> G["Exports CSV outputs/"]
+  E -. Optimisation Optuna (ASHA, folds annuels) .-> D
+```
+
+Courbes utiles:
+
+![Equity timeline](../outputs/graphs/equity_timeline_pipeline_web6.png)
+
+![Drawdown timeline](../outputs/graphs/dd_timeline_pipeline_web6.png)
 - Données: Binance (OHLCV, tf 2h), stratégie Ichimoku + ATR trailing, risques réalistes (frais, funding/rollover, slippage, latence, haltes, marges) [[memory:6051257]].
 - Réglages de risque de référence: Levier 10×, Position 1%, 3 positions max/side.
 - Extraits de résultats: n1 et n2 (voir `docs/HSBC_REPORT_FR.md`, `docs/TESTS_AND_RESULTS.md`).
