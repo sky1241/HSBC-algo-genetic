@@ -1,0 +1,32 @@
+{
+  "equity_mult": 123.88913581316119,
+  "CAGR": 1.624961983496588,
+  "sharpe_proxy": 1.9634246691433488,
+  "max_drawdown": 0.00016528991163152826,
+  "trades": 1376,
+  "min_equity": 0.5512399281318306,
+  "per_symbol": {
+    "BTC/USDT": {
+      "pnl_eur": -44959.32107739774,
+      "max_dd_indexed": 0.45353063629923657
+    },
+    "DOGE/USDT": {
+      "pnl_eur": 151728.62635040723,
+      "max_dd_indexed": 0.303447691757395
+    },
+    "ETH/USDT": {
+      "pnl_eur": 16139.865922420264,
+      "max_dd_indexed": 0.5615041817749539
+    }
+  },
+  "min_equity_ts": "2021-03-01T08:00:00",
+  "best_params": {
+    "BTC/USDT": {
+      "tenkan": 11,
+      "kijun": 69,
+      "senkou_b": 159,
+      "shift": 24,
+      "atr_mult": 2.8000000000000003
+    }
+  }
+}

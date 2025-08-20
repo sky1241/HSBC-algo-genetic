@@ -1,0 +1,28 @@
+[2025-08-15 14:31:06] Rapport de travail — session 20250815_143106
+
+- [2025-08-15 14:31:06] Génération et amélioration du MASTER_REPORT (pipeline_web6):
+  - Graphes timeline: ajout axes dates, labels Y, annotations début/fin.
+  - Intégration images inline (base64) + fallback SVG si Matplotlib indisponible.
+  - Ajout histogrammes P&L par symbole (EUR) dans les blocs Top.
+- [2025-08-15 14:31:06] Génération des graphes: corrections parsing snapshots (timestamp YYYYMMDD_HHMMSS), axes dates lisibles.
+- [2025-08-15 14:31:06] Orchestrateur ajouté: run_full_analysis.ps1
+  - Paramètres: -ProfileName, -Label, -Trials, -Seed, -BaselineJson, -PreArchive, -OpenReport, -OpenStatus, -Foreground, -OpenLogs.
+  - Pré-archivage auto de l'ancien outputs.
+  - Copie des résultats vers C:\Temp\ichimoku_master_report et archivage dans archives/.
+  - Suivi en direct: fichier unique outputs/STATUS_PRUNED.txt (Bloc‑notes), compteur « Pruned trials » mis à jour en continu.
+  - Fermeture auto des anciens Bloc‑notes de status et nettoyage des vieux STATUS_*.txt.
+- [2025-08-15 14:31:06] Archives créées:
+  - jesuisriche1_YYYYMMDD_HHMMSS_report.zip (contenu outputs/)
+  - jesuisriche1_MASTER_REPORT.html (accès rapide)
+  - prev_before_YYYYMMDD_HHMMSS.zip (snapshot avant nouvelle run)
+- [2025-08-15 14:31:06] Baseline:
+  - Utilisation du dernier best_params_per_symbol_pipeline_web6_*.json comme point de départ si disponible, sinon baselines.json.
+
+Fichiers clés modifiés:
+- outputs/generate_master_report.py
+- outputs/build_graphs_from_snapshots.py
+- run_full_analysis.ps1
+
+Commandes conseillées:
+- Lancer run au premier plan avec statut prune:
+  pwsh -NoProfile -File .\run_full_analysis.ps1 -ProfileName pipeline_web6 -Label jesuisriche1 -Trials 1000 -Seed 42 -BaselineJson (Get-ChildItem .\outputs\best_params_per_symbol_pipeline_web6_*.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -ExpandProperty FullName -First 1) -PreArchive:True -OpenStatus -OpenReport -Foreground
