@@ -50,6 +50,11 @@ Robustesse
 - IS/OOS (80/20) et Monte Carlo: scripts et mode d’emploi dans docs/ROBUSTNESS_MONTE_CARLO.md.
 - Recommandation actuelle: 1% par trade, levier 10, max 3 positions par côté.
 
+English docs
+------------
+- Executive report: `docs/HSBC_REPORT_EN.md`
+- Formulas and examples: `docs/FORMULAS_AND_EXAMPLES.md`
+
 Live (Testnet)
 --------------
 - Script: outputs/live_trader_testnet.py
