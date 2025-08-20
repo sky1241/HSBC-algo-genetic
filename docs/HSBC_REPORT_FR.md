@@ -37,6 +37,8 @@ Date: 2025-08-20
 - **IS/OOS 80/20**: procédure intégrée; les résultats finaux rapportés retiennent les configurations stables (Lyapunov proxy) puis performantes.
 - **Monte Carlo (block bootstrap)**: distributions ci‑dessous; interprétation: privilégier les baselines dont p50/p5 est meilleur sans dériver la DD médiane.
 
+- Stabilité (proxy Lyapunov): régression de ln(divergence) sur t (fenêtres courtes); la pente λ>0 est pénalisée dans l'objectif pour favoriser des dynamiques stables.
+
 Images (distributions Monte Carlo):
 
 ![MC Compare 1](../outputs/MC_DIST_COMPARE_20250820_063509.png)
@@ -70,7 +72,13 @@ Images (distributions Monte Carlo):
 
 ---
 
+### Annexe A — Stabilité (proxy Lyapunov)
+- Méthode: reconstruction d’état, calcul de la divergence moyenne d(t) entre voisins; régression linéaire de ln d(t) sur t, la pente est λ.
+- Interprétation: λ>0 indique sensibilité accrue aux conditions initiales (instabilité).
+- Usage: λ n’est pas une métrique de performance; il sert de pénalité de stabilité dans l’optimisation.
+
 Historique du document
 - 2025-08-20: Création du rapport exécutif HSBC (v1) à partir des rapports d’archives, documents de robustesse et résultats agrégés.
+- 2025-08-20: Ajout mention et annexe Lyapunov (stabilité) pour clarté vis‑à‑vis du comité risques.
 
 
