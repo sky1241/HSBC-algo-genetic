@@ -1,0 +1,15 @@
+{
+  "experiment_id": "btc_h2_seed42_2025-08-21",
+  "symbol": "BTC/USDT",
+  "timeframe": "2h",
+  "seed": 42,
+  "date_generated": "2025-08-21T00:00:00Z",
+  "data_range": { "start": "2019-01-01T00:00:00Z", "end": "2025-08-21T00:00:00Z" },
+  "ichimoku": { "tenkan": 9, "kijun": 26, "senkou_b": 52, "shift": 26, "atr_mult": 3.0 },
+  "risk": { "position_size": 0.01, "leverage": 10, "max_positions_per_side": 3, "stop_global": 0.30 },
+  "costs": { "fees": 0.001, "slippage_base": 0.0005, "funding_rate_8h": 0.0001, "rollover_daily": 0.0005 },
+  "profile": "pipeline_web6",
+  "notes": "Décrire ici toute particularité (filtres, exclusions, etc.)"
+}
+
+
