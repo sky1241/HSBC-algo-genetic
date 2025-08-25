@@ -21,6 +21,10 @@ try:
 except Exception:
     optuna = None
 
+# Allow importing modules from the local `src` directory
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+from ichimoku.risk import daily_loss_threshold
+
 def log(msg):
     """Log avec timestamp UTC (ASCII-only pour compatibilité Windows)
 
@@ -570,7 +574,7 @@ def calculate_ichimoku(df, tenkan, kijun, senkou_b, shift):
     
     return df
 
-def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=None, timeframe="2h"):
+def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h"):
     """Backtest avec stratégie long + short"""
     data = calculate_ichimoku(df.copy(), tenkan, kijun, senkou_b, shift)
     
@@ -664,9 +668,20 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
     total_execution_latency = 0.0
     execution_count = 0
 
+    # Daily loss tracking
+    current_day = None
+    daily_loss = 0.0
+    daily_threshold = float("inf")
+
     for ts, row in data.iterrows():
         close = row["close"]
-        
+
+        day = ts.date()
+        if day != current_day:
+            current_day = day
+            daily_loss = 0.0
+            daily_threshold = daily_loss_threshold(row.get("ATR", np.nan), loss_mult) / close if close else float("inf")
+
         # VÉRIFICATION DES DONNÉES OPTIMISÉE (95% FIABILITÉ - VALIDATION TOUTES LES 50 BOUGIES)
         try:
             # Validation partielle pour optimiser performance/fiabilité
@@ -895,6 +910,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                 ret = ((pos["entry"] / close) - 1.0) * leverage
                 commission_cost = pos["position_value"] * commission_rate * 2
                 ret -= commission_cost / pos["position_value"]
+                if ret < 0:
+                    daily_loss += -ret
                 current_capital = max(1e-12, equity * 1000.0)
                 equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                 trades_short.append({
@@ -904,10 +921,10 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     "ret": ret,
                     "exit_reason": "opposite_signal",
                     "symbol": symbol,
-                    "type": "short"
+                    "type": "short",
                 })
         # Entrée LONG: seulement si pas de SHORT ouverts (jamais long et short en même temps sur un symbole)
-        if len(positions_short) == 0 and row["signal_long"]:
+        if len(positions_short) == 0 and row["signal_long"] and daily_loss < daily_threshold:
             current_capital = equity * 1000
             position_size_euros = current_capital * position_size  # 1% du capital seulement
 
@@ -948,6 +965,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                 ret = ((close / pos["entry"]) - 1.0) * leverage
                 commission_cost = pos["position_value"] * commission_rate * 2
                 ret -= commission_cost / pos["position_value"]
+                if ret < 0:
+                    daily_loss += -ret
                 current_capital = max(1e-12, equity * 1000.0)
                 equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                 trades_long.append({
@@ -960,7 +979,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     "type": "long"
                 })
         # Entrée SHORT: seulement si pas de LONG ouverts
-        if len(positions_long) == 0 and row["signal_short"]:
+        if len(positions_long) == 0 and row["signal_short"] and daily_loss < daily_threshold:
             current_capital = equity * 1000
             position_size_euros = current_capital * position_size  # 1% du capital seulement
             if len(positions_short) >= 3:
@@ -1008,6 +1027,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     execution_count += 1
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
+                    if ret < 0:
+                        daily_loss += -ret
                     wins_long += 1 if ret > 0 else 0
                     trades_long.append({
                         "timestamp": ts,
@@ -1028,6 +1049,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     ret = ((close / pos["entry"]) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
                     ret -= commission_cost / pos["position_value"]
+                    if ret < 0:
+                        daily_loss += -ret
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                     wins_long += 1 if ret > 0 else 0
@@ -1057,6 +1080,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     ret = ((pos["entry"] / close) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
                     ret -= commission_cost / pos["position_value"]
+                    if ret < 0:
+                        daily_loss += -ret
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                     wins_short += 1 if ret > 0 else 0
@@ -1078,6 +1103,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
                     ret = ((pos["entry"] / close) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
                     ret -= commission_cost / pos["position_value"]
+                    if ret < 0:
+                        daily_loss += -ret
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                     wins_short += 1 if ret > 0 else 0
@@ -1101,6 +1128,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
             ret = ((close / pos["entry"]) - 1.0) * leverage
             commission_cost = pos["position_value"] * commission_rate * 2
             ret -= commission_cost / pos["position_value"]
+            if ret < 0:
+                daily_loss += -ret
             current_capital = max(1e-12, equity * 1000.0)
             equity *= (1.0 + ret * (pos["position_value"] / current_capital))
             wins_long += 1 if ret > 0 else 0
@@ -1120,6 +1149,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, symbol=Non
             ret = ((pos["entry"] / close) - 1.0) * leverage
             commission_cost = pos["position_value"] * commission_rate * 2
             ret -= commission_cost / pos["position_value"]
+            if ret < 0:
+                daily_loss += -ret
             current_capital = max(1e-12, equity * 1000.0)
             equity *= (1.0 + ret * (pos["position_value"] / current_capital))
             wins_short += 1 if ret > 0 else 0
@@ -1331,6 +1362,7 @@ PROFILES = {
         "symbols": ["BTC/USDT", "ETH/USDT", "DOGE/USDT"],
         "timeframe": "2h",
         "years_back": 5,
+        "loss_mult": 3.0,
         "ranges": {
             "tenkan": (1, 70),
             "kijun": (1, 70),
@@ -1842,7 +1874,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
             pass
     return out
 
-def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=True, use_genetic=True, fixed_params=None, baseline_map=None):
+def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=True, use_genetic=True, fixed_params=None, baseline_map=None, loss_mult=None):
     if profile_name not in PROFILES:
         raise ValueError(f"Profil inconnu: {profile_name}")
 
@@ -1858,6 +1890,7 @@ def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=
     years_back = cfg["years_back"]
     r = cfg["ranges"]
     trials = trials or cfg["default_trials"]
+    loss_mult = loss_mult if loss_mult is not None else cfg.get("loss_mult", 3.0)
 
     # période
     end_dt = datetime.utcnow()
@@ -1922,6 +1955,7 @@ def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=
                 int(fixed_params.get("senkou_b", 52)),
                 int(fixed_params.get("shift", 26)),
                 float(fixed_params.get("atr_mult", 3.0)),
+                loss_mult=loss_mult,
                 symbol=sym,
                 timeframe=timeframe,
             )
@@ -2039,13 +2073,14 @@ def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=
                     sym_metrics = []
                     for sym, df in market_data.items():
                         params = trader.get_params()
-                        m = backtest_long_short(df, 
-                            params["tenkan"], 
-                            params["kijun"], 
-                            params["senkou_b"], 
-                            params["shift"], 
-                            params["atr_mult"], 
-                            symbol=sym, 
+                        m = backtest_long_short(df,
+                            params["tenkan"],
+                            params["kijun"],
+                            params["senkou_b"],
+                            params["shift"],
+                            params["atr_mult"],
+                            loss_mult=loss_mult,
+                            symbol=sym,
                             timeframe=timeframe
                         )
                         
@@ -2123,7 +2158,7 @@ def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=
             # Backtest sur chaque symbole
             for sym, df in market_data.items():
                 try:
-                    m = backtest_long_short(df, tenkan, kijun, sen_b, shift, atr_mult, symbol=sym, timeframe=timeframe)
+                    m = backtest_long_short(df, tenkan, kijun, sen_b, shift, atr_mult, loss_mult=loss_mult, symbol=sym, timeframe=timeframe)
                     m.update({
                         "trial": trial,
                         "generation": 0,  # Pas de génération pour la recherche aléatoire
@@ -2359,6 +2394,7 @@ def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int |
                 m = backtest_long_short(
                     sub,
                     params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"],
+                    loss_mult=loss_mult,
                     symbol=sym, timeframe=timeframe
                 )
             except Exception as e:
@@ -2564,7 +2600,7 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
                     sub = df.loc[start_ts:end_ts]
                 if sub.empty:
                     continue
-                m = backtest_long_short(sub, params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"], symbol=sym, timeframe=timeframe)
+                m = backtest_long_short(sub, params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"], loss_mult=loss_mult, symbol=sym, timeframe=timeframe)
                 cagr_list.append(float(m.get("CAGR", 0.0)))
                 sharpe_list.append(float(m.get("sharpe_proxy", 0.0)))
                 dd_list.append(float(m.get("max_drawdown", 0.0)))
@@ -2814,7 +2850,7 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
         # Backtest final plein horizon avec les meilleurs paramètres
         df_full = market_data_all[sym]
         p = p_full
-        m = backtest_long_short(df_full, p["tenkan"], p["kijun"], p["senkou_b"], p["shift"], p["atr_mult"], symbol=sym, timeframe=timeframe)
+        m = backtest_long_short(df_full, p["tenkan"], p["kijun"], p["senkou_b"], p["shift"], p["atr_mult"], loss_mult=loss_mult, symbol=sym, timeframe=timeframe)
         m.update({
             "symbol": sym,
             "tenkan": p["tenkan"], "kijun": p["kijun"], "senkou_b": p["senkou_b"], "shift": p["shift"], "atr_mult": p["atr_mult"],
@@ -2872,6 +2908,7 @@ def main():
         print("  --senkou_b N   : Senkou B pour --fixed")
         print("  --shift N      : Shift pour --fixed")
         print("  --atr_mult X   : ATR multiplier pour --fixed (défaut 3.0)")
+        print("  --loss-mult X  : Seuil quotidien k en multiples d'ATR (défaut profil)")
         sys.exit(1)
     
     profile_name = sys.argv[1]
@@ -2882,6 +2919,7 @@ def main():
     use_genetic = True
     baseline_map = None
     fixed_params = None
+    loss_mult = None
     
     # Parse arguments
     i = 2
@@ -2919,6 +2957,8 @@ def main():
         elif sys.argv[i] == "--atr_mult" and i + 1 < len(sys.argv):
             fixed_params = fixed_params or {}
             fixed_params["atr_mult"] = float(sys.argv[i+1]); i += 2
+        elif sys.argv[i] == "--loss-mult" and i + 1 < len(sys.argv):
+            loss_mult = float(sys.argv[i+1]); i += 2
         elif sys.argv[i] == "--baseline-json" and i + 1 < len(sys.argv):
             try:
                 import json as _json
@@ -2932,7 +2972,7 @@ def main():
     
     try:
         # Passer baseline_map via PROFILES pour optuna_optimize_profile_per_symbol
-        run_profile(profile_name, trials, seed, out_dir, use_cache, use_genetic, fixed_params, baseline_map)
+        run_profile(profile_name, trials, seed, out_dir, use_cache, use_genetic, fixed_params, baseline_map, loss_mult)
         print(f"\nDone. Outputs are in the {out_dir}\\ folder.")
         if use_genetic:
             print("Genetic algorithm enabled.")
