@@ -505,6 +505,7 @@ def main():
 
     # Image inline (base64) de la courbe d'équity de la run en cours (depuis LIVE), si dispo
     live_equity_img = ''
+    live_equity_eur_img = ''
     try:
         import matplotlib
         matplotlib.use('Agg')
@@ -513,6 +514,11 @@ def main():
         if isinstance(live_data, dict):
             sm = live_data.get('shared_metrics') if isinstance(live_data.get('shared_metrics'), dict) else None
             curve = sm.get('equity_curve') if sm else None
+            # Capital de base (EUR) si fourni, sinon 1000 EUR par défaut
+            try:
+                base_cap_eur = float(sm.get('initial_equity_eur', 1000.0)) if sm else 1000.0
+            except Exception:
+                base_cap_eur = 1000.0
             # Fallback: si pas de courbe dans LIVE, prendre la plus récente des snapshots
             if not (isinstance(curve, list) and len(curve) > 1):
                 latest = latest_snapshot if isinstance(latest_snapshot, dict) else None
@@ -569,8 +575,32 @@ def main():
                 fig.savefig(buf, format='png')
                 plt.close(fig)
                 live_equity_img = 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+
+                # Variante en EUR (équity compte)
+                try:
+                    ys_eur = [y * base_cap_eur if (y == y) else float('nan') for y in ys]
+                    fig2, ax2 = plt.subplots(figsize=(7.5, 2.4), dpi=110)
+                    ax2.plot(dts, ys_eur, color='#1B5E20', linewidth=1.8)
+                    ax2.set_title('Équity compte (EUR) — run en cours', fontsize=11)
+                    ax2.grid(alpha=0.3)
+                    ax2.tick_params(axis='x', labelsize=8)
+                    try:
+                        start_txt = dts[0].strftime('%Y-%m-%d')
+                        end_txt = dts[-1].strftime('%Y-%m-%d')
+                        fig2.text(0.01, 0.02, start_txt, fontsize=8, color='#444')
+                        fig2.text(0.99, 0.02, end_txt, fontsize=8, color='#444', ha='right')
+                    except Exception:
+                        pass
+                    plt.subplots_adjust(bottom=0.22)
+                    buf2 = io.BytesIO()
+                    fig2.savefig(buf2, format='png')
+                    plt.close(fig2)
+                    live_equity_eur_img = 'data:image/png;base64,' + base64.b64encode(buf2.getvalue()).decode('ascii')
+                except Exception:
+                    live_equity_eur_img = ''
     except Exception:
         live_equity_img = ''
+        live_equity_eur_img = ''
 
     # Générer/rafraîchir les graphes PNG de timeline
     eq_png = dd_png = None
@@ -586,6 +616,7 @@ def main():
 
     # Convertir en images inline (base64) pour garantir l'affichage
     eq_timeline_img = ''
+    eq_timeline_eur_img = ''
     dd_timeline_img = ''
     try:
         if eq_png and os.path.exists(eq_png):
@@ -611,6 +642,26 @@ def main():
                 eq_timeline_img = 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
             except Exception:
                 eq_timeline_img = ''
+            # Variante EUR
+            try:
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+                xs = list(range(len(timeline_points)))
+                ys_eur = [p[1] for p in timeline_points]
+                fig3, ax3 = plt.subplots(figsize=(7.5, 2.4), dpi=110)
+                ax3.plot(xs, ys_eur, color='#1B5E20', linewidth=1.8)
+                ax3.set_title("Évolution equity (EUR) — snapshots", fontsize=11)
+                ax3.grid(alpha=0.3)
+                ax3.set_xticks([])
+                ax3.set_yticks([])
+                plt.tight_layout()
+                buf3 = io.BytesIO()
+                fig3.savefig(buf3, format='png')
+                plt.close(fig3)
+                eq_timeline_eur_img = 'data:image/png;base64,' + base64.b64encode(buf3.getvalue()).decode('ascii')
+            except Exception:
+                eq_timeline_eur_img = ''
     except Exception:
         eq_timeline_img = ''
 
@@ -650,7 +701,9 @@ def main():
     {f"<p style='color:#444'>Filtré depuis: <b>{since_label}</b></p>" if since_label else ''}
     <p style='color:#333'>Réglages backtest courants: Levier = {'' if not (isinstance(live_data, dict) and isinstance(live_data.get('shared_metrics'), dict)) else live_data['shared_metrics'].get('leverage', '')} ×, Taille position = {'' if not (isinstance(live_data, dict) and isinstance(live_data.get('shared_metrics'), dict)) else f"{float(live_data['shared_metrics'].get('position_size', 0.0))*100:.2f}%"}, Max positions/side = {'' if not (isinstance(live_data, dict) and isinstance(live_data.get('shared_metrics'), dict)) else live_data['shared_metrics'].get('max_positions_per_side', '')}</p>
     {f"<img alt='equity_live' src='{live_equity_img}' style='display:block;margin:6px 0;max-width:100%;' />" if live_equity_img else ''}
+    {f"<img alt='equity_live_eur' src='{live_equity_eur_img}' style='display:block;margin:6px 0;max-width:100%;' />" if live_equity_eur_img else ''}
     {f"<img alt='equity_timeline' src='{eq_timeline_img}' style='display:block;margin:6px 0;max-width:100%;' />" if eq_timeline_img else ''}
+    {f"<img alt='equity_timeline_eur' src='{eq_timeline_eur_img}' style='display:block;margin:6px 0;max-width:100%;' />" if eq_timeline_eur_img else ''}
     {f"<img alt='dd_timeline' src='{dd_timeline_img}' style='display:block;margin:6px 0;max-width:100%;' />" if dd_timeline_img else ''}
     {''.join(secs)}
     </body></html>"""

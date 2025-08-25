@@ -3,6 +3,8 @@
 ## 🏛 Partie I – Introduction & Contexte
 - **Introduction générale**
   - Présentation du contexte financier et des spécificités des marchés crypto.
+  - Objectif: Stratégie systématique Ichimoku + ATR, robuste (phase-aware halving) avec seeds contrôlés.
+  - Périmètre: BTC (H2 prioritaire), extension daily si utile (plus d’historique).
   - Mise en avant de l’importance des indicateurs techniques et des cycles dans l’analyse de marché.
 - **Problématique & Objectifs**
   - Faut-il recourir à des réglages universels ou adaptés aux phases de halving ?
