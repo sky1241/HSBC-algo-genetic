@@ -29,6 +29,14 @@ Rapports
 - Résumé Top3: outputs/MASTER_SUMMARY.csv
 - Graphes timeline: outputs/build_graphs_from_snapshots.py
 
+Export des meilleurs résultats
+------------------------------
+- `python outputs/export_top_results.py`
+  - Lit les rapports `shared_portfolio_*` et produit `outputs/top_results.json`
+- Serveur FastAPI optionnel pour consulter ces données :
+  - `uvicorn src.ichimoku.api:app --reload`
+  - Endpoint: http://localhost:8000/top-results
+
 Environnement de backtest
 -------------------------
 - POSITION_SIZE, LEVERAGE, MAX_POS_PER_SIDE lus via variables d’environnement par le backtester
