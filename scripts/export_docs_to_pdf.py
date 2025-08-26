@@ -104,6 +104,8 @@ def render_pdf(html_path: Path, pdf_path: Path) -> None:
         str(browser),
         "--headless",
         "--disable-gpu",
+        "--log-level=3",
+        "--disable-logging",
         f"--print-to-pdf={pdf_path.resolve()}",
         "--run-all-compositor-stages-before-draw",
         "--virtual-time-budget=15000",

@@ -44,6 +44,13 @@ Voir aussi :
 - Éviter le sur‑réglage: valider par walk‑forward et Monte Carlo; surveiller variance inter‑seeds.
 
 ### 7) Commande d’export PDF
+
+### 8) Exemples chiffrés (BTC H2/D1 depuis 2020)
+- Rolling monthly (médianes):
+  - P1 ≈ 26.4 jours (H2) vs 26.16 jours (D1); P2 ≈ 15.0 vs 14.95; P3 ≈ 10.36 vs 10.05.
+  - LFP: H2 − D1 ≈ −0.005 (faible écart).
+- Rolling annual: ΔLFP ≈ −3.6×10⁻⁴.
+- Interprétation: privilégier D1 pour la robustesse (peu de drift), H2 pour la finesse des réglages du scheduler.
 ```bash
 python .\scripts\export_docs_to_pdf.py --docs .\docs\FOURIER_STRATEGIE_FR.md --out-dir .\outputs\reports
 ```

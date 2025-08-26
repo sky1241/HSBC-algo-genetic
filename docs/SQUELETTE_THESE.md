@@ -25,15 +25,22 @@
 
 ## 🛠 Partie III – Méthodologie
 1. **Description des données**
-   - Source, fréquence, nettoyage et période d’étude.
+   - Sources & fréquences:
+     - Binance: `BTC/USDT` en 2h et 1d, historique exploité depuis 2017‑08‑17 jusqu’à aujourd’hui; CSV: `data/BTC_USDT_2h.csv`, `data/BTC_USDT_1d.csv`.
+     - Bitstamp: `BTC/USD` en 1d (2011‑08‑18 → 2024‑08‑30) et 2h obtenu par resampling de 1h (agrégations OHLCV conservatrices); CSV: `data/BTC_USD_1d.csv`, `data/BTC_USD_2h.csv`.
+   - Contrôle qualité (QC):
+     - Rapports automatiques écrits dans `outputs/quality_reports/` et synthèse `docs/QUALITY_REPORTS.md` (export HTML/PDF dans `outputs/reports/`).
+     - Vérifications: monotonie/duplicates des timestamps, gaps vs fréquence attendue, NaN OHLCV, cohérence OHLC (`low ≤ {open,close} ≤ high`), volumes nuls/négatifs, outliers de retours (|z| > 4).
+     - État: aucune anomalie bloquante; données exploitables pour Fourier et cartographie Ichimoku.
    - Découpage par périodes de halving (avant/après).
 2. **Ichimoku Kinko Hyo**
    - Formules des composantes (Tenkan, Kijun, SSA/SSB, Chikou).
    - Paramètres standards et paramétrisation libre.
 3. **Analyse fréquentielle**
    - Rappel mathématique de la transformée de Fourier.
-   - Application aux prix du BTC pour identifier les cycles dominants.
-   - Objectif : relier les paramètres Ichimoku aux cycles détectés.
+   - Estimation PSD via Welch sur fenêtres roulantes (annuelle et mensuelle).
+   - Extraction des trois cycles dominants \(P1,P2,P3\) et du ratio basse fréquence \(\mathrm{LFP}\); extension volume: \(P1_{vol},P2_{vol},P3_{vol},\mathrm{LFP}_{vol}\).
+   - Objectif : cartographier \(P_k\) vers des plages Ichimoku (heuristique: `kijun ≈ P/2`, `tenkan ≈ P/8–P/6`, `senkou_b ≈ P`, `shift ≈ kijun/2`).
 4. **Cadre expérimental**
    - Stratégie de backtest (temps, signaux, gestion du risque).
    - Variables d’évaluation (winrate, drawdown, profit factor).
@@ -48,6 +55,7 @@
 3. **Apport de Fourier**
    - Impact de l’analyse fréquentielle sur la calibration des paramètres Ichimoku.
    - Visualisation des cycles et corrélation avec les périodes de performance.
+   - H2 vs D1 (depuis 2020, rolling monthly): écart faible sur les périodes dominantes (ex.: \(\Delta P1\) ≈ +0.24 jour H2–D1; \(\Delta P2\) ≈ +0.05 jour; \(\Delta P3\) ≈ +0.31 jour). LFP: \(\Delta\) ≈ −0.005. Rolling annual: \(\Delta\mathrm{LFP}\) ≈ −3.6e−4.
 4. **Analyse comparative**
    - Synthèse des résultats, bénéfices et limites de chaque approche.
    - Implications pratiques pour le trading algorithmique.
@@ -56,6 +64,7 @@
 - **Interprétation des résultats**
   - Validité de l’hypothèse initiale.
   - Robustesse statistique et limites du backtest.
+  - Les écarts H2/D1 étant modestes, une stratégie « phase-aware » peut s’appuyer sur D1 pour la robustesse structurelle et sur H2 pour l’ajustement fin/scheduler sans divergence majeure.
 - **Risques et possibilités d’amélioration**
   - Risque d’overfitting, limites des données historiques.
   - Potentiel d’extension à d’autres actifs (ETH, altcoins).

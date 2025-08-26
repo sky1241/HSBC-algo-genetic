@@ -15,6 +15,12 @@ from datetime import datetime, timedelta, timezone
 
 import ccxt
 
+import sys
+from pathlib import Path as _Path
+# Ensure project root is importable
+_ROOT = _Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 from ichimoku_pipeline_web_v4_8_fixed import fetch_ohlcv_range, utc_ms
 
 
@@ -22,6 +28,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--symbol", default="BTC/USDT")
     p.add_argument("--timeframe", default="2h")
+    p.add_argument("--exchange", default="binance", choices=["binance","bitstamp"], help="Exchange CCXT à utiliser")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--years-back", type=int, default=8)
     g.add_argument("--since", help="YYYY-MM-DD")
@@ -29,7 +36,7 @@ def main() -> int:
     p.add_argument("--no-cache", action="store_true")
     args = p.parse_args()
 
-    ex = ccxt.binance({"enableRateLimit": True})
+    ex = ccxt.binance({"enableRateLimit": True}) if args.exchange == "binance" else ccxt.bitstamp({"enableRateLimit": True})
 
     if args.since:
         since_dt = datetime.fromisoformat(args.since)
