@@ -22,14 +22,14 @@ def summarize_one(csv_path: Path) -> pd.DataFrame:
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df = df.set_index('timestamp').sort_index()
     # Normalize column presence
-    for col in ['P1_bars','P2_bars','P3_bars','P_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']:
+    for col in ['P1_bars','P2_bars','P3_bars','P4_bars','P5_bars','P6_bars','P_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']:
         if col not in df.columns:
             df[col] = pd.NA
     # If only P_bars exists, alias to P1_bars
     df['P1_bars'] = df['P1_bars'].combine_first(df['P_bars'])
     # Resample to daily (take last valid value each day)
     daily = df.resample('1D').last().dropna(how='all')
-    return daily[['P1_bars','P2_bars','P3_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']]
+    return daily[['P1_bars','P2_bars','P3_bars','P4_bars','P5_bars','P6_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']]
 
 
 def main() -> int:

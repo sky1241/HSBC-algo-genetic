@@ -134,7 +134,8 @@ def main() -> int:
         if len(sub) < 32:
             continue
         P = _dominant_period(sub)
-        P1, P2, P3 = _top_k_periods(sub, k=3)
+        Pvals = _top_k_periods(sub, k=6)
+        P1, P2, P3, P4, P5, P6 = (Pvals + [None]*6)[:6]
         L = _lfp(sub, bars_per_day)
 
         # CSV per month
@@ -147,6 +148,9 @@ def main() -> int:
             'P1_bars': [P1]*len(sub),
             'P2_bars': [P2]*len(sub),
             'P3_bars': [P3]*len(sub),
+            'P4_bars': [P4]*len(sub),
+            'P5_bars': [P5]*len(sub),
+            'P6_bars': [P6]*len(sub),
             'LFP': [L]*len(sub)
         }).set_index('timestamp').to_csv(csv_path)
 
@@ -158,6 +162,7 @@ def main() -> int:
             ax.plot(sub.index, [P2]*len(sub), color='#FF6F00', label='P2')
         if P3 is not None:
             ax.plot(sub.index, [P3]*len(sub), color='#2E7D32', label='P3')
+        # P4-P6 disponibles au CSV; on garde l'affichage P1-P3 pour lisibilité
         ax.set_title(f"P1/P2/P3 (bars) — {args.symbol} {args.timeframe} — {y:04d}-{m:02d}")
         ax.legend(loc='upper right')
         ax.grid(alpha=0.3)

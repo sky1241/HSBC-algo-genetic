@@ -82,3 +82,20 @@
 - Articles académiques sur les cycles de marché, l’analyse fréquentielle et les indicateurs techniques.
 - Sources de données (Binance, Yahoo Finance, Coin Metrics).
 - Ouvrages théoriques sur l’Ichimoku, les cycles boursiers et la transformée de Fourier.
+
+## 📅 Mise à jour du 2025-08-26
+- Réalisé aujourd’hui
+  - Comparatif des phases 3/5/6 (durées en jours et en barres H2, distance au halving médiane, P1..P6 médians, LFP moyen) sur BTC pour Binance (USDT) et Bitstamp (USD) en 2h/1d.
+  - Production des tableaux par label set: `outputs/fourier/compare/<SYM>_<TF>/SUMMARY_{regime3,phase5,phase6}.csv` et segments détaillés `SEGMENTS_*.csv`.
+  - Consolidation dans `outputs/fourier/compare/ALL_SUMMARIES_BY_LABELSET.csv` et page dédiée `docs/PHASE_LABELS/COMPARATIF_DUREES_FOURIER_HALVING.md` (PDF exporté dans `outputs/reports/COMPARATIF_DUREES_FOURIER_HALVING.pdf`).
+  - Ajout au master index `docs/INDEX_THESE_FOURIER_PHASES.md`.
+  - Enrichissement méthodologique: ajout des métriques de distance au halving (début/milieu/fin de segment) et agrégat `dsh_mid_median` pour lecture temporelle.
+
+- Reste à faire (priorités)
+  - Intégrer les features Fourier au scheduler runtime (cadence et seeds) et brancher les JSON: `outputs/fourier/phase/<SYM>_<TF>/SCHEDULER_FOURIER_*.json`.
+  - Valider les mappages \(P\rightarrow\) Ichimoku par phase en walk‑forward IS/OOS.
+  - Monter des stress‑tests de robustesse (Monte Carlo, coûts, latence; sensibilité hyperparamètres).
+  - Ajouter STFT/ondelettes pour la localisation temporelle des régimes.
+  - Automatiser le recalcul quotidien et la mise à jour des rapports (MD/PDF) et conclusions datées.
+  - Intégrer des widgets Fourier dans `MASTER_REPORT.html` (lecture rapide P1..P6/LFP).
+  - Exporter les agrégats vers Google Sheets; alertes QC (gaps) automatisées; tests unitaires des fonctions/rapports; optimisation perf de Welch; enrichissement doc; extension à ETH/altcoins; finaliser TOP5/TOP6.

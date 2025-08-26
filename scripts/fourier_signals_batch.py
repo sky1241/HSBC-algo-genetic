@@ -109,7 +109,11 @@ def _lfp(close: pd.Series, window: int, bars_per_day: int, min_days: int = 5) ->
     return (num / den) if den > 0 else None
 
 
-def compute_fourier_signals(df: pd.DataFrame, timeframe: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def compute_fourier_signals(
+    df: pd.DataFrame,
+    timeframe: str,
+    step_bars: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Colonnes attendues: timestamp,open,high,low,close,volume
     df = df.copy()
     if 'timestamp' in df.columns:
@@ -127,40 +131,49 @@ def compute_fourier_signals(df: pd.DataFrame, timeframe: str) -> tuple[pd.DataFr
     # Fenêtres
     win_annual = int(round(365 * bars_per_day))
     win_month = int(round(30 * bars_per_day))
+    # Pas d'échantillonnage pour accélérer (par défaut: ~1 jour)
+    if step_bars is None:
+        step_bars = max(1, bars_per_day)
 
     # Rolling annual
     annual_rows = []
-    for ts in close.index:
-        sub = close.loc[:ts]
+    compute_idx = range(0, len(close), step_bars)
+    for i in compute_idx:
+        ts = close.index[i]
+        sub = close.iloc[: i + 1]
         P = _dominant_period(sub, win_annual)
         P1, P2, P3 = _top_k_periods_windowed(sub, win_annual, k=3)
         L = _lfp(sub, win_annual, bars_per_day)
         row = {'timestamp': ts, 'P_bars': P1 or P, 'P1_bars': P1 or P, 'P2_bars': P2, 'P3_bars': P3, 'LFP': L}
         if volume is not None:
-            sub_v = volume.loc[:ts]
+            sub_v = volume.iloc[: i + 1]
             Pv = _dominant_period(sub_v, win_annual)
             Pv1, Pv2, Pv3 = _top_k_periods_windowed(sub_v, win_annual, k=3)
             Lv = _lfp(sub_v, win_annual, bars_per_day)
             row.update({'P1_vol': Pv1 or Pv, 'P2_vol': Pv2, 'P3_vol': Pv3, 'LFP_vol': Lv})
         annual_rows.append(row)
-    df_annual = pd.DataFrame(annual_rows).set_index('timestamp')
+    df_annual = pd.DataFrame(annual_rows).set_index('timestamp').sort_index()
+    # Forward-fill to full index for smooth timelines
+    df_annual = df_annual.reindex(close.index).ffill()
 
     # Rolling monthly
     monthly_rows = []
-    for ts in close.index:
-        sub = close.loc[:ts]
+    for i in compute_idx:
+        ts = close.index[i]
+        sub = close.iloc[: i + 1]
         P = _dominant_period(sub, win_month)
         P1, P2, P3 = _top_k_periods_windowed(sub, win_month, k=3)
         L = _lfp(sub, win_month, bars_per_day)
         row = {'timestamp': ts, 'P_bars': P1 or P, 'P1_bars': P1 or P, 'P2_bars': P2, 'P3_bars': P3, 'LFP': L}
         if volume is not None:
-            sub_v = volume.loc[:ts]
+            sub_v = volume.iloc[: i + 1]
             Pv = _dominant_period(sub_v, win_month)
             Pv1, Pv2, Pv3 = _top_k_periods_windowed(sub_v, win_month, k=3)
             Lv = _lfp(sub_v, win_month, bars_per_day)
             row.update({'P1_vol': Pv1 or Pv, 'P2_vol': Pv2, 'P3_vol': Pv3, 'LFP_vol': Lv})
         monthly_rows.append(row)
-    df_month = pd.DataFrame(monthly_rows).set_index('timestamp')
+    df_month = pd.DataFrame(monthly_rows).set_index('timestamp').sort_index()
+    df_month = df_month.reindex(close.index).ffill()
 
     return df_annual, df_month
 
@@ -223,10 +236,11 @@ def main() -> int:
     p.add_argument('--symbol', default='BTC/USDT')
     p.add_argument('--timeframe', default='2h')
     p.add_argument('--out-dir', default=str(Path('outputs') / 'fourier'))
+    p.add_argument('--step-bars', type=int, default=None, help='Compute every N bars (default ≈ 1 day) and forward-fill timelines')
     args = p.parse_args()
 
     df = pd.read_csv(args.csv)
-    df_annual, df_month = compute_fourier_signals(df, args.timeframe)
+    df_annual, df_month = compute_fourier_signals(df, args.timeframe, step_bars=args.step_bars)
 
     out_dir = Path(args.out_dir)
     plots_dir = out_dir / 'plots'
