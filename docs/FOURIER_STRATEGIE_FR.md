@@ -1,6 +1,11 @@
 Fourier pour Ichimoku + ATR — Guide d’application
 Date: 2025-08-21
 
+Voir aussi :
+- `FOURIER_SERIES_RAPPEL_FR.md` pour un rappel théorique.
+- `FOURIER_SERIES_WELCH_HALVING_FR.md` pour l'analyse alignée sur le halving.
+
+
 ### 1) Pourquoi la transformée de Fourier ici ?
 - Passer du temps aux fréquences pour comprendre « quelles » périodicités dominent et avec quelle puissance.
 - Applications concrètes trading:
