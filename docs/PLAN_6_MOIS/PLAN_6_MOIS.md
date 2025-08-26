@@ -42,3 +42,19 @@ Annexes & templates
 - Graphes: `scripts/generate_backtest_graphs.py` (CLI)
 
 
+Suivi d'avancement — 2025-08-26
+- Données & QC
+  - Binance BTC/USDT: H2 et D1 à jour; Bitstamp BTC/USD: D1 étendu (2011→2024) et 2h par resampling 1h.
+  - Rapports de qualité générés (`docs/QUALITY_REPORTS.md`), aucune anomalie bloquante.
+- Fourier
+  - Calculs rolling annual/mensuel: P1–P3, LFP, et variantes volume (PVOL/LFPv). Rapports consolidés (H2, D1, Bitstamp) + CSV agrégé `outputs/FOURIER_ALL_REPORTS.csv`.
+- Documentation
+  - Thèse mise à jour (sources, QC, H2 vs D1, conclusions préliminaires), dossier `docs/FOURIER_CONCLUSIONS/` créé.
+
+Prochaines étapes (priorisées)
+1) Stratifier par phases de halving (Accu/Expan/Euph/Distrib/Bear) et quantifier Δ(P1–P3, LFP) par phase; tableaux synthèse.
+2) Dossier « émergence des cycles »: indexer top‑3 mensuels puis déclinaison daily; exports compatibles scheduler.
+3) Intégration pipeline: mapping P→(tenkan,kijun,senkou_b,shift) + gating par LFP/volume; validation IS/OOS + MC.
+4) Mise en page thèse continue (ajout figures et tableaux synthèse au fil de l’eau).
+
+
