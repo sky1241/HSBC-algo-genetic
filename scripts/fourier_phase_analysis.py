@@ -12,10 +12,9 @@ Steps:
 - Calibrate LFP/LFP_vol gating thresholds
 
 Outputs:
-- outputs/fourier/phase/PHASE_STATS_<symbol>_<tf>.csv
-- outputs/fourier/phase/PHASE_STATS_ALL.csv
-- outputs/fourier/phase/*.png (bar plots)
-- outputs/fourier/phase/SCHEDULER_FOURIER_<symbol>_<tf>.json
+- outputs/fourier/phase/<symbol>_<tf>/PHASE_STATS_<symbol>_<tf>.csv
+- outputs/fourier/phase/<symbol>_<tf>/*.png (bar plots)
+- outputs/fourier/phase/<symbol>_<tf>/SCHEDULER_FOURIER_<symbol>_<tf>.json
 """
 from __future__ import annotations
 
