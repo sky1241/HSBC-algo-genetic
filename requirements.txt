@@ -4,3 +4,6 @@ numpy
 optuna
 matplotlib
 markdown
+scipy
+PyWavelets
+tqdm

@@ -17,6 +17,8 @@
 - Analyse par phase (stats, plots, JSON scheduler): `outputs/fourier/phase/<SYM>_<TF>/`
 - Labellisations (3 régimes, 5/6 phases + confusions): `docs/PHASE_LABELS/INDEX.md`
 - Comparatif durées & Fourier (3/5/6): `docs/PHASE_LABELS/COMPARATIF_DUREES_FOURIER_HALVING.md`
+- CSV comparatif (détails agrégés): `docs/PHASE_LABELS/csv/comparatif_durees_fourier_halving.csv`
+- Graphiques prix colorés par phase: `docs/PHASE_LABELS/PHASE_PRICE_PLOTS.md`
 
 4) Conclusions & émergence
 - Conclusions datées: `docs/FOURIER_CONCLUSIONS/INDEX.md`

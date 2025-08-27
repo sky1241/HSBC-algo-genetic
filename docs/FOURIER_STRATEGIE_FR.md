@@ -56,3 +56,33 @@ python .\scripts\export_docs_to_pdf.py --docs .\docs\FOURIER_STRATEGIE_FR.md --o
 ```
 
 
+### 9) Règles de bascule de phase et indexation Ichimoku (opérationnel)
+
+Cycles H2 typiques (P1): ~120 barres (~10j), ~180 barres (~15j), ~360 barres (~30j). On calibre Ichimoku sur P1 dominant et on « gate » l’intensité par LFP.
+
+- 3 phases (up / down / range, H2)
+  - up: LFP ≥ 0.83 ET momentum M ≥ +0.05 pendant ≥ 24–48 barres H2 ET P1 ≥ 120; confirmation si STFT/CWT_LFP_like ≥ 0.70. Sortie si LFP < 0.79 OU M < 0 pendant ≥ 24 barres (hystérésis).
+  - down: LFP ≥ 0.83 ET M ≤ −0.05 pendant ≥ 24–48 barres H2 ET P1 ≥ 120. Sortie si LFP < 0.79 OU M > 0 pendant ≥ 24 barres.
+  - range: LFP < 0.80 OU P1 ≤ 90 OU flatness élevée.
+
+- 5 phases (accumulation, expansion, euphoria, distribution, bear)
+  - accumulation: LFP remonte de <0.75 → >0.80, P1 s’allonge, M −0.02..+0.05, V modérée, DD se résorbe.
+  - expansion: LFP ≥ 0.83, M +0.05..+0.12, V en hausse, P1 120–240.
+  - euphoria: LFP ≥ 0.88, M ≥ +0.12, V élevée; P1 souvent 90–150.
+  - distribution: LFP encore élevé mais M ↘ < 0 (ou < +0.02), V haute; P1 moyen/long.
+  - bear: LFP ≥ 0.83 et M ≤ −0.05; si LFP < 0.80 → range baissier.
+
+Déclencheurs de bascule
+- Entrée: franchissement de seuils LFP/M maintenu N=24–48 barres + confirmation STFT/CWT.
+- Sortie: franchissement inverse OU absence de confirmation N barres.
+- Filtre D1 de contexte (optionnel): D1_LFP_mean > 0.80 favorise up/expansion; < 0.80 favorise range.
+
+Indexation Ichimoku depuis P1–P3
+- Tenkan ≈ round(P1/12), Kijun ≈ round(P1/6), Senkou shift ≈ round(P2/6) (bornes: 9/26/26, 12/34/26, 26/52/26).
+- Range: set court (9/26), stops serrés; Trend fort (LFP haut, P1 long): set long (12/34 ou 26/52), ATR élargi.
+- Gating intensité: LFP ≥ 0.88 pleine charge; 0.83–0.88 demi‑charge; <0.80 laisser passer.
+
+Implémentation
+- Lecture temps réel H2 → calcul LFP, M, P1… → « state machine » (3 ou 5 phases) avec hystérésis → mapping phase → (Ichimoku, ATR, taille, seed pool).
+
+
