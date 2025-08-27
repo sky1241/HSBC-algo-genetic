@@ -69,6 +69,6 @@ Roadmap et historique
 
 Licence
 -------
-Usage à des fins éducatives et expérimentales. Le trading comporte des risques.
+Ce projet est distribué sous licence MIT — voir [LICENSE](LICENSE). Usage à des fins éducatives et expérimentales. Le trading comporte des risques.
 
 
