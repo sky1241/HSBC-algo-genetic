@@ -70,8 +70,11 @@ def suggest_ichimoku_params(P: float, lfp: float) -> Dict[str, float]:
 
 def analyze_csv(path: Path, timeframe_hours: float = 2.0, window_days: int = 180) -> Dict[str, float]:
     df = pd.read_csv(path)
-    # Expect columns: timestamp, open, high, low, close, volume (flexible)
-    close = df[df.columns[-2]].to_numpy(dtype=float) if 'close' not in df.columns else df['close'].to_numpy(dtype=float)
+    # Expect a column containing close prices (case-insensitive search).
+    close_col = next((c for c in df.columns if "close" in c.lower()), None)
+    if close_col is None:
+        raise ValueError(f"No close column found in {path}")
+    close = df[close_col].to_numpy(dtype=float)
     # Use last N days
     bars_per_day = int(round(24.0 / timeframe_hours))
     n = max(256, window_days * bars_per_day)
