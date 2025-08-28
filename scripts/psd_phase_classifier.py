@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 from scipy.signal import welch, get_window  # type: ignore[reportMissingImports]
+from scipy.integrate import trapezoid  # type: ignore[reportMissingImports]
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -69,7 +70,7 @@ def _band_energy(freqs: np.ndarray, psd: np.ndarray, f_lo: float, f_hi: float) -
     mask = (freqs >= f_lo) & (freqs < f_hi)
     if not np.any(mask):
         return 0.0
-    return float(np.trapz(psd[mask], freqs[mask]))
+    return float(trapezoid(psd[mask], freqs[mask]))
 
 
 def _band_shares(freqs: np.ndarray, psd: np.ndarray) -> Dict[str, float]:
