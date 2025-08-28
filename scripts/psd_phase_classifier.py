@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 import pandas as pd
-from scipy.signal import welch, get_window
+from scipy.signal import welch, get_window  # type: ignore[reportMissingImports]
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
