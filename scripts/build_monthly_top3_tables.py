@@ -73,8 +73,12 @@ def main() -> int:
             continue
         csv_out = out_docs / f"TABLE_TOP3_{sym}_{tf}.csv"
         md_out = out_docs / f"TABLE_TOP3_{sym}_{tf}.md"
-        df.to_csv(csv_out, index=False)
-        write_markdown(df[['date','P1_bars','P2_bars','P3_bars','P4_bars','P5_bars','P6_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']], md_out, f"Top‑6 mensuel — {sym} {tf}")
+        # Garder uniquement P1..P3 (prix et volume) + LFP
+        keep_cols = ['date','symbol','timeframe','P1_bars','P2_bars','P3_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']
+        present_cols = [c for c in keep_cols if c in df.columns]
+        df_out = df[present_cols].copy()
+        df_out.to_csv(csv_out, index=False)
+        write_markdown(df_out[['date','P1_bars','P2_bars','P3_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']], md_out, f"Top‑3 mensuel — {sym} {tf}")
         print('Wrote', csv_out)
         print('Wrote', md_out)
     return 0

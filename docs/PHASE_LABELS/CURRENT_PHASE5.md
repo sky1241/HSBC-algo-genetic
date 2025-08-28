@@ -1,0 +1,8 @@
+### Phase actuelle (phase5) par paire/timeframe
+
+| symbol   | timeframe   | current_phase5   |
+|:---------|:------------|:-----------------|
+| BTC_USDT | 2h          | distribution     |
+| BTC_USDT | 1d          | distribution     |
+| BTC_USD  | 2h          | distribution     |
+| BTC_USD  | 1d          | distribution     |
