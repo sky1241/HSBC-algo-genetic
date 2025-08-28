@@ -20,6 +20,7 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
+from scipy import signal
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -79,8 +80,18 @@ def main() -> int:
     df = read_ohlcv(ohlcv_path)
 
     feats = phase_snapshot(df)
-    # daily alignment
-    feats_d = feats.resample('1D').last()
+
+    def _lowpass_subsample(df: pd.DataFrame, q: int) -> pd.DataFrame:
+        fs = 12.0  # 2h bars
+        nyq = fs / 2.0
+        b = signal.firwin(101, 0.4 / nyq)
+        filt = {c: signal.filtfilt(b, [1.0], df[c].to_numpy()) for c in df.columns}
+        df_filt = pd.DataFrame(filt, index=df.index)
+        return df_filt.iloc[::q]
+
+    feats_filt = _lowpass_subsample(feats, 12)
+    # daily alignment on filtered series
+    feats_d = feats_filt.resample('1D').last()
     lfp_d = load_daily_lfp(sym, tf)
     joined = feats_d.join(lfp_d, how='inner')
 
