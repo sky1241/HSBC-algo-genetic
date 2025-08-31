@@ -96,6 +96,30 @@ def _highest(series: pd.Series, n: int) -> pd.Series:
 def _lowest(series: pd.Series, n: int) -> pd.Series:
     return series.rolling(n, min_periods=n).min()
 
+
+def scale_ichimoku(base: Tuple[int, int, int] = (9, 26, 52), *, days_per_week: int = 7, bars_per_day: int = 12) -> Tuple[int, int, int]:
+    """Scale Ichimoku windows from daily defaults to the target timeframe.
+
+    Parameters
+    ----------
+    base: tuple of ints
+        Baseline Ichimoku windows expressed in *days* for a 7‑day week
+        (tenkan, kijun, senkou_b).
+    days_per_week: int
+        Number of trading days per week for the asset (e.g., 5 for stocks,
+        7 for crypto).
+    bars_per_day: int
+        Number of bars per day for the timeframe (e.g., 12 for 2‑hour bars).
+
+    Returns
+    -------
+    Tuple[int, int, int]
+        Scaled (tenkan, kijun, senkou_b) in **bars**.
+    """
+
+    scale = bars_per_day * (days_per_week / 7.0)
+    return tuple(int(round(x * scale)) for x in base)
+
 def ichimoku(df: pd.DataFrame, tenkan: int, kijun: int, senkou_b: int, shift: int) -> pd.DataFrame:
     """Compute Ichimoku lines. df must have columns: high, low, close."""
     high = df["high"]; low = df["low"]; close = df["close"]
@@ -342,21 +366,36 @@ def select_seeds_for_today(
 # Optional: Ichimoku suggestions from Fourier
 # ------------------------------
 
-def suggest_ichimoku_from_fft(close: pd.Series, window: int = 2160) -> Dict[str, Optional[float]]:
+def suggest_ichimoku_from_fft(
+    close: pd.Series,
+    window: int = 2160,
+    *,
+    days_per_week: int = 7,
+    bars_per_day: int = 12,
+) -> Dict[str, Optional[float]]:
+    """Suggest Ichimoku windows from dominant period ``P`` (bars).
+
+    Parameters
+    ----------
+    close: pd.Series
+        Price series.
+    window: int
+        Number of bars for FFT window.
+    days_per_week: int
+        Trading days per week. Defaults to 7 (crypto).
+    bars_per_day: int
+        Bars per day for the timeframe.
     """
-    Suggest Ichimoku windows from dominant period P (bars), H2 recommended.
-    Heuristics: Kijun ~ P/2, Tenkan ~ P/8..P/6, SenkouB ~ P.
-    Returns dict with floats (caller can round/clamp to valid ranges).
-    """
+    base_t, base_k, base_sb = scale_ichimoku(days_per_week=days_per_week, bars_per_day=bars_per_day)
     P = dominant_period(close, window=window)
     if not np.isfinite(P):
-        return {"P": None, "tenkan": None, "kijun": None, "senkou_b": None, "shift": 26.0}
+        return {"P": None, "tenkan": None, "kijun": None, "senkou_b": None, "shift": float(base_k)}
     return {
         "P": P,
-        "tenkan": max(6.0, P / 8.0),
-        "kijun": max(26.0, P / 2.0),
-        "senkou_b": max(52.0, P),
-        "shift": 26.0,
+        "tenkan": max(float(base_t), P / 8.0),
+        "kijun": max(float(base_k), P / 2.0),
+        "senkou_b": max(float(base_sb), P),
+        "shift": float(base_k),
     }
 
 # ------------------------------

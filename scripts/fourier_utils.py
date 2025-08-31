@@ -52,19 +52,44 @@ def spectral_flatness(psd: np.ndarray) -> float:
     return float(gmean / amean)
 
 
-def suggest_ichimoku_params(P: float, lfp: float) -> Dict[str, float]:
-    """Heuristic mapping from P (bars) and LFP to Ichimoku ranges/values."""
+def scale_ichimoku(base: Tuple[int, int, int] = (9, 26, 52), *, days_per_week: int = 7, bars_per_day: int = 12) -> Tuple[int, int, int]:
+    """Scale Ichimoku periods from daily defaults to target timeframe.
+
+    Parameters
+    ----------
+    base: tuple of ints
+        Baseline Ichimoku windows in days for a 7-day week.
+    days_per_week: int
+        Trading days per week for the asset (e.g. 5 for stocks, 7 for crypto).
+    bars_per_day: int
+        Number of bars per day for the timeframe (e.g. 12 for 2h data).
+
+    Returns
+    -------
+    Tuple[int, int, int]
+        Scaled (tenkan, kijun, senkou_b) expressed in bars.
+    """
+
+    scale = bars_per_day * (days_per_week / 7.0)
+    return tuple(int(round(x * scale)) for x in base)
+
+
+def suggest_ichimoku_params(
+    P: float,
+    lfp: float,
+    *,
+    days_per_week: int = 7,
+    bars_per_day: int = 12,
+) -> Dict[str, float]:
+    """Heuristic mapping from dominant period and LFP to Ichimoku values."""
+    base_t, base_k, base_sb = scale_ichimoku(days_per_week=days_per_week, bars_per_day=bars_per_day)
     if not np.isfinite(P) or P <= 0:
-        # Fallback defaults
-        return {"tenkan": 12, "kijun": 34, "senkou_b": 72, "shift": 26, "atr_mult": 3.0}
-    kijun = max(10, int(round(P / 2)))
-    tenkan = max(5, int(round(P / 6)))
-    senkou_b = max(20, int(round(P)))
-    shift = max(10, int(round(kijun / 2)))
-    if lfp >= 0.6:
-        atr_mult = 4.0
-    else:
-        atr_mult = 2.6
+        return {"tenkan": base_t, "kijun": base_k, "senkou_b": base_sb, "shift": base_k, "atr_mult": 3.0}
+    kijun = max(base_k, int(round(P / 2)))
+    tenkan = max(base_t, int(round(P / 6)))
+    senkou_b = max(base_sb, int(round(P)))
+    shift = int(kijun)
+    atr_mult = 4.0 if lfp >= 0.6 else 2.6
     return {"tenkan": tenkan, "kijun": kijun, "senkou_b": senkou_b, "shift": shift, "atr_mult": atr_mult}
 
 
@@ -89,9 +114,21 @@ def analyze_csv(path: Path, timeframe_hours: float = 2.0, window_days: int = 180
     return {"P_bars": float(P), "LFP": float(lfp), "flatness": float(flat)}
 
 
-def analyze_and_suggest(symbol: str, csv_path: Path) -> Dict[str, Dict[str, float]]:
-    stats = analyze_csv(csv_path)
-    params = suggest_ichimoku_params(stats.get("P_bars", float('nan')), stats.get("LFP", float('nan')))
+def analyze_and_suggest(
+    symbol: str,
+    csv_path: Path,
+    *,
+    timeframe_hours: float = 2.0,
+    days_per_week: int = 7,
+) -> Dict[str, Dict[str, float]]:
+    stats = analyze_csv(csv_path, timeframe_hours=timeframe_hours)
+    bars_per_day = int(round(24.0 / timeframe_hours))
+    params = suggest_ichimoku_params(
+        stats.get("P_bars", float("nan")),
+        stats.get("LFP", float("nan")),
+        days_per_week=days_per_week,
+        bars_per_day=bars_per_day,
+    )
     return {symbol: params | {"_stats": stats}}
 
 
@@ -101,8 +138,15 @@ def main():
     p.add_argument("symbol")
     p.add_argument("csv", type=Path)
     p.add_argument("--out", type=Path, default=Path("outputs")/"FOURIER_BASELINE.json")
+    p.add_argument("--timeframe-hours", type=float, default=2.0)
+    p.add_argument("--days-per-week", type=int, default=7)
     args = p.parse_args()
-    out = analyze_and_suggest(args.symbol, args.csv)
+    out = analyze_and_suggest(
+        args.symbol,
+        args.csv,
+        timeframe_hours=args.timeframe_hours,
+        days_per_week=args.days_per_week,
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2))
     print(f"Wrote {args.out}")

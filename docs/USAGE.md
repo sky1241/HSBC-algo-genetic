@@ -41,4 +41,15 @@ Environnement de backtest
 -------------------------
 - POSITION_SIZE, LEVERAGE, MAX_POS_PER_SIDE lus via variables d’environnement par le backtester
 
+Redimensionnement Ichimoku
+--------------------------
+`scale_ichimoku(base=(9,26,52), days_per_week=7, bars_per_day=12)` permet de
+convertir les paramètres Ichimoku standard (définis en jours) en nombre de
+barres pour tout horizon. Ajuster `days_per_week` pour un marché ouvrant moins
+de 7 jours par semaine.
+
+```python
+from scripts.fourier_utils import scale_ichimoku
+tenkan, kijun, senkou_b = scale_ichimoku(days_per_week=5, bars_per_day=12)
+```
 
