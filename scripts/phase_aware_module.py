@@ -202,13 +202,47 @@ def _nearest_past_halving(ts: pd.Timestamp, halvings: List[pd.Timestamp]) -> Opt
     past = [h for h in halvings if h <= ts]
     return max(past) if past else None
 
-def _compute_features(df: pd.DataFrame) -> pd.DataFrame:
+def _compute_features(
+    df: pd.DataFrame,
+    *,
+    use_ichimoku: bool = False,
+    ichimoku_params: Optional[Tuple[int, int, int]] = None,
+) -> pd.DataFrame:
+    """Compute basic features used for phase classification.
+
+    Parameters
+    ----------
+    df : DataFrame
+        OHLCV data.
+    use_ichimoku : bool, default False
+        If True, momentum ``M`` is computed from Tenkan/Kijun instead of
+        EMA20/EMA100 and cloud lines are returned.
+    ichimoku_params : tuple, optional
+        (tenkan, kijun, senkou_b) lengths in bars. If ``None`` and
+        ``use_ichimoku`` is True, the classic 9-26-52 (scaled by
+        ``scale_ichimoku`` defaults) is used.
+    """
+
     out = pd.DataFrame(index=df.index)
     out["close"] = df["close"]
     out["logret"] = np.log(df["close"]).diff()
-    out["ema20"] = ema(df["close"], 20)
-    out["ema100"] = ema(df["close"], 100)
-    out["M"] = out["ema20"] / out["ema100"] - 1.0
+
+    if use_ichimoku:
+        if ichimoku_params is None:
+            tenkan, kijun, senkou_b = scale_ichimoku()
+        else:
+            tenkan, kijun, senkou_b = ichimoku_params
+        ichi = ichimoku(df, tenkan, kijun, senkou_b, int(kijun))
+        out["tenkan"] = ichi["tenkan"]
+        out["kijun"] = ichi["kijun"]
+        out["cloud_top"] = ichi["cloud_top"]
+        out["cloud_bot"] = ichi["cloud_bot"]
+        out["M"] = out["tenkan"] / out["kijun"] - 1.0
+    else:
+        out["ema20"] = ema(df["close"], 20)
+        out["ema100"] = ema(df["close"], 100)
+        out["M"] = out["ema20"] / out["ema100"] - 1.0
+
     out["V_ann"] = rolling_vol_annualized(out["logret"], 30, 365)
     out["DD"] = drawdown(df["close"], 365)
     return out
@@ -239,6 +273,9 @@ def phase_snapshot(
     halving_dates: List[str] = HALVING_DATES,
     thresholds: Dict[str, Dict[str, float]] = PHASE_THRESHOLDS,
     hbuy_window: Tuple[int, int] = (90, 30),
+    *,
+    use_ichimoku: bool = False,
+    ichimoku_params: Optional[Tuple[int, int, int]] = None,
 ) -> pd.DataFrame:
     """
     Compute per-bar phase features aligned to last halving.
@@ -246,7 +283,7 @@ def phase_snapshot(
     df_ohlcv must include columns: open, high, low, close, volume; index is datetime (2H recommended).
     """
     df = df_ohlcv.copy()
-    feats = _compute_features(df)
+    feats = _compute_features(df, use_ichimoku=use_ichimoku, ichimoku_params=ichimoku_params)
 
     halvings = [pd.Timestamp(d) for d in halving_dates]
     feats["last_halving"] = feats.index.map(lambda ts: _nearest_past_halving(ts, halvings))
@@ -264,7 +301,11 @@ def phase_snapshot(
     feats["phase"] = [
         _classify_phase(m, v, dd, thresholds) for m, v, dd in zip(feats["M"], feats["V_ann"], feats["DD"])
     ]
-    return feats[["close", "M", "V_ann", "DD", "last_halving", "days_since_halving", "H_buy", "R_t", "phase"]]
+
+    cols = ["close", "M", "V_ann", "DD", "last_halving", "days_since_halving", "H_buy", "R_t", "phase"]
+    if use_ichimoku:
+        cols.extend(["tenkan", "kijun", "cloud_top", "cloud_bot"])
+    return feats[cols]
 
 # ------------------------------
 # HSBC Scheduler (intensity, seeds, mutation, scheduling)
