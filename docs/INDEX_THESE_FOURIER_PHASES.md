@@ -35,6 +35,9 @@
 7) Plan & suivi
 - Plan 6 mois (suivi d’avancement): `docs/PLAN_6_MOIS/PLAN_6_MOIS.md`
 
+8) Algorithme spectral HMM
+- Pipeline de trading spectral: `docs/HMM_SPECTRAL_ALGO_FR.md`
+
 À faire (prochaines priorités)
 - Tables mensuelles top‑3 cycles dans `docs/CYCLES_EMERGENCE/` (lecture unique).
 - Intégrer les JSON scheduler au runtime (lecture ranges + gating LFP).
