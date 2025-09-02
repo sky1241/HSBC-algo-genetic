@@ -1,0 +1,79 @@
+{
+  "accumulation": {
+    "tenkan": [
+      36,
+      54
+    ],
+    "kijun": [
+      144,
+      216
+    ],
+    "senkou_b": [
+      288,
+      432
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "bear": {
+    "tenkan": [
+      36,
+      54
+    ],
+    "kijun": [
+      144,
+      216
+    ],
+    "senkou_b": [
+      288,
+      432
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "distribution": {
+    "tenkan": [
+      36,
+      54
+    ],
+    "kijun": [
+      144,
+      216
+    ],
+    "senkou_b": [
+      288,
+      432
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "expansion": {
+    "tenkan": [
+      36,
+      54
+    ],
+    "kijun": [
+      144,
+      216
+    ],
+    "senkou_b": [
+      288,
+      432
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "gating_lfp": {
+    "low": 0.8,
+    "medium": 0.85,
+    "high": 0.9
+  }
+}

@@ -1,0 +1,4 @@
+symbol,pnl_eur,equity_eur,dd_pct,trades,tenkan,kijun,senkou_b,shift,atr_mult,ts,file
+BTC/USDT,5650,35932,5.52,1020,34,82,216,26,5.800000000000001,20250815_074325,shared_portfolio_pipeline_web6_20250815_074325.json
+DOGE/USDT,25532,58396,26.09,1171,30,59,77,37,2.4000000000000004,20250818_151637,shared_portfolio_pipeline_web6_20250818_151637.json
+ETH/USDT,16727,35932,5.52,1020,4,75,239,11,4.5,20250815_074325,shared_portfolio_pipeline_web6_20250815_074325.json

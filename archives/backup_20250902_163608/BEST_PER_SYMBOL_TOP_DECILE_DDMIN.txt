@@ -1,0 +1,4 @@
+Meilleurs par paire (Top décile P&L → DD minimal)
+BTC/USDT: P&L 5 650 € — Equity 35 932 € — DD 5.52% — Tenkan 34  Kijun 82  SenkouB 216  Shift 26  ATR× 5.800000000000001 — shared_portfolio_pipeline_web6_20250815_074325.json
+DOGE/USDT: P&L 25 532 € — Equity 58 396 € — DD 26.09% — Tenkan 30  Kijun 59  SenkouB 77  Shift 37  ATR× 2.4000000000000004 — shared_portfolio_pipeline_web6_20250818_151637.json
+ETH/USDT: P&L 16 727 € — Equity 35 932 € — DD 5.52% — Tenkan 4  Kijun 75  SenkouB 239  Shift 11  ATR× 4.5 — shared_portfolio_pipeline_web6_20250815_074325.json

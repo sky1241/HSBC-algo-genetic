@@ -1,0 +1,4 @@
+Meilleurs réglages par paire (P&L EUR max)
+BTC/USDT: P&L 9 439 € — Equity 58 396 € — DD 26.09% — Tenkan 38  Kijun 86  SenkouB 220  Shift 22  ATR× 5.200000000000001 — shared_portfolio_pipeline_web6_20250818_151637.json
+DOGE/USDT: P&L 26 239 € — Equity 59 103 € — DD 134.08% — Tenkan 35  Kijun 95  SenkouB 60  Shift 41  ATR× 3.1 — shared_portfolio_pipeline_web6_20250820_045852.json
+ETH/USDT: P&L 25 610 € — Equity 59 103 € — DD 134.08% — Tenkan 9  Kijun 72  SenkouB 197  Shift 11  ATR× 5.300000000000001 — shared_portfolio_pipeline_web6_20250820_045852.json

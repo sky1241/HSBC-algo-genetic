@@ -1,0 +1,11 @@
+symbol,timeframe,phase,mean_h2_bars_per_month,mean_days_per_month,months_count
+BTC_USD,2h,accumulation,6.3,0.77,154
+BTC_USD,2h,bear,11.61,1.52,154
+BTC_USD,2h,distribution,345.4,29.71,154
+BTC_USD,2h,euphoria,0.05,0.01,154
+BTC_USD,2h,expansion,1.36,0.23,154
+BTC_USDT,2h,accumulation,3.25,0.43,97
+BTC_USDT,2h,bear,11.91,1.55,97
+BTC_USDT,2h,distribution,347.79,29.74,97
+BTC_USDT,2h,euphoria,0.0,0.0,97
+BTC_USDT,2h,expansion,0.44,0.09,97

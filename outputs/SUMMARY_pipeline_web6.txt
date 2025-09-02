@@ -1,0 +1,8 @@
+Résumé — pipeline_web6
+
+Snapshot: latest
+Equity: 1 490 €  |  Max DD: 0.0%  |  Trades: 121
+ - BTC/USDT: P&L 494 € | DD idx 6.4%
+
+Paramètres actuels (meilleurs trouvés):
+ - BTC/USDT: Tenkan 50, Kijun 54, SenkouB 240, Shift 10, ATR× 4.7

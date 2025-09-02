@@ -1,0 +1,6 @@
+symbol,halving_window,accumulation_days,expansion_days,euphoria_days,distribution_days,bear_days,accumulation_dprice_abs,expansion_dprice_abs,euphoria_dprice_abs,distribution_dprice_abs,bear_dprice_abs,ratio_time_euph_over_exp,ratio_price_euph_over_exp
+BTC_USD,2020-05-11→2024-04-20,140,57,8,528,171,30008.0,14222.8,3325.11,13518.67,4424.56,0.1404,0.2338
+BTC_USD,2024-04-20→now,26,22,0,94,0,2027.0,676.0,0.0,3174.0,0.0,0.0,0.0
+BTC_USDT,2016-07-09→2020-05-11,0,59,147,498,349,0.0,2352.76,3248.36,5595.24,6349.79,2.4915,1.3807
+BTC_USDT,2020-05-11→2024-04-20,178,216,61,824,309,33119.47,5854.26,7331.62,11813.62,9968.62,0.2824,1.2524
+BTC_USDT,2024-04-20→now,160,67,0,304,0,14160.97,4969.24,0.0,25553.25,0.0,0.0,0.0

@@ -1,0 +1,47 @@
+{
+  "BTC/USDT": {
+    "params": {
+      "tenkan": 34,
+      "kijun": 82,
+      "senkou_b": 216,
+      "shift": 26,
+      "atr_mult": 5.800000000000001
+    },
+    "pnl_eur": 5650.357603936882,
+    "equity_eur": 35931.73588041027,
+    "dd_pct": 5.520448571056764,
+    "trades": 1020,
+    "file": "shared_portfolio_pipeline_web6_20250815_074325.json",
+    "ts": "20250815_074325"
+  },
+  "ETH/USDT": {
+    "params": {
+      "tenkan": 4,
+      "kijun": 75,
+      "senkou_b": 239,
+      "shift": 11,
+      "atr_mult": 4.5
+    },
+    "pnl_eur": 16727.06303675063,
+    "equity_eur": 35931.73588041027,
+    "dd_pct": 5.520448571056764,
+    "trades": 1020,
+    "file": "shared_portfolio_pipeline_web6_20250815_074325.json",
+    "ts": "20250815_074325"
+  },
+  "DOGE/USDT": {
+    "params": {
+      "tenkan": 30,
+      "kijun": 59,
+      "senkou_b": 77,
+      "shift": 37,
+      "atr_mult": 2.4000000000000004
+    },
+    "pnl_eur": 25532.499820491546,
+    "equity_eur": 58395.90887017129,
+    "dd_pct": 26.09000802219333,
+    "trades": 1171,
+    "file": "shared_portfolio_pipeline_web6_20250818_151637.json",
+    "ts": "20250818_151637"
+  }
+}

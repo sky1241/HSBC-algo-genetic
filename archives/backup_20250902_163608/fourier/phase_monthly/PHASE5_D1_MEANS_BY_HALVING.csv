@@ -1,0 +1,6 @@
+symbol,halving_window,phase5_accumulation_days,phase5_expansion_days,phase5_euphoria_days,phase5_distribution_days,phase5_bear_days
+BTC_USD,2020-05-11→2024-04-20,4.83,1.97,0.28,18.45,5.9
+BTC_USD,2024-04-20→now,6.5,5.5,0.0,20.75,0.0
+BTC_USDT,2016-07-09→2020-05-11,0.0,1.74,4.41,15.21,10.26
+BTC_USDT,2020-05-11→2024-04-20,3.79,4.57,1.23,17.23,6.57
+BTC_USDT,2024-04-20→now,9.88,4.19,0.0,18.31,0.0

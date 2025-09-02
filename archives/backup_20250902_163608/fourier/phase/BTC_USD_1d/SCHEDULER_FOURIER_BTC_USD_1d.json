@@ -1,0 +1,115 @@
+{
+  "accumulation": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "bear": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "distribution": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "euphoria": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "expansion": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "unknown": {
+    "tenkan": [
+      6,
+      7
+    ],
+    "kijun": [
+      26,
+      31
+    ],
+    "senkou_b": [
+      52,
+      62
+    ],
+    "shift": [
+      26,
+      30
+    ]
+  },
+  "gating_lfp": {
+    "low": 0.8545098245216921,
+    "medium": 0.8814813243009613,
+    "high": 0.8857204066657715
+  }
+}
