@@ -26,7 +26,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy import signal
+from scripts.fourier_core import fir_lowpass_subsample
 
 import sys
 from pathlib import Path as _Path
@@ -145,16 +145,7 @@ def main() -> int:
 
     feats = phase_snapshot(df)
 
-    def _lowpass_subsample(df: pd.DataFrame, q: int) -> pd.DataFrame:
-        """Low-pass filter then sub-sample by q using a FIR filter."""
-        fs = 12.0  # 2h bars → 12 samples/day
-        nyq = fs / 2.0
-        b = signal.firwin(101, 0.4 / nyq)
-        filt = {c: signal.filtfilt(b, [1.0], df[c].to_numpy()) for c in df.columns}
-        df_filt = pd.DataFrame(filt, index=df.index)
-        return df_filt.iloc[::q]
-
-    feats_filt = _lowpass_subsample(feats, 12)
+    feats_filt = fir_lowpass_subsample(feats, 12, fs=12.0, cutoff=0.4)
     feats_daily = feats_filt.resample('1D').last().dropna(subset=['phase'])
 
     agg = summarize_by_phase(daily, feats_daily)

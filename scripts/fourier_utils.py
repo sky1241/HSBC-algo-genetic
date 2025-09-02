@@ -5,51 +5,13 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 
-
-def compute_welch_psd(close: np.ndarray, fs: float) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute a simple PSD using Welch via numpy (fallback) or scipy if available.
-
-    Returns (freqs, psd). fs is sampling frequency in bars^-1 (e.g., 1 per bar).
-    """
-    try:
-        from scipy.signal import welch  # type: ignore
-        freqs, psd = welch(close, fs=fs, nperseg=min(1024, max(64, len(close)//4)))
-        return freqs, psd
-    except Exception:
-        # Fallback: naive periodogram
-        n = len(close)
-        window = np.hanning(n)
-        close_d = close - np.mean(close)
-        fft = np.fft.rfft(window * close_d)
-        psd = (np.abs(fft) ** 2) / (np.sum(window**2) * fs)
-        freqs = np.fft.rfftfreq(n, d=1.0/fs)
-        return freqs, psd
-
-
-def dominant_period(freqs: np.ndarray, psd: np.ndarray, min_idx: int = 1) -> float:
-    """Return dominant period P = 1/f* (skip DC at index 0)."""
-    if len(freqs) <= min_idx:
-        return float('nan')
-    idx = np.argmax(psd[min_idx:]) + min_idx
-    f_star = max(1e-12, freqs[idx])
-    return 1.0 / f_star
-
-
-def low_freq_power_ratio(freqs: np.ndarray, psd: np.ndarray, f0: float) -> float:
-    total = float(np.sum(psd))
-    if total <= 0:
-        return float('nan')
-    mask = freqs < f0
-    low = float(np.sum(psd[mask]))
-    return low / total
-
-
-def spectral_flatness(psd: np.ndarray) -> float:
-    # Geometric mean / arithmetic mean
-    psd = np.asarray(psd) + 1e-12
-    gmean = np.exp(np.mean(np.log(psd)))
-    amean = float(np.mean(psd))
-    return float(gmean / amean)
+# Core FFT/PSD utilities (factorized)
+from scripts.fourier_core import (
+    compute_welch_psd,
+    dominant_period,
+    low_freq_power_ratio,
+    spectral_flatness,
+)
 
 
 def scale_ichimoku(base: Tuple[int, int, int] = (9, 26, 52), *, days_per_week: int = 7, bars_per_day: int = 12) -> Tuple[int, int, int]:

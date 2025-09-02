@@ -13,7 +13,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import pandas as pd
-from scipy import signal
+import sys
+from pathlib import Path as _Path
+# Ensure project root is on sys.path for `scripts.*` imports when running from scripts/
+_ROOT = _Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from scripts.fourier_core import anti_aliased_daily
 
 
 def summarize_one(csv_path: Path) -> pd.DataFrame:
@@ -29,19 +35,11 @@ def summarize_one(csv_path: Path) -> pd.DataFrame:
             df[col] = pd.NA
     # If only P_bars exists, alias to P1_bars
     df['P1_bars'] = df['P1_bars'].combine_first(df['P_bars'])
-    def _lowpass_subsample(df: pd.DataFrame, q: int) -> pd.DataFrame:
-        fs = 12.0  # 2h bars
-        nyq = fs / 2.0
-        b = signal.firwin(101, 0.4 / nyq)
-        filt = {c: signal.filtfilt(b, [1.0], df[c].to_numpy()) for c in df.columns}
-        df_filt = pd.DataFrame(filt, index=df.index)
-        return df_filt.iloc[::q]
-
     if tf == '2h':
-        df = _lowpass_subsample(df, 12)
-
-    # Resample to daily (take last valid value each day)
-    daily = df.resample('1D').last().dropna(how='all')
+        # Use centralized anti‑alias routine to avoid discrepancies
+        daily = anti_aliased_daily(df)
+    else:
+        daily = df.resample('1D').last().dropna(how='all')
     return daily[['P1_bars','P2_bars','P3_bars','P4_bars','P5_bars','P6_bars','LFP','P1_vol','P2_vol','P3_vol','LFP_vol']]
 
 

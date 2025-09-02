@@ -35,3 +35,15 @@ Objectif: produire et exploiter P1–P3 (périodes dominantes) et LFP (ratio bas
 - Phases & régimes: `docs/PHASE_LABELS/INDEX.md`.
 - Conclusions datées: `docs/FOURIER_CONCLUSIONS/INDEX.md`.
 
+6) Primitives factorisées (module central)
+
+- `scripts/fourier_core.py` fournit des briques communes pour toute la pipeline:
+  - `compute_welch_psd(close, fs) -> (freqs, psd)`
+  - `dominant_period(freqs, psd) -> float`
+  - `low_freq_power_ratio(freqs, psd, f0) -> float`
+  - `spectral_flatness(psd) -> float`
+  - `fir_lowpass_subsample(df, q, fs, cutoff) -> DataFrame`
+  - `anti_aliased_daily(df_2h) -> DataFrame` (H2→D1 avec filtre anti‑alias, cutoff≈0.4 cycles/jour)
+
+Les scripts alignés sur ce module: `scripts/fourier_utils.py`, `scripts/build_daily_summary.py`, `scripts/fourier_phase_analysis.py`, `scripts/build_phase_labels.py`.
+

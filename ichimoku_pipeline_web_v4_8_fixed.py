@@ -2459,7 +2459,8 @@ def optuna_optimize_profile(profile_name: str, n_trials: int = 2000, seed: int |
 
 def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, seed: int | None = None, out_dir: str = "outputs",
                                        use_cache: bool = True, start_year: int | None = None, end_year: int | None = None,
-                                       jobs: int = 1, fast_ratio: float = 1.0, baseline_map: dict[str, dict] | None = None):
+                                       jobs: int = 1, fast_ratio: float = 1.0, baseline_map: dict[str, dict] | None = None,
+                                       loss_mult: float | None = None):
     """Optimise indépendamment chaque paire avec Optuna (folds annuels + ASHA) et exporte les meilleurs réglages par paire.
 
     - n_trials est appliqué à CHAQUE paire (pour un vrai test robuste par symbole)
