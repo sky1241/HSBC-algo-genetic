@@ -1133,11 +1133,14 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             current_capital = max(1e-12, equity * 1000.0)
             equity *= (1.0 + ret * (pos["position_value"] / current_capital))
             wins_long += 1 if ret > 0 else 0
+            # Pondération du retour par la taille de position (ret_w)
+            ret_w = ret * (pos["position_value"] / current_capital)
             trades_long.append({
                 "timestamp": data.index[-1],
                 "entry": pos["entry"],
                 "exit": close,
                 "ret": ret,
+                "ret_w": ret_w,
                 "exit_reason": "eod",
                 "symbol": symbol,
                 "type": "long"
@@ -1154,11 +1157,14 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             current_capital = max(1e-12, equity * 1000.0)
             equity *= (1.0 + ret * (pos["position_value"] / current_capital))
             wins_short += 1 if ret > 0 else 0
+            # Pondération du retour par la taille de position (ret_w)
+            ret_w = ret * (pos["position_value"] / current_capital)
             trades_short.append({
                 "timestamp": data.index[-1],
                 "entry": pos["entry"],
                 "exit": close,
                 "ret": ret,
+                "ret_w": ret_w,
                 "exit_reason": "eod",
                 "symbol": symbol,
                 "type": "short"
@@ -1196,8 +1202,15 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     avg_time_short = calculate_avg_time_in_position(trades_short)
 
     if n_trades > 0:
-        eq_curve = (1.0 + returns).cumprod()
+        # Utiliser le retour pondéré si disponible pour approcher l'équité
+        returns_w = pd.Series([t.get("ret_w", t["ret"]) for t in all_trades], dtype=float)
+        eq_curve = (1.0 + returns_w).cumprod()
         max_dd = (eq_curve.cummax() - eq_curve).max() / max(eq_curve.cummax().max(), 1e-12)
+        # Borne de sécurité (≤ 100%)
+        if not np.isfinite(max_dd):
+            max_dd = 1.0
+        else:
+            max_dd = float(min(max_dd, 1.0))
         
         # Calculer l'exposant de Lyapunov
         lyapunov_exp = calculate_lyapunov_exponent(returns)
@@ -2400,6 +2413,12 @@ def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int |
             except Exception as e:
                 # Pruning agressif si erreur
                 raise optuna.TrialPruned() if optuna else e
+            # Gating de risque (prune si run invalide)
+            if (m.get("liquidations", 0) or m.get("margin_calls", 0) or float(m.get("min_equity", 1.0)) < 0.6 or float(m.get("max_drawdown", 0.0)) > 0.6):
+                if optuna:
+                    raise optuna.TrialPruned()
+                else:
+                    continue
             cagr_list.append(float(m.get("CAGR", 0.0)))
             sharpe_list.append(float(m.get("sharpe_proxy", 0.0)))
             dd_list.append(float(m.get("max_drawdown", 0.0)))
@@ -2476,6 +2495,8 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
     os.makedirs(out_dir, exist_ok=True)
     if seed is not None:
         random.seed(seed); np.random.seed(seed)
+    # Ensure a locally bound variable is captured by closures to avoid NameError
+    loss_mult_outer = 1.0 if (loss_mult is None) else float(loss_mult)
 
     symbols = cfg["symbols"]
     timeframe = cfg["timeframe"]
@@ -2601,7 +2622,7 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
                     sub = df.loc[start_ts:end_ts]
                 if sub.empty:
                     continue
-                m = backtest_long_short(sub, params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"], loss_mult=loss_mult, symbol=sym, timeframe=timeframe)
+                m = backtest_long_short(sub, params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"], loss_mult=loss_mult_outer, symbol=sym, timeframe=timeframe)
                 cagr_list.append(float(m.get("CAGR", 0.0)))
                 sharpe_list.append(float(m.get("sharpe_proxy", 0.0)))
                 dd_list.append(float(m.get("max_drawdown", 0.0)))
@@ -2851,13 +2872,15 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
         # Backtest final plein horizon avec les meilleurs paramètres
         df_full = market_data_all[sym]
         p = p_full
-        m = backtest_long_short(df_full, p["tenkan"], p["kijun"], p["senkou_b"], p["shift"], p["atr_mult"], loss_mult=loss_mult, symbol=sym, timeframe=timeframe)
-        m.update({
-            "symbol": sym,
-            "tenkan": p["tenkan"], "kijun": p["kijun"], "senkou_b": p["senkou_b"], "shift": p["shift"], "atr_mult": p["atr_mult"],
-            "trial": -1, "generation": 0, "trader_id": 0
-        })
-        runs_rows.append(m)
+        m = backtest_long_short(df_full, p["tenkan"], p["kijun"], p["senkou_b"], p["shift"], p["atr_mult"], loss_mult=loss_mult_outer, symbol=sym, timeframe=timeframe)
+        # Skip export si invalide (gating de sécurité)
+        if not (m.get("liquidations", 0) or m.get("margin_calls", 0) or float(m.get("min_equity", 1.0)) < 0.6 or float(m.get("max_drawdown", 0.0)) > 0.6):
+            m.update({
+                "symbol": sym,
+                "tenkan": p["tenkan"], "kijun": p["kijun"], "senkou_b": p["senkou_b"], "shift": p["shift"], "atr_mult": p["atr_mult"],
+                "trial": -1, "generation": 0, "trader_id": 0
+            })
+            runs_rows.append(m)
 
     # Sauvegardes
     ts_label = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -2920,7 +2943,7 @@ def main():
     use_genetic = True
     baseline_map = None
     fixed_params = None
-    loss_mult = None
+    loss_mult = 3.0
     
     # Parse arguments
     i = 2
