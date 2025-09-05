@@ -91,6 +91,13 @@
   - Ajout au master index `docs/INDEX_THESE_FOURIER_PHASES.md`.
   - Enrichissement méthodologique: ajout des métriques de distance au halving (début/milieu/fin de segment) et agrégat `dsh_mid_median` pour lecture temporelle.
 
+- ## 📅 Mise à jour du 2025-09-05
+- - Réalisé aujourd’hui
+-   - HMM (BTC_FUSED 2h) K ∈ [2..10], 60 seeds (30×2): agrégat `outputs/fourier/hmm/BTC_FUSED_2h/HMM_K_SELECTION_AGG.csv` + rapport `docs/HMM_BTC_FUSED_2h.md`.
+-   - Résultat data‑driven: BIC_median et LL_OOS_median s’améliorent en montant K; reco K=10.
+- - Prochaines actions
+-   - Figer K=3 et K=5 (labels) pour comparaison thèse; lancer optimisation Ichimoku “fixe vs par phase” (30×2 seeds) par fenêtres halving.
+
 - Reste à faire (priorités)
   - Intégrer les features Fourier au scheduler runtime (cadence et seeds) et brancher les JSON: `outputs/fourier/phase/<SYM>_<TF>/SCHEDULER_FOURIER_*.json`.
   - Valider les mappages \(P\rightarrow\) Ichimoku par phase en walk‑forward IS/OOS.
