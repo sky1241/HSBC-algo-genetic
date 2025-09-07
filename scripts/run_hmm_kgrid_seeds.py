@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import zipfile
 import argparse
 import numpy as np
 import pandas as pd
@@ -61,6 +62,7 @@ def main() -> int:
     ap.add_argument("--n-seeds", type=int, default=30)  # 30×2 batches
     ap.add_argument("--win-bars", type=int, default=256)
     ap.add_argument("--train-frac", type=float, default=0.7)
+    ap.add_argument("--k-major", action="store_true", help="Loop K outermost and checkpoint per-K backups")
     args = ap.parse_args()
 
     sym, tf = args.symbol, args.tf
@@ -92,21 +94,79 @@ def main() -> int:
     print(f"[INFO] Running {len(seeds)} seeds × {len(k_list)} K values …", flush=True)
 
     all_rows = []
-    for si, seed in enumerate(seeds, 1):
-        print(f"=== Seed {seed} ({si}/{len(seeds)}) ===", flush=True)
-        seed_dir = out_root / f"seed_{seed}"
-        seed_dir.mkdir(parents=True, exist_ok=True)
-        rows = []
-        for K in k_list:
+
+    if args.k_major:
+        # K‑major loop: finalize a full per‑K backup when each K is done across all seeds
+        rows_per_seed: dict[int, list[dict[str, float]]] = {int(s): [] for s in seeds}
+        by_k_root = out_root / "by_K"
+        by_k_root.mkdir(parents=True, exist_ok=True)
+
+        for ki, K in enumerate(k_list, 1):
+            print(f"=== K {K} ({ki}/{len(k_list)}) ===", flush=True)
+            rows_k = []
+            for si, seed in enumerate(seeds, 1):
+                try:
+                    aic, bic, ll, pred = run_hmm_for_k(X, X.index, K, seed, args.train_frac)
+                    seed_dir = out_root / f"seed_{seed}"
+                    seed_dir.mkdir(parents=True, exist_ok=True)
+                    pred.to_csv(seed_dir / f"HMM_PRED_{K}.csv", index=False)
+                    row = {"seed": seed, "K": K, "AIC": aic, "BIC": bic, "LL_OOS": ll}
+                    rows_k.append(row)
+                    rows_per_seed[int(seed)].append(row)
+                    all_rows.append(row)
+                    print(f"[K {K}] seed={seed} AIC={aic:.0f} BIC={bic:.0f} LL_OOS={ll:.2f}", flush=True)
+                except Exception as e:
+                    print(f"[K {K}] seed={seed} ERROR: {e}", flush=True)
+
+            # Per‑K checkpoint: CSV + quick stats + zip of predictions for this K
+            k_dir = by_k_root / f"K{K}"
+            k_dir.mkdir(parents=True, exist_ok=True)
+
+            df_k = pd.DataFrame(rows_k)
+            df_k.to_csv(k_dir / f"HMM_K_SELECTION_K{K}_ALL_SEEDS.csv", index=False)
+
+            if not df_k.empty:
+                agg_k = (
+                    df_k.agg({"AIC": ["mean", "median"], "BIC": ["mean", "median"], "LL_OOS": ["mean", "median"]})
+                    .T
+                    .rename(columns={"mean": "mean", "median": "median"})
+                )
+                agg_k.to_csv(k_dir / f"AGG_K{K}.csv")
+
+            # Zip all prediction files for this K across seeds
+            zip_path = k_dir / f"PRED_K{K}.zip"
             try:
-                aic, bic, ll, pred = run_hmm_for_k(X, X.index, K, seed, args.train_frac)
-                pred.to_csv(seed_dir / f"HMM_PRED_{K}.csv", index=False)
-                rows.append({"seed": seed, "K": K, "AIC": aic, "BIC": bic, "LL_OOS": ll})
-                print(f"[seed {seed}] K={K} AIC={aic:.0f} BIC={bic:.0f} LL_OOS={ll:.2f}", flush=True)
+                with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+                    for seed in seeds:
+                        seed_dir = out_root / f"seed_{seed}"
+                        pred_path = seed_dir / f"HMM_PRED_{K}.csv"
+                        if pred_path.exists():
+                            zf.write(pred_path, arcname=f"seed_{seed}.csv")
             except Exception as e:
-                print(f"[seed {seed}] K={K} ERROR: {e}", flush=True)
-        pd.DataFrame(rows).to_csv(seed_dir / f"HMM_K_SELECTION_seed{seed}.csv", index=False)
-        all_rows.extend(rows)
+                print(f"[WARN] Zip failed for K={K}: {e}", flush=True)
+
+        # After all K done, write per‑seed summaries for completeness
+        for seed, rows in rows_per_seed.items():
+            seed_dir = out_root / f"seed_{seed}"
+            seed_dir.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(rows).to_csv(seed_dir / f"HMM_K_SELECTION_seed{seed}.csv", index=False)
+    else:
+        # Original seed‑major loop
+        for si, seed in enumerate(seeds, 1):
+            print(f"=== Seed {seed} ({si}/{len(seeds)}) ===", flush=True)
+            seed_dir = out_root / f"seed_{seed}"
+            seed_dir.mkdir(parents=True, exist_ok=True)
+            rows = []
+            for K in k_list:
+                try:
+                    aic, bic, ll, pred = run_hmm_for_k(X, X.index, K, seed, args.train_frac)
+                    pred.to_csv(seed_dir / f"HMM_PRED_{K}.csv", index=False)
+                    rows.append({"seed": seed, "K": K, "AIC": aic, "BIC": bic, "LL_OOS": ll})
+                    print(f"[seed {seed}] K={K} AIC={aic:.0f} BIC={bic:.0f} LL_OOS={ll:.2f}", flush=True)
+                except Exception as e:
+                    print(f"[seed {seed}] K={K} ERROR: {e}", flush=True)
+            pd.DataFrame(rows).to_csv(seed_dir / f"HMM_K_SELECTION_seed{seed}.csv", index=False)
+            all_rows.extend(rows)
 
     df_all = pd.DataFrame(all_rows)
     agg = (

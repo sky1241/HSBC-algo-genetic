@@ -13,9 +13,3 @@
 |   2 |      1.05216e+06 |      1.05226e+06 |      1.05243e+06 |      1.05253e+06 | -264792           |     -264795 |      60 |
 
 Recommandation (BIC_median): K=10
-
-Conclusions
-
-- Sur BTC_FUSED 2h (2011→2025) avec features spectre Welch + Ichimoku, la sélection par BIC_median et LL_OOS_median s'améliore en montant K, avec un optimum à K=10.
-- Pour la comparaison thèse et l'analyse pratique, on fige néanmoins K=3 (Up/Down/Range) et K=5 (Accumulation, Expansion, Euphorie, Distribution, Bear) afin de comparer « fixe vs par phase » côté Ichimoku.
-- Étape suivante: geler les labels K=3 et K=5, puis lancer l'optimisation Ichimoku (30×2 seeds) « fixe vs par phase » et comparer equity/CAGR/Calmar/Sharpe/MDD par fenêtres halving.

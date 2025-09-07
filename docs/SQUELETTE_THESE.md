@@ -98,6 +98,28 @@
 - - Prochaines actions
 -   - Figer K=3 et K=5 (labels) pour comparaison thèse; lancer optimisation Ichimoku “fixe vs par phase” (30×2 seeds) par fenêtres halving.
 
+## 📅 Mise à jour du 2025-09-06
+- Réalisé aujourd’hui
+  - Finalisation HMM K‑grid (BTC_FUSED 2h), exports par K et agrégat; exécutions Optuna BTC (batches), génération Top/Best et rapport `docs/TOP_BEST_RESULTS.md` avec conclusions.
+- Conclusions clés
+  - K=10 optimal au sens BIC/LL_OOS; labels thèse figés K=3/5.
+  - Plages Ichimoku récurrentes BTC/USDT: Tenkan 42–45, Kijun 85–111, Senkou_B 215–225, Shift 23–29, ATR× ≈ 4.8–5.3.
+- À surveiller
+  - Snapshot equity ≈ 7 470 € à re‑vérifier (horizon/scope) avant inclusion; nettoyage des NaN dans “Best par symbole”; QC volumes nuls (1 cas) à corriger.
+ - Avancement complémentaire
+   - Activation du mode “full history” pour Optuna (`USE_FUSED_H2=1`) afin d’utiliser `data/BTC_FUSED_2h.csv`.
+   - Exports Top/Best filtrés (multi‑symbole/NaN exclus). Prochaine étape: baseline 9‑26‑52, optimisation “par phase” (K=3/5), et comparaison mensuelle vs annuelle.
+
+## 📅 Mise à jour du 2025-09-07
+- Réalisé aujourd’hui
+  - Consolidation “best per symbol” et Top‑5 global à partir des JSON de portefeuille propres (gating MDD/min_equity/liquidations/margin). Sorties:
+    - `outputs/BEST_PER_SYMBOL.{csv,json,txt}` et `outputs/BEST_PER_SYMBOL_TOP_DECILE_DDMIN.{csv,json,txt}`
+    - `outputs/top_results.json`
+    - `docs/TOP_BEST_RESULTS.md` (Top‑5 global + tableau Best par symbole + conclusions)
+- Faits saillants
+  - BTC/USDT baseline robuste: equity ≈ 1 948 €, DD ≈ 4.60%, 109 trades, params ≈ (tenkan 42, kijun 83, senkou_b 215, shift 27, ATR× 5.2).
+  - Top‑5 global extrait des snapshots récents; base de comparaison “fixe vs par phase”.
+
 - Reste à faire (priorités)
   - Intégrer les features Fourier au scheduler runtime (cadence et seeds) et brancher les JSON: `outputs/fourier/phase/<SYM>_<TF>/SCHEDULER_FOURIER_*.json`.
   - Valider les mappages \(P\rightarrow\) Ichimoku par phase en walk‑forward IS/OOS.

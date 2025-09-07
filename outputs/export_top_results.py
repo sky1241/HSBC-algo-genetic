@@ -23,6 +23,17 @@ def load_reports(outputs_dir: Path, profile: str):
         try:
             with open(fp, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            # Gating sécurité
+            md = data.get("max_drawdown")
+            try:
+                md = float(md)
+            except Exception:
+                md = None
+            min_eq = data.get("min_equity")
+            liquid = int(data.get("liquidations", 0) or 0)
+            margin = int(data.get("margin_calls", 0) or 0)
+            if (liquid > 0) or (margin > 0) or (isinstance(min_eq, (int, float)) and float(min_eq) < 0.6) or (isinstance(md, float) and md > 0.6):
+                continue
             eq_mult = float(data.get("equity_mult", 1.0))
             items.append({
                 "file": os.path.basename(fp),

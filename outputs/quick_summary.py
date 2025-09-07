@@ -1,7 +1,8 @@
 import os
+import re
 import glob
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def fmt_eur(x):
@@ -12,8 +13,23 @@ def fmt_eur(x):
 
 
 def latest_snapshot_path(outputs_dir: str, profile: str) -> str | None:
-    paths = sorted(glob.glob(os.path.join(outputs_dir, f"shared_portfolio_{profile}_*.json")))
-    return paths[-1] if paths else None
+    paths = glob.glob(os.path.join(outputs_dir, f"shared_portfolio_{profile}_*.json"))
+    if not paths:
+        return None
+    def key_fn(p: str) -> float:
+        # Prefer timestamp embedded in filename; fallback to mtime
+        m = re.search(r"_(\d{8}_\d{6})\.json$", os.path.basename(p))
+        if m:
+            try:
+                dt = datetime.strptime(m.group(1), "%Y%m%d_%H%M%S").replace(tzinfo=timezone.utc)
+                return dt.timestamp()
+            except Exception:
+                pass
+        try:
+            return float(os.path.getmtime(p))
+        except Exception:
+            return 0.0
+    return max(paths, key=key_fn)
 
 
 def read_json(path: str) -> dict | None:
@@ -37,21 +53,27 @@ def make_summary(outputs_dir: str, profile: str) -> str:
     # Snapshot block
     if snap is not None and snap_path:
         try:
-            ts = os.path.basename(snap_path).rsplit('_', 1)[-1].replace('.json','')
+            bn = os.path.basename(snap_path)
+            m = re.search(r"_(\d{8}_\d{6})\.json$", bn)
+            ts = (m.group(1) if m else 'latest')
         except Exception:
-            ts = ''
+            ts = 'latest'
         eq_mult = float(snap.get('equity_mult', 1.0))
         equity_eur = eq_mult * 1000.0
-        min_eq = snap.get('min_equity')
-        if isinstance(min_eq, (int, float)) and 0 < float(min_eq) <= 1.5:
-            dd_pct = max(0.0, (1.0 - float(min_eq)) * 100.0)
-        else:
-            md = snap.get('max_drawdown', 0.0)
-            try:
-                md = float(md)
-            except Exception:
-                md = float('nan')
-            dd_pct = md * 100.0 if md == md else float('nan')
+        # Prefer explicit max_drawdown (fraction) if present; fallback to min_equity
+        md_val = snap.get('max_drawdown', None)
+        dd_pct: float
+        try:
+            if isinstance(md_val, (int, float)):
+                dd_pct = float(md_val) * 100.0
+            else:
+                raise ValueError
+        except Exception:
+            min_eq = snap.get('min_equity')
+            if isinstance(min_eq, (int, float)) and 0 < float(min_eq) <= 1.5:
+                dd_pct = max(0.0, (1.0 - float(min_eq)) * 100.0)
+            else:
+                dd_pct = float('nan')
         trades = int(snap.get('trades', 0))
         lines.append(f"Snapshot: {ts}")
         lines.append(f"Equity: {fmt_eur(equity_eur)}  |  Max DD: {'' if dd_pct!=dd_pct else f'{dd_pct:.1f}%'}  |  Trades: {trades}")

@@ -2,7 +2,7 @@ import os
 import re
 import json
 import glob
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def list_shared_files(profile: str) -> list[str]:
@@ -50,7 +50,23 @@ def main():
         data = load_json(fp)
         if not isinstance(data, dict):
             continue
-        ts_label = parse_ts_from_name(fp) or datetime.utcfromtimestamp(os.path.getmtime(fp)).strftime("%Y%m%d_%H%M%S")
+        # Gating sécurité global
+        md = data.get("max_drawdown")
+        try:
+            md_val = float(md)
+        except Exception:
+            md_val = None
+        min_eq = data.get("min_equity")
+        liquid = int(data.get("liquidations", 0) or 0)
+        margin = int(data.get("margin_calls", 0) or 0)
+        if (liquid > 0) or (margin > 0) or (isinstance(min_eq, (int, float)) and float(min_eq) < 0.6) or (isinstance(md_val, float) and md_val > 0.6):
+            continue
+        # Use timezone-aware UTC timestamp for portability
+        try:
+            ts_dt = datetime.fromtimestamp(os.path.getmtime(fp), timezone.utc)
+        except Exception:
+            ts_dt = datetime.now(timezone.utc)
+        ts_label = parse_ts_from_name(fp) or ts_dt.strftime("%Y%m%d_%H%M%S")
         eq_mult = fmt_float(data.get("equity_mult"))
         equity_eur = eq_mult * 1000.0 if eq_mult == eq_mult else float("nan")
         dd = data.get("max_drawdown")
@@ -61,11 +77,28 @@ def main():
         trades = int(data.get("trades", 0))
         params_map = data.get("best_params") or data.get("params") or {}
         per_symbol = data.get("per_symbol") or {}
+        # Exclure snapshots multi-symbole (on ne retient que les runs 1 symbole pour éviter les mélanges)
+        try:
+            nb_syms = len(params_map.keys()) if isinstance(params_map, dict) else 0
+        except Exception:
+            nb_syms = 0
+        if nb_syms != 1:
+            continue
 
         for sym, pm in params_map.items():
             ps = per_symbol.get(sym, {}) if isinstance(per_symbol, dict) else {}
             pnl_eur = fmt_float(ps.get("pnl_eur")) if isinstance(ps, dict) else float("nan")
-            # Build row
+            # Gating par symbole (si métriques détaillées existent)
+            dd_sym = ps.get("max_dd_indexed")
+            try:
+                dd_sym_val = float(dd_sym)
+            except Exception:
+                dd_sym_val = None
+            liq_sym = int(ps.get("liquidations", 0) or 0) if isinstance(ps, dict) else 0
+            mar_sym = int(ps.get("margin_calls", 0) or 0) if isinstance(ps, dict) else 0
+            if (liq_sym > 0) or (mar_sym > 0) or (isinstance(dd_sym_val, float) and dd_sym_val > 0.6):
+                continue
+            # Build row (skip NaN equity/pnl)
             row = {
                 "symbol": sym,
                 "pnl_eur": pnl_eur,
@@ -80,7 +113,10 @@ def main():
                 "file": os.path.basename(fp),
                 "ts": ts_label,
             }
-            rows.append(row)
+            if (row["pnl_eur"] == row["pnl_eur"]) and (row["equity_eur"] == row["equity_eur"]):
+                rows.append(row)
+            else:
+                continue
             all_by_symbol.setdefault(sym, []).append(row)
 
             # Update best per symbol using pnl_eur as primary criterion, tie-breaker equity_eur

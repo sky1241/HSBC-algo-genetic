@@ -597,7 +597,10 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     except Exception:
         _env_pos = None; _env_lev = None
     position_size = float(_env_pos) if _env_pos else 0.01  # part du capital par trade
-    leverage = float(_env_lev) if _env_lev else 50  # levier par défaut si non fourni
+    leverage = float(_env_lev) if _env_lev else 10  # levier par défaut = 10
+    # Cap dur sécurité demandé: 1% et x10 max
+    position_size = min(max(0.0, position_size), 0.01)
+    leverage = min(max(1.0, leverage), 10.0)
     
     # Gestion du risque (AUGMENTÉE POUR PLUS DE SIGNALS !)
     max_trades_per_symbol = 50  # Maximum 50 trades par type par paire (pour 200 signaux/an)
@@ -1387,6 +1390,26 @@ PROFILES = {
     }
 }
 
+def _load_local_csv_if_configured(symbol: str, timeframe: str) -> pd.DataFrame | None:
+    """Optionally load a local CSV instead of remote fetch when env flag is set.
+
+    USE_FUSED_H2=1 enables using data/BTC_FUSED_2h.csv for symbol BTC/USDT at 2h.
+    """
+    try:
+        use_fused = os.environ.get("USE_FUSED_H2", "0") == "1"
+    except Exception:
+        use_fused = False
+    if not use_fused:
+        return None
+    if symbol == "BTC/USDT" and timeframe == "2h":
+        from pathlib import Path
+        p = Path("data/BTC_FUSED_2h.csv")
+        if p.exists():
+            df = pd.read_csv(p, parse_dates=["timestamp"]).set_index("timestamp").sort_index()
+            df = df[~df.index.duplicated(keep="last")]
+            return df
+    return None
+
 def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_symbol: dict[str, dict], timeframe: str = "2h", record_curve: bool = False) -> dict:
     """Backtest multi-paires en parallèle avec capital commun et contrainte de fonds disponibles.
 
@@ -1404,6 +1427,9 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
         _env_pos = None; _env_lev = None; _env_maxpos = None
     position_size = float(_env_pos) if _env_pos else 0.01
     leverage = float(_env_lev) if _env_lev else 10
+    # Cap dur sécurité demandé: 1% et x10 max
+    position_size = min(max(0.0, position_size), 0.01)
+    leverage = min(max(1.0, leverage), 10.0)
     try:
         max_positions_per_side_cap = int(_env_maxpos) if _env_maxpos else 3
     except Exception:
@@ -1806,8 +1832,8 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
         min_equity = equity
         min_equity_ts = all_indexes[-1] if total_steps > 0 else None
 
-    # Calcul des métriques portefeuille
-    returns = pd.Series([t["ret"] for t in all_trades], dtype=float)
+    # Calcul des métriques portefeuille (retours pondérés si dispo)
+    returns = pd.Series([t.get("ret_w", t["ret"]) for t in all_trades], dtype=float)
     n_trades = int(len(all_trades))
     start_ts = min(df.index[0] for df in processed.values() if len(df.index)) if processed else datetime.utcnow().astimezone(timezone.utc)
     end_ts = max(df.index[-1] for df in processed.values() if len(df.index)) if processed else start_ts
@@ -1823,6 +1849,11 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
     if n_trades > 0:
         eq_curve = (1.0 + returns).cumprod()
         max_dd = (eq_curve.cummax() - eq_curve).max() / max(eq_curve.cummax().max(), 1e-12)
+        # Borne de sécurité (≤100%)
+        if not np.isfinite(max_dd):
+            max_dd = 1.0
+        else:
+            max_dd = float(min(max_dd, 1.0))
     else:
         max_dd = 0.0
 
@@ -1917,8 +1948,13 @@ def run_profile(profile_name, trials=0, seed=None, out_dir="outputs", use_cache=
     # fetch data pour chaque symbole
     market_data = {}
     for sym in symbols:
-        log(f"Téléchargement {sym} {timeframe} sur ~{years_back} ans…")
-        df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir="data", use_cache=use_cache)
+        local_df = _load_local_csv_if_configured(sym, timeframe)
+        if local_df is not None:
+            log(f"Utilisation CSV local (fused) pour {sym} {timeframe} — historique complet")
+            df = local_df
+        else:
+            log(f"Téléchargement {sym} {timeframe} sur ~{years_back} ans…")
+            df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir="data", use_cache=use_cache)
         if df.empty:
             log(f"⚠️  Pas de données pour {sym}.")
             continue
@@ -2378,7 +2414,7 @@ def compute_score_optuna(cagr_list, sharpe_list, dd_list, trades_list):
     trade_penalty = 0.0 if (float(np.mean(trades_list)) if trades_list else 0.0) >= 30.0 else 0.5
     return 0.6 * mean_sharpe + 0.3 * mean_cagr - 0.3 * mean_dd - 0.5 * stab_penalty - trade_penalty
 
-def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int | None, end_year: int | None, fast_ratio: float):
+def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int | None, end_year: int | None, fast_ratio: float, loss_mult: float | None = None):
     params = sample_params_optuna(trial)
     cagr_list = []
     sharpe_list = []
@@ -2407,7 +2443,7 @@ def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int |
                 m = backtest_long_short(
                     sub,
                     params["tenkan"], params["kijun"], params["senkou_b"], params["shift"], params["atr_mult"],
-                    loss_mult=loss_mult,
+                    loss_mult=(1.0 if loss_mult is None else float(loss_mult)),
                     symbol=sym, timeframe=timeframe
                 )
             except Exception as e:
@@ -2461,7 +2497,7 @@ def optuna_optimize_profile(profile_name: str, n_trials: int = 2000, seed: int |
     pruner = SuccessiveHalvingPruner(min_resource=1, reduction_factor=3)
     study = optuna.create_study(direction="maximize", pruner=pruner, sampler=optuna.samplers.TPESampler(seed=seed))
     def _obj(tr):
-        return optuna_objective(tr, market_data, timeframe, start_year, end_year, fast_ratio)
+        return optuna_objective(tr, market_data, timeframe, start_year, end_year, fast_ratio, loss_mult=1.0)
     study.optimize(_obj, n_trials=int(n_trials), n_jobs=int(jobs))
     best = study.best_trial
     log(f"🏁 OPTUNA FINI - Best score={best.value:.4f} params={best.params}")
@@ -2512,8 +2548,13 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
     # Charger toutes les données une fois
     market_data_all = {}
     for sym in symbols:
-        log(f"Téléchargement {sym} {timeframe} sur ~{years_back} ans…")
-        df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir="data", use_cache=use_cache)
+        local_df = _load_local_csv_if_configured(sym, timeframe)
+        if local_df is not None:
+            log(f"Utilisation CSV local (fused) pour {sym} {timeframe} — historique complet")
+            df = local_df
+        else:
+            log(f"Téléchargement {sym} {timeframe} sur ~{years_back} ans…")
+            df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir="data", use_cache=use_cache)
         if df.empty:
             log(f"⚠️  Pas de données pour {sym}. Ignorer.")
             continue
