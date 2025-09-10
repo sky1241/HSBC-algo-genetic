@@ -128,3 +128,13 @@
   - Automatiser le recalcul quotidien et la mise à jour des rapports (MD/PDF) et conclusions datées.
   - Intégrer des widgets Fourier dans `MASTER_REPORT.html` (lecture rapide P1..P6/LFP).
   - Exporter les agrégats vers Google Sheets; alertes QC (gaps) automatisées; tests unitaires des fonctions/rapports; optimisation perf de Welch; enrichissement doc; extension à ETH/altcoins; finaliser TOP5/TOP6.
+
+## 📅 Mise à jour du 2025-09-08
+- Réalisé aujourd’hui
+  - Baselines BTC/USDT 2h (full history, fused):
+    - 9-26-52-26, ATR×3: equity 26 618€, CAGR 26.37%, MDD 18.06%, trades 1 681
+    - 9-26-52-26, ATR×5: equity 46 217€, CAGR 31.44%, MDD 18.65%, trades 1 408
+  - Nettoyage des volumes nuls/négatifs dans `data/BTC_FUSED_2h.csv` (2 429 lignes corrigées)
+  - Lancement walk-forward mensuel (2017-08 → 2025-08) sans Optuna
+- À suivre
+  - Comparer baselines vs Optuna full history (batch 1), puis lancer batch 2 (seeds alternatifs)

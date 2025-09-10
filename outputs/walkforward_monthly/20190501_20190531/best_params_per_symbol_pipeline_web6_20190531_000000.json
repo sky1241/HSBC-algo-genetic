@@ -1,0 +1,16 @@
+{
+  "BTC/USDT": {
+    "tenkan": 9,
+    "kijun": 36,
+    "senkou_b": 47,
+    "shift": 59,
+    "atr_mult": 2.0
+  },
+  "ETH/USDT": {
+    "tenkan": 38,
+    "kijun": 80,
+    "senkou_b": 105,
+    "shift": 10,
+    "atr_mult": 1.6
+  }
+}

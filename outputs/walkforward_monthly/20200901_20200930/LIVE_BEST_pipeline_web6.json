@@ -1,0 +1,1548 @@
+{
+  "best_params": {
+    "BTC/USDT": {
+      "tenkan": 11,
+      "kijun": 44,
+      "senkou_b": 56,
+      "shift": 33,
+      "atr_mult": 5.1000000000000005
+    }
+  },
+  "shared_metrics": {
+    "equity_mult": 1.0089555950443059,
+    "CAGR": 0.118839627529151,
+    "sharpe_proxy": 3.749765117088783,
+    "max_drawdown": 0.009690141868912594,
+    "trades": 11,
+    "min_equity": 0.9883153916683195,
+    "position_size": 0.01,
+    "leverage": 10.0,
+    "max_positions_per_side": 3,
+    "per_symbol": {
+      "BTC/USDT": {
+        "pnl_eur": 0.8014975216099032,
+        "max_dd_indexed": 0.0
+      },
+      "DOGE/USDT": {
+        "pnl_eur": 7.443903069792995,
+        "max_dd_indexed": 0.007466043169539856
+      },
+      "ETH/USDT": {
+        "pnl_eur": 0.9488265590142633,
+        "max_dd_indexed": 0.0
+      }
+    },
+    "min_equity_ts": "2020-09-20T08:00:00",
+    "equity_curve": [
+      {
+        "timestamp": "2020-08-31T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-01T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-02T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-03T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-04T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-05T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-06T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-07T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-08T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T08:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T10:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T12:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T14:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T16:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T18:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T20:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-09T22:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-10T00:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-10T02:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-10T04:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-10T06:00:00",
+        "equity_mult": 1.0
+      },
+      {
+        "timestamp": "2020-09-10T08:00:00",
+        "equity_mult": 0.99999700172
+      },
+      {
+        "timestamp": "2020-09-10T10:00:00",
+        "equity_mult": 0.99999700172
+      },
+      {
+        "timestamp": "2020-09-10T12:00:00",
+        "equity_mult": 0.99999700172
+      },
+      {
+        "timestamp": "2020-09-10T14:00:00",
+        "equity_mult": 0.99999700172
+      },
+      {
+        "timestamp": "2020-09-10T16:00:00",
+        "equity_mult": 0.9999920069850227
+      },
+      {
+        "timestamp": "2020-09-10T18:00:00",
+        "equity_mult": 0.9999920069850227
+      },
+      {
+        "timestamp": "2020-09-10T20:00:00",
+        "equity_mult": 0.9999920069850227
+      },
+      {
+        "timestamp": "2020-09-10T22:00:00",
+        "equity_mult": 0.9999920069850227
+      },
+      {
+        "timestamp": "2020-09-11T00:00:00",
+        "equity_mult": 0.9999870122250978
+      },
+      {
+        "timestamp": "2020-09-11T02:00:00",
+        "equity_mult": 0.9999870122250978
+      },
+      {
+        "timestamp": "2020-09-11T04:00:00",
+        "equity_mult": 0.9999870122250978
+      },
+      {
+        "timestamp": "2020-09-11T06:00:00",
+        "equity_mult": 0.9999870122250978
+      },
+      {
+        "timestamp": "2020-09-11T08:00:00",
+        "equity_mult": 0.999982017440225
+      },
+      {
+        "timestamp": "2020-09-11T10:00:00",
+        "equity_mult": 0.999982017440225
+      },
+      {
+        "timestamp": "2020-09-11T12:00:00",
+        "equity_mult": 0.999982017440225
+      },
+      {
+        "timestamp": "2020-09-11T14:00:00",
+        "equity_mult": 0.999982017440225
+      },
+      {
+        "timestamp": "2020-09-11T16:00:00",
+        "equity_mult": 0.9999770226304038
+      },
+      {
+        "timestamp": "2020-09-11T18:00:00",
+        "equity_mult": 0.9999770226304038
+      },
+      {
+        "timestamp": "2020-09-11T20:00:00",
+        "equity_mult": 0.9999770226304038
+      },
+      {
+        "timestamp": "2020-09-11T22:00:00",
+        "equity_mult": 0.9999770226304038
+      },
+      {
+        "timestamp": "2020-09-12T00:00:00",
+        "equity_mult": 0.9999720277956339
+      },
+      {
+        "timestamp": "2020-09-12T02:00:00",
+        "equity_mult": 0.9999720277956339
+      },
+      {
+        "timestamp": "2020-09-12T04:00:00",
+        "equity_mult": 0.9999720277956339
+      },
+      {
+        "timestamp": "2020-09-12T06:00:00",
+        "equity_mult": 0.9999720277956339
+      },
+      {
+        "timestamp": "2020-09-12T08:00:00",
+        "equity_mult": 0.9999670329359149
+      },
+      {
+        "timestamp": "2020-09-12T10:00:00",
+        "equity_mult": 0.9999670329359149
+      },
+      {
+        "timestamp": "2020-09-12T12:00:00",
+        "equity_mult": 0.9999670329359149
+      },
+      {
+        "timestamp": "2020-09-12T14:00:00",
+        "equity_mult": 0.9999670329359149
+      },
+      {
+        "timestamp": "2020-09-12T16:00:00",
+        "equity_mult": 0.9999620380512465
+      },
+      {
+        "timestamp": "2020-09-12T18:00:00",
+        "equity_mult": 0.9999620380512465
+      },
+      {
+        "timestamp": "2020-09-12T20:00:00",
+        "equity_mult": 0.9999620380512465
+      },
+      {
+        "timestamp": "2020-09-12T22:00:00",
+        "equity_mult": 0.9999620380512465
+      },
+      {
+        "timestamp": "2020-09-13T00:00:00",
+        "equity_mult": 0.9999570431416283
+      },
+      {
+        "timestamp": "2020-09-13T02:00:00",
+        "equity_mult": 0.9999570431416283
+      },
+      {
+        "timestamp": "2020-09-13T04:00:00",
+        "equity_mult": 0.9999570431416283
+      },
+      {
+        "timestamp": "2020-09-13T06:00:00",
+        "equity_mult": 0.9999570431416283
+      },
+      {
+        "timestamp": "2020-09-13T08:00:00",
+        "equity_mult": 0.9999520482070599
+      },
+      {
+        "timestamp": "2020-09-13T10:00:00",
+        "equity_mult": 0.9999520482070599
+      },
+      {
+        "timestamp": "2020-09-13T12:00:00",
+        "equity_mult": 0.9999520482070599
+      },
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "equity_mult": 0.988375304651561
+      },
+      {
+        "timestamp": "2020-09-13T16:00:00",
+        "equity_mult": 0.988374306624804
+      },
+      {
+        "timestamp": "2020-09-13T18:00:00",
+        "equity_mult": 0.988374306624804
+      },
+      {
+        "timestamp": "2020-09-13T20:00:00",
+        "equity_mult": 0.988374306624804
+      },
+      {
+        "timestamp": "2020-09-13T22:00:00",
+        "equity_mult": 0.988374306624804
+      },
+      {
+        "timestamp": "2020-09-14T00:00:00",
+        "equity_mult": 0.9883733085970392
+      },
+      {
+        "timestamp": "2020-09-14T02:00:00",
+        "equity_mult": 0.9883733085970392
+      },
+      {
+        "timestamp": "2020-09-14T04:00:00",
+        "equity_mult": 0.9883733085970392
+      },
+      {
+        "timestamp": "2020-09-14T06:00:00",
+        "equity_mult": 0.9883733085970392
+      },
+      {
+        "timestamp": "2020-09-14T08:00:00",
+        "equity_mult": 0.9883723105682667
+      },
+      {
+        "timestamp": "2020-09-14T10:00:00",
+        "equity_mult": 0.9883723105682667
+      },
+      {
+        "timestamp": "2020-09-14T12:00:00",
+        "equity_mult": 0.9883723105682667
+      },
+      {
+        "timestamp": "2020-09-14T14:00:00",
+        "equity_mult": 0.9883723105682667
+      },
+      {
+        "timestamp": "2020-09-14T16:00:00",
+        "equity_mult": 0.988370314508706
+      },
+      {
+        "timestamp": "2020-09-14T18:00:00",
+        "equity_mult": 0.988370314508706
+      },
+      {
+        "timestamp": "2020-09-14T20:00:00",
+        "equity_mult": 0.988370314508706
+      },
+      {
+        "timestamp": "2020-09-14T22:00:00",
+        "equity_mult": 0.988370314508706
+      },
+      {
+        "timestamp": "2020-09-15T00:00:00",
+        "equity_mult": 0.9883683184451143
+      },
+      {
+        "timestamp": "2020-09-15T02:00:00",
+        "equity_mult": 0.9883683184451143
+      },
+      {
+        "timestamp": "2020-09-15T04:00:00",
+        "equity_mult": 0.9883683184451143
+      },
+      {
+        "timestamp": "2020-09-15T06:00:00",
+        "equity_mult": 0.9883683184451143
+      },
+      {
+        "timestamp": "2020-09-15T08:00:00",
+        "equity_mult": 0.9883663223774913
+      },
+      {
+        "timestamp": "2020-09-15T10:00:00",
+        "equity_mult": 0.9883663223774913
+      },
+      {
+        "timestamp": "2020-09-15T12:00:00",
+        "equity_mult": 0.9883663223774913
+      },
+      {
+        "timestamp": "2020-09-15T14:00:00",
+        "equity_mult": 0.9883663223774913
+      },
+      {
+        "timestamp": "2020-09-15T16:00:00",
+        "equity_mult": 0.9883643263058371
+      },
+      {
+        "timestamp": "2020-09-15T18:00:00",
+        "equity_mult": 0.9883643263058371
+      },
+      {
+        "timestamp": "2020-09-15T20:00:00",
+        "equity_mult": 0.9883643263058371
+      },
+      {
+        "timestamp": "2020-09-15T22:00:00",
+        "equity_mult": 0.9883643263058371
+      },
+      {
+        "timestamp": "2020-09-16T00:00:00",
+        "equity_mult": 0.9883623302301519
+      },
+      {
+        "timestamp": "2020-09-16T02:00:00",
+        "equity_mult": 0.9883623302301519
+      },
+      {
+        "timestamp": "2020-09-16T04:00:00",
+        "equity_mult": 0.9883623302301519
+      },
+      {
+        "timestamp": "2020-09-16T06:00:00",
+        "equity_mult": 0.9883623302301519
+      },
+      {
+        "timestamp": "2020-09-16T08:00:00",
+        "equity_mult": 0.9883603341504352
+      },
+      {
+        "timestamp": "2020-09-16T10:00:00",
+        "equity_mult": 0.9883603341504352
+      },
+      {
+        "timestamp": "2020-09-16T12:00:00",
+        "equity_mult": 0.9883603341504352
+      },
+      {
+        "timestamp": "2020-09-16T14:00:00",
+        "equity_mult": 0.9883603341504352
+      },
+      {
+        "timestamp": "2020-09-16T16:00:00",
+        "equity_mult": 0.9883573380666874
+      },
+      {
+        "timestamp": "2020-09-16T18:00:00",
+        "equity_mult": 0.9883573380666874
+      },
+      {
+        "timestamp": "2020-09-16T20:00:00",
+        "equity_mult": 0.9883573380666874
+      },
+      {
+        "timestamp": "2020-09-16T22:00:00",
+        "equity_mult": 0.9883573380666874
+      },
+      {
+        "timestamp": "2020-09-17T00:00:00",
+        "equity_mult": 0.9883543419738573
+      },
+      {
+        "timestamp": "2020-09-17T02:00:00",
+        "equity_mult": 0.9883543419738573
+      },
+      {
+        "timestamp": "2020-09-17T04:00:00",
+        "equity_mult": 0.9883543419738573
+      },
+      {
+        "timestamp": "2020-09-17T06:00:00",
+        "equity_mult": 0.9883543419738573
+      },
+      {
+        "timestamp": "2020-09-17T08:00:00",
+        "equity_mult": 0.9883513458719448
+      },
+      {
+        "timestamp": "2020-09-17T10:00:00",
+        "equity_mult": 0.9883513458719448
+      },
+      {
+        "timestamp": "2020-09-17T12:00:00",
+        "equity_mult": 0.9883513458719448
+      },
+      {
+        "timestamp": "2020-09-17T14:00:00",
+        "equity_mult": 0.9883513458719448
+      },
+      {
+        "timestamp": "2020-09-17T16:00:00",
+        "equity_mult": 0.9883473510250206
+      },
+      {
+        "timestamp": "2020-09-17T18:00:00",
+        "equity_mult": 0.9883473510250206
+      },
+      {
+        "timestamp": "2020-09-17T20:00:00",
+        "equity_mult": 0.9883473510250206
+      },
+      {
+        "timestamp": "2020-09-17T22:00:00",
+        "equity_mult": 0.9883473510250206
+      },
+      {
+        "timestamp": "2020-09-18T00:00:00",
+        "equity_mult": 0.9883433561619493
+      },
+      {
+        "timestamp": "2020-09-18T02:00:00",
+        "equity_mult": 0.9883433561619493
+      },
+      {
+        "timestamp": "2020-09-18T04:00:00",
+        "equity_mult": 0.9883433561619493
+      },
+      {
+        "timestamp": "2020-09-18T06:00:00",
+        "equity_mult": 0.9883433561619493
+      },
+      {
+        "timestamp": "2020-09-18T08:00:00",
+        "equity_mult": 0.9883393612827309
+      },
+      {
+        "timestamp": "2020-09-18T10:00:00",
+        "equity_mult": 0.9883393612827309
+      },
+      {
+        "timestamp": "2020-09-18T12:00:00",
+        "equity_mult": 0.9883393612827309
+      },
+      {
+        "timestamp": "2020-09-18T14:00:00",
+        "equity_mult": 0.9883393612827309
+      },
+      {
+        "timestamp": "2020-09-18T16:00:00",
+        "equity_mult": 0.9883353663873652
+      },
+      {
+        "timestamp": "2020-09-18T18:00:00",
+        "equity_mult": 0.9883353663873652
+      },
+      {
+        "timestamp": "2020-09-18T20:00:00",
+        "equity_mult": 0.9883353663873652
+      },
+      {
+        "timestamp": "2020-09-18T22:00:00",
+        "equity_mult": 0.9883353663873652
+      },
+      {
+        "timestamp": "2020-09-19T00:00:00",
+        "equity_mult": 0.9883313714758519
+      },
+      {
+        "timestamp": "2020-09-19T02:00:00",
+        "equity_mult": 0.9883313714758519
+      },
+      {
+        "timestamp": "2020-09-19T04:00:00",
+        "equity_mult": 0.9883313714758519
+      },
+      {
+        "timestamp": "2020-09-19T06:00:00",
+        "equity_mult": 0.9883313714758519
+      },
+      {
+        "timestamp": "2020-09-19T08:00:00",
+        "equity_mult": 0.9883273765481909
+      },
+      {
+        "timestamp": "2020-09-19T10:00:00",
+        "equity_mult": 0.9883273765481909
+      },
+      {
+        "timestamp": "2020-09-19T12:00:00",
+        "equity_mult": 0.9883273765481909
+      },
+      {
+        "timestamp": "2020-09-19T14:00:00",
+        "equity_mult": 0.9883273765481909
+      },
+      {
+        "timestamp": "2020-09-19T16:00:00",
+        "equity_mult": 0.9883233816043819
+      },
+      {
+        "timestamp": "2020-09-19T18:00:00",
+        "equity_mult": 0.9883233816043819
+      },
+      {
+        "timestamp": "2020-09-19T20:00:00",
+        "equity_mult": 0.9883233816043819
+      },
+      {
+        "timestamp": "2020-09-19T22:00:00",
+        "equity_mult": 0.9883233816043819
+      },
+      {
+        "timestamp": "2020-09-20T00:00:00",
+        "equity_mult": 0.9883193866444249
+      },
+      {
+        "timestamp": "2020-09-20T02:00:00",
+        "equity_mult": 0.9883193866444249
+      },
+      {
+        "timestamp": "2020-09-20T04:00:00",
+        "equity_mult": 0.9883193866444249
+      },
+      {
+        "timestamp": "2020-09-20T06:00:00",
+        "equity_mult": 0.9883193866444249
+      },
+      {
+        "timestamp": "2020-09-20T08:00:00",
+        "equity_mult": 0.9883153916683195
+      },
+      {
+        "timestamp": "2020-09-20T10:00:00",
+        "equity_mult": 0.9883153916683195
+      },
+      {
+        "timestamp": "2020-09-20T12:00:00",
+        "equity_mult": 0.9890394942572339
+      },
+      {
+        "timestamp": "2020-09-20T14:00:00",
+        "equity_mult": 0.9890394942572339
+      },
+      {
+        "timestamp": "2020-09-20T16:00:00",
+        "equity_mult": 0.9890365015031355
+      },
+      {
+        "timestamp": "2020-09-20T18:00:00",
+        "equity_mult": 0.9890365015031355
+      },
+      {
+        "timestamp": "2020-09-20T20:00:00",
+        "equity_mult": 0.9890365015031355
+      },
+      {
+        "timestamp": "2020-09-20T22:00:00",
+        "equity_mult": 0.9890365015031355
+      },
+      {
+        "timestamp": "2020-09-21T00:00:00",
+        "equity_mult": 0.9890335087399812
+      },
+      {
+        "timestamp": "2020-09-21T02:00:00",
+        "equity_mult": 0.9890335087399812
+      },
+      {
+        "timestamp": "2020-09-21T04:00:00",
+        "equity_mult": 0.9890335087399812
+      },
+      {
+        "timestamp": "2020-09-21T06:00:00",
+        "equity_mult": 0.9890335087399812
+      },
+      {
+        "timestamp": "2020-09-21T08:00:00",
+        "equity_mult": 0.9890305159677709
+      },
+      {
+        "timestamp": "2020-09-21T10:00:00",
+        "equity_mult": 0.9890305159677709
+      },
+      {
+        "timestamp": "2020-09-21T12:00:00",
+        "equity_mult": 0.9890305159677709
+      },
+      {
+        "timestamp": "2020-09-21T14:00:00",
+        "equity_mult": 0.9890305159677709
+      },
+      {
+        "timestamp": "2020-09-21T16:00:00",
+        "equity_mult": 0.9890275231865046
+      },
+      {
+        "timestamp": "2020-09-21T18:00:00",
+        "equity_mult": 0.9890275231865046
+      },
+      {
+        "timestamp": "2020-09-21T20:00:00",
+        "equity_mult": 0.9890275231865046
+      },
+      {
+        "timestamp": "2020-09-21T22:00:00",
+        "equity_mult": 0.9890275231865046
+      },
+      {
+        "timestamp": "2020-09-22T00:00:00",
+        "equity_mult": 0.9890245303961821
+      },
+      {
+        "timestamp": "2020-09-22T02:00:00",
+        "equity_mult": 0.9890245303961821
+      },
+      {
+        "timestamp": "2020-09-22T04:00:00",
+        "equity_mult": 0.9890245303961821
+      },
+      {
+        "timestamp": "2020-09-22T06:00:00",
+        "equity_mult": 0.9890245303961821
+      },
+      {
+        "timestamp": "2020-09-22T08:00:00",
+        "equity_mult": 0.9890215375968034
+      },
+      {
+        "timestamp": "2020-09-22T10:00:00",
+        "equity_mult": 0.9890215375968034
+      },
+      {
+        "timestamp": "2020-09-22T12:00:00",
+        "equity_mult": 0.9890215375968034
+      },
+      {
+        "timestamp": "2020-09-22T14:00:00",
+        "equity_mult": 0.9890215375968034
+      },
+      {
+        "timestamp": "2020-09-22T16:00:00",
+        "equity_mult": 0.9890185447883686
+      },
+      {
+        "timestamp": "2020-09-22T18:00:00",
+        "equity_mult": 0.9890185447883686
+      },
+      {
+        "timestamp": "2020-09-22T20:00:00",
+        "equity_mult": 0.9890185447883686
+      },
+      {
+        "timestamp": "2020-09-22T22:00:00",
+        "equity_mult": 0.9890185447883686
+      },
+      {
+        "timestamp": "2020-09-23T00:00:00",
+        "equity_mult": 0.9890155519708773
+      },
+      {
+        "timestamp": "2020-09-23T02:00:00",
+        "equity_mult": 0.9890155519708773
+      },
+      {
+        "timestamp": "2020-09-23T04:00:00",
+        "equity_mult": 0.9890155519708773
+      },
+      {
+        "timestamp": "2020-09-23T06:00:00",
+        "equity_mult": 0.9890155519708773
+      },
+      {
+        "timestamp": "2020-09-23T08:00:00",
+        "equity_mult": 0.9890125591443296
+      },
+      {
+        "timestamp": "2020-09-23T10:00:00",
+        "equity_mult": 0.9890125591443296
+      },
+      {
+        "timestamp": "2020-09-23T12:00:00",
+        "equity_mult": 0.9890125591443296
+      },
+      {
+        "timestamp": "2020-09-23T14:00:00",
+        "equity_mult": 0.9890125591443296
+      },
+      {
+        "timestamp": "2020-09-23T16:00:00",
+        "equity_mult": 0.9890095663087254
+      },
+      {
+        "timestamp": "2020-09-23T18:00:00",
+        "equity_mult": 0.9890095663087254
+      },
+      {
+        "timestamp": "2020-09-23T20:00:00",
+        "equity_mult": 0.9890095663087254
+      },
+      {
+        "timestamp": "2020-09-23T22:00:00",
+        "equity_mult": 0.9890095663087254
+      },
+      {
+        "timestamp": "2020-09-24T00:00:00",
+        "equity_mult": 0.9890065734640646
+      },
+      {
+        "timestamp": "2020-09-24T02:00:00",
+        "equity_mult": 0.9890065734640646
+      },
+      {
+        "timestamp": "2020-09-24T04:00:00",
+        "equity_mult": 0.9890065734640646
+      },
+      {
+        "timestamp": "2020-09-24T06:00:00",
+        "equity_mult": 0.9890065734640646
+      },
+      {
+        "timestamp": "2020-09-24T08:00:00",
+        "equity_mult": 0.9890035806103471
+      },
+      {
+        "timestamp": "2020-09-24T10:00:00",
+        "equity_mult": 0.9890035806103471
+      },
+      {
+        "timestamp": "2020-09-24T12:00:00",
+        "equity_mult": 0.9890035806103471
+      },
+      {
+        "timestamp": "2020-09-24T14:00:00",
+        "equity_mult": 0.9890035806103471
+      },
+      {
+        "timestamp": "2020-09-24T16:00:00",
+        "equity_mult": 0.9890005877475728
+      },
+      {
+        "timestamp": "2020-09-24T18:00:00",
+        "equity_mult": 0.9890005877475728
+      },
+      {
+        "timestamp": "2020-09-24T20:00:00",
+        "equity_mult": 0.9890005877475728
+      },
+      {
+        "timestamp": "2020-09-24T22:00:00",
+        "equity_mult": 0.9890005877475728
+      },
+      {
+        "timestamp": "2020-09-25T00:00:00",
+        "equity_mult": 0.9889975948757417
+      },
+      {
+        "timestamp": "2020-09-25T02:00:00",
+        "equity_mult": 0.9889975948757417
+      },
+      {
+        "timestamp": "2020-09-25T04:00:00",
+        "equity_mult": 0.9889975948757417
+      },
+      {
+        "timestamp": "2020-09-25T06:00:00",
+        "equity_mult": 0.9889975948757417
+      },
+      {
+        "timestamp": "2020-09-25T08:00:00",
+        "equity_mult": 0.9889946019948537
+      },
+      {
+        "timestamp": "2020-09-25T10:00:00",
+        "equity_mult": 0.9889946019948537
+      },
+      {
+        "timestamp": "2020-09-25T12:00:00",
+        "equity_mult": 0.9889946019948537
+      },
+      {
+        "timestamp": "2020-09-25T14:00:00",
+        "equity_mult": 0.9889946019948537
+      },
+      {
+        "timestamp": "2020-09-25T16:00:00",
+        "equity_mult": 0.9889916091049087
+      },
+      {
+        "timestamp": "2020-09-25T18:00:00",
+        "equity_mult": 0.9889916091049087
+      },
+      {
+        "timestamp": "2020-09-25T20:00:00",
+        "equity_mult": 0.9889916091049087
+      },
+      {
+        "timestamp": "2020-09-25T22:00:00",
+        "equity_mult": 0.9889916091049087
+      },
+      {
+        "timestamp": "2020-09-26T00:00:00",
+        "equity_mult": 0.9889876162059066
+      },
+      {
+        "timestamp": "2020-09-26T02:00:00",
+        "equity_mult": 0.9889876162059066
+      },
+      {
+        "timestamp": "2020-09-26T04:00:00",
+        "equity_mult": 0.9889876162059066
+      },
+      {
+        "timestamp": "2020-09-26T06:00:00",
+        "equity_mult": 0.9889876162059066
+      },
+      {
+        "timestamp": "2020-09-26T08:00:00",
+        "equity_mult": 0.9889836232907837
+      },
+      {
+        "timestamp": "2020-09-26T10:00:00",
+        "equity_mult": 0.9889836232907837
+      },
+      {
+        "timestamp": "2020-09-26T12:00:00",
+        "equity_mult": 0.9889836232907837
+      },
+      {
+        "timestamp": "2020-09-26T14:00:00",
+        "equity_mult": 0.9889836232907837
+      },
+      {
+        "timestamp": "2020-09-26T16:00:00",
+        "equity_mult": 0.9889786303595398
+      },
+      {
+        "timestamp": "2020-09-26T18:00:00",
+        "equity_mult": 0.9889786303595398
+      },
+      {
+        "timestamp": "2020-09-26T20:00:00",
+        "equity_mult": 0.9889786303595398
+      },
+      {
+        "timestamp": "2020-09-26T22:00:00",
+        "equity_mult": 0.9889786303595398
+      },
+      {
+        "timestamp": "2020-09-27T00:00:00",
+        "equity_mult": 0.9889736374030887
+      },
+      {
+        "timestamp": "2020-09-27T02:00:00",
+        "equity_mult": 0.9889736374030887
+      },
+      {
+        "timestamp": "2020-09-27T04:00:00",
+        "equity_mult": 0.9889736374030887
+      },
+      {
+        "timestamp": "2020-09-27T06:00:00",
+        "equity_mult": 0.9889736374030887
+      },
+      {
+        "timestamp": "2020-09-27T08:00:00",
+        "equity_mult": 0.9889686444214302
+      },
+      {
+        "timestamp": "2020-09-27T10:00:00",
+        "equity_mult": 0.9889686444214302
+      },
+      {
+        "timestamp": "2020-09-27T12:00:00",
+        "equity_mult": 0.9889686444214302
+      },
+      {
+        "timestamp": "2020-09-27T14:00:00",
+        "equity_mult": 0.9889686444214302
+      },
+      {
+        "timestamp": "2020-09-27T16:00:00",
+        "equity_mult": 0.9889636514145637
+      },
+      {
+        "timestamp": "2020-09-27T18:00:00",
+        "equity_mult": 0.9889636514145637
+      },
+      {
+        "timestamp": "2020-09-27T20:00:00",
+        "equity_mult": 0.9889636514145637
+      },
+      {
+        "timestamp": "2020-09-27T22:00:00",
+        "equity_mult": 0.9889636514145637
+      },
+      {
+        "timestamp": "2020-09-28T00:00:00",
+        "equity_mult": 0.9889586583824888
+      },
+      {
+        "timestamp": "2020-09-28T02:00:00",
+        "equity_mult": 0.9889586583824888
+      },
+      {
+        "timestamp": "2020-09-28T04:00:00",
+        "equity_mult": 0.9889586583824888
+      },
+      {
+        "timestamp": "2020-09-28T06:00:00",
+        "equity_mult": 0.9889586583824888
+      },
+      {
+        "timestamp": "2020-09-28T08:00:00",
+        "equity_mult": 0.9889536653252051
+      },
+      {
+        "timestamp": "2020-09-28T10:00:00",
+        "equity_mult": 0.9889536653252051
+      },
+      {
+        "timestamp": "2020-09-28T12:00:00",
+        "equity_mult": 0.9889536653252051
+      },
+      {
+        "timestamp": "2020-09-28T14:00:00",
+        "equity_mult": 0.9889536653252051
+      },
+      {
+        "timestamp": "2020-09-28T16:00:00",
+        "equity_mult": 0.9889486722427124
+      },
+      {
+        "timestamp": "2020-09-28T18:00:00",
+        "equity_mult": 0.9889486722427124
+      },
+      {
+        "timestamp": "2020-09-28T20:00:00",
+        "equity_mult": 0.9889486722427124
+      },
+      {
+        "timestamp": "2020-09-28T22:00:00",
+        "equity_mult": 0.9889486722427124
+      },
+      {
+        "timestamp": "2020-09-29T00:00:00",
+        "equity_mult": 0.9889187134704478
+      },
+      {
+        "timestamp": "2020-09-29T02:00:00",
+        "equity_mult": 0.9889187134704478
+      },
+      {
+        "timestamp": "2020-09-29T04:00:00",
+        "equity_mult": 0.9889187134704478
+      },
+      {
+        "timestamp": "2020-09-29T06:00:00",
+        "equity_mult": 0.9889187134704478
+      },
+      {
+        "timestamp": "2020-09-29T08:00:00",
+        "equity_mult": 0.988913720211482
+      },
+      {
+        "timestamp": "2020-09-29T10:00:00",
+        "equity_mult": 0.988913720211482
+      },
+      {
+        "timestamp": "2020-09-29T12:00:00",
+        "equity_mult": 0.988913720211482
+      },
+      {
+        "timestamp": "2020-09-29T14:00:00",
+        "equity_mult": 0.988913720211482
+      },
+      {
+        "timestamp": "2020-09-29T16:00:00",
+        "equity_mult": 0.9889087269273042
+      },
+      {
+        "timestamp": "2020-09-29T18:00:00",
+        "equity_mult": 0.9889087269273042
+      },
+      {
+        "timestamp": "2020-09-29T20:00:00",
+        "equity_mult": 0.9889087269273042
+      },
+      {
+        "timestamp": "2020-09-29T22:00:00",
+        "equity_mult": 0.9889087269273042
+      }
+    ],
+    "trades_detail": [
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "entry_ts": "2020-09-10T00:00:00",
+        "entry": 367.28000000000003,
+        "exit": 360.75,
+        "ret": -0.1797935090394256,
+        "symbol": "ETH/USDT",
+        "type": "long",
+        "exit_reason": "trailing_stop"
+      },
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "entry_ts": "2020-09-10T00:00:00",
+        "entry": 0.00282,
+        "exit": 0.0027564,
+        "ret": -0.22753191489361746,
+        "symbol": "DOGE/USDT",
+        "type": "long",
+        "exit_reason": "opposite_signal"
+      },
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "entry_ts": "2020-09-10T00:00:00",
+        "entry": 0.00282,
+        "exit": 0.0027564,
+        "ret": -0.22753191489361746,
+        "symbol": "DOGE/USDT",
+        "type": "long",
+        "exit_reason": "opposite_signal"
+      },
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "entry_ts": "2020-09-10T12:00:00",
+        "entry": 0.00283,
+        "exit": 0.0027564,
+        "ret": -0.26207067137809203,
+        "symbol": "DOGE/USDT",
+        "type": "long",
+        "exit_reason": "opposite_signal"
+      },
+      {
+        "timestamp": "2020-09-13T14:00:00",
+        "entry_ts": "2020-09-10T12:00:00",
+        "entry": 0.00283,
+        "exit": 0.0027564,
+        "ret": -0.26207067137809203,
+        "symbol": "DOGE/USDT",
+        "type": "long",
+        "exit_reason": "opposite_signal"
+      },
+      {
+        "timestamp": "2020-09-20T12:00:00",
+        "entry_ts": "2020-09-16T14:00:00",
+        "entry": 370.7,
+        "exit": 373.49,
+        "ret": 0.07326301591583628,
+        "symbol": "ETH/USDT",
+        "type": "long",
+        "exit_reason": "opposite_signal"
+      },
+      {
+        "timestamp": "2020-09-29T22:00:00",
+        "entry_ts": "2020-09-25T20:00:00",
+        "entry": 10751.2,
+        "exit": 10840.48,
+        "ret": 0.08104189299799036,
+        "symbol": "BTC/USDT",
+        "type": "long",
+        "exit_reason": "eod"
+      },
+      {
+        "timestamp": "2020-09-29T22:00:00",
+        "entry_ts": "2020-09-26T14:00:00",
+        "entry": 352.51,
+        "exit": 359.79,
+        "ret": 0.2045189640010212,
+        "symbol": "ETH/USDT",
+        "type": "long",
+        "exit_reason": "eod"
+      },
+      {
+        "timestamp": "2020-09-22T04:00:00",
+        "entry_ts": "2020-09-13T14:00:00",
+        "entry": 0.0027500000000000003,
+        "exit": 0.0026109,
+        "ret": 0.5307664789919195,
+        "symbol": "DOGE/USDT",
+        "type": "short",
+        "exit_reason": "eod"
+      },
+      {
+        "timestamp": "2020-09-22T04:00:00",
+        "entry_ts": "2020-09-14T08:00:00",
+        "entry": 0.0027500000000000003,
+        "exit": 0.0026109,
+        "ret": 0.5307664789919195,
+        "symbol": "DOGE/USDT",
+        "type": "short",
+        "exit_reason": "eod"
+      },
+      {
+        "timestamp": "2020-09-22T04:00:00",
+        "entry_ts": "2020-09-17T08:00:00",
+        "entry": 0.0027900000000000004,
+        "exit": 0.0026109,
+        "ret": 0.6839703550499829,
+        "symbol": "DOGE/USDT",
+        "type": "short",
+        "exit_reason": "eod"
+      }
+    ]
+  },
+  "updated_at": "2025-09-08T05:16:13Z"
+}
