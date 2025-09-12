@@ -1393,7 +1393,8 @@ PROFILES = {
 def _load_local_csv_if_configured(symbol: str, timeframe: str) -> pd.DataFrame | None:
     """Optionally load a local CSV instead of remote fetch when env flag is set.
 
-    USE_FUSED_H2=1 enables using data/BTC_FUSED_2h.csv for symbol BTC/USDT at 2h.
+    USE_FUSED_H2=1 enables using data/BTC_FUSED_2h(_clean).csv for symbol BTC/USDT at 2h.
+    Robustly parses timestamp and coerces OHLCV to numeric to avoid 100% NaN.
     """
     try:
         use_fused = os.environ.get("USE_FUSED_H2", "0") == "1"
@@ -1401,14 +1402,65 @@ def _load_local_csv_if_configured(symbol: str, timeframe: str) -> pd.DataFrame |
         use_fused = False
     if not use_fused:
         return None
-    if symbol == "BTC/USDT" and timeframe == "2h":
-        from pathlib import Path
-        p = Path("data/BTC_FUSED_2h.csv")
-        if p.exists():
-            df = pd.read_csv(p, parse_dates=["timestamp"]).set_index("timestamp").sort_index()
-            df = df[~df.index.duplicated(keep="last")]
-            return df
-    return None
+    if symbol != "BTC/USDT" or timeframe != "2h":
+        return None
+
+    from pathlib import Path
+    p_clean = Path("data/BTC_FUSED_2h_clean.csv")
+    p_raw = Path("data/BTC_FUSED_2h.csv")
+    p = p_clean if p_clean.exists() else p_raw
+    if not p.exists():
+        return None
+
+    try:
+        # Read without parse_dates first, normalize columns
+        df = pd.read_csv(p)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+
+        # Detect timestamp column
+        ts_candidates = [
+            "timestamp", "date", "datetime", "time", "open_time", "ts"
+        ]
+        ts_col = next((c for c in ts_candidates if c in df.columns), None)
+        if ts_col is None:
+            return None
+
+        # Parse timestamp
+        ts_series = df[ts_col]
+        if pd.api.types.is_numeric_dtype(ts_series):
+            # Epoch seconds or ms
+            # Heuristic: values > 10^11 -> ms
+            multiplier = 1000 if ts_series.astype("int64").gt(10**11).any() else 1
+            df[ts_col] = pd.to_datetime(df[ts_col] / multiplier, unit="s", utc=True)
+        else:
+            df[ts_col] = pd.to_datetime(df[ts_col], utc=True, errors="coerce")
+
+        df = df.set_index(ts_col).sort_index()
+        df = df[~df.index.duplicated(keep="last")]
+
+        # Standardize OHLCV columns to numeric
+        name_map = {
+            "open": "open", "high": "high", "low": "low", "close": "close",
+            "volume": "volume", "vol": "volume", "qty": "volume", "quote_volume": "volume"
+        }
+        # Create expected columns if alternative names exist
+        for alt, canonical in list(name_map.items()):
+            if alt in df.columns and canonical not in df.columns:
+                df[canonical] = df[alt]
+        for col in ["open", "high", "low", "close", "volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+            else:
+                # Missing required columns -> cannot proceed
+                return None
+
+        # Drop rows where all OHLC are NaN
+        ohlc = df[["open", "high", "low", "close"]]
+        df = df.loc[~ohlc.isna().all(axis=1)]
+
+        return df
+    except Exception:
+        return None
 
 def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_symbol: dict[str, dict], timeframe: str = "2h", record_curve: bool = False) -> dict:
     """Backtest multi-paires en parallèle avec capital commun et contrainte de fonds disponibles.
@@ -2376,6 +2428,20 @@ def ensure_dir(path):
     """Crée le répertoire s'il n'existe pas"""
     os.makedirs(path, exist_ok=True)
 
+def ensure_utc_index(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure DataFrame index is DatetimeIndex in UTC but tz-naive (UTC assumed).
+
+    - If tz-aware → convert to UTC then drop timezone (tz_localize(None)).
+    - If tz-naive → leave as is.
+    """
+    try:
+        if isinstance(df.index, pd.DatetimeIndex):
+            if df.index.tz is not None:
+                df.index = df.index.tz_convert("UTC").tz_localize(None)
+    except Exception:
+        pass
+    return df
+
 def make_annual_folds(df: pd.DataFrame, start_year: int | None = None, end_year: int | None = None):
     """Retourne une liste de (YYYY-MM-DD, YYYY-MM-DD) par année civile disponible dans df.index."""
     if not isinstance(df.index, pd.DatetimeIndex):
@@ -2387,6 +2453,7 @@ def make_annual_folds(df: pd.DataFrame, start_year: int | None = None, end_year:
         years = years[years <= end_year]
     folds = []
     for y in years:
+        # Utiliser des timestamps tz-naive (UTC implicite) pour matcher l'index normalisé
         start = pd.Timestamp(f"{y}-01-01")
         end = pd.Timestamp(f"{y}-12-31")
         if ((df.index >= start) & (df.index <= end)).any():
@@ -2427,8 +2494,10 @@ def optuna_objective(trial, market_data: dict, timeframe: str, start_year: int |
         total_folds += len(make_annual_folds(df, start_year, end_year))
     total_folds = max(1, total_folds)
     for sym, df in market_data.items():
+        df = ensure_utc_index(df)
         folds = make_annual_folds(df, start_year, end_year)
         for (start, end) in folds:
+            # Timestamps tz-naive (UTC implicite) alignés avec l'index
             start_ts = pd.Timestamp(start)
             end_ts = pd.Timestamp(end)
             if 0.0 < fast_ratio < 1.0:
@@ -2551,10 +2620,11 @@ def optuna_optimize_profile_per_symbol(profile_name: str, n_trials: int = 5000, 
         local_df = _load_local_csv_if_configured(sym, timeframe)
         if local_df is not None:
             log(f"Utilisation CSV local (fused) pour {sym} {timeframe} — historique complet")
-            df = local_df
+            df = ensure_utc_index(local_df)
         else:
             log(f"Téléchargement {sym} {timeframe} sur ~{years_back} ans…")
             df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir="data", use_cache=use_cache)
+            df = ensure_utc_index(df)
         if df.empty:
             log(f"⚠️  Pas de données pour {sym}. Ignorer.")
             continue

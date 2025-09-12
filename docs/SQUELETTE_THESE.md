@@ -138,3 +138,19 @@
   - Lancement walk-forward mensuel (2017-08 → 2025-08) sans Optuna
 - À suivre
   - Comparer baselines vs Optuna full history (batch 1), puis lancer batch 2 (seeds alternatifs)
+
+## 📅 Mise à jour du 2025-09-12
+- Réalisé aujourd’hui
+  - Correction de la baseline: exécutions BTC‑only sur l’historique fused (2h) avec paramètres fixes 9‑26‑52‑26 et ATR×3/×5. Lancements en cours, logs dans `outputs/baseline_btc_only/`.
+  - Lancement d’un walk‑forward annuel (scheduler) BTC‑only fused avec Optuna (≈200 trials, jobs=1). Script dédié: `scripts/run_scheduler_wfa.py`; logs `outputs/scheduler_annual_btc/`.
+  - Création d’un runner baseline explicite BTC‑only: `scripts/run_btc_baseline_fixed.py`.
+- En cours
+  - Optuna Batch‑1 segment 3 (seeds 20–30, 6h, fused) et passe d’exploitation (5 seeds, 1200 trials) tournent; attente de snapshots consolidés.
+  - Baselines BTC‑only ATR×3/×5 et WFA annuel: attente des métriques finales avant comparaison.
+- Prochaines actions
+  - Lancer le WFA mensuel (roulant 12 mois) et comparer « mensuel vs annuel » sur la baseline BTC‑only.
+  - Stratégie par phase (labels HMM gelés K=3/5/8 disponibles, K=10 pour référence): optimisation + walk‑forward par phase, puis comparaison vs baseline fixe.
+  - Reporting: mise à jour `docs/TOP_BEST_RESULTS.md` et export PDF; ajout d’un tableau comparatif baseline vs phase‑aware.
+- Points de vigilance
+  - Les baselines précédentes incluaient ETH/DOGE par erreur pour la comparaison BTC‑only; elles sont écartées des comparatifs. Les nouvelles baselines seront strictement BTC‑only sur `BTC_FUSED_2h.csv`.
+  - Normalisation temporelle UTC (tz‑naive) validée pour éviter les erreurs Pandas; chargement fused activé via `USE_FUSED_H2=1`.

@@ -51,6 +51,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-hours", type=float, default=None, help="Stop after approx N hours (checked between seeds)")
     parser.add_argument("--loss-mult", type=float, default=3.0, help="Loss multiplier for risk (default: 3.0)")
     parser.add_argument("--jobs", type=int, default=1, help="Parallel jobs within a seed (default: 1)")
+    parser.add_argument("--use-fused", action="store_true", help="Force using fused BTC 2h dataset (sets USE_FUSED_H2=1)")
     return parser.parse_args()
 
 
@@ -96,12 +97,18 @@ def main() -> int:
     # Make live dir explicit so each segment can be isolated
     os.environ["ICHIMOKU_LIVE_DIR"] = out_dir
 
+    # Force fused dataset if requested
+    if bool(getattr(args, "use_fused", False)):
+        os.environ["USE_FUSED_H2"] = "1"
+
     print(
         f"Running BTC/USDT only: {len(seeds)} seeds x {args.trials} trials — profile={profile} out_dir={out_dir}",
         flush=True,
     )
-    print(f"USE_FUSED_H2={os.environ.get('USE_FUSED_H2','<unset>')}  ICHIMOKU_LIVE_DIR={os.environ.get('ICHIMOKU_LIVE_DIR')}",
-          flush=True)
+    print(
+        f"USE_FUSED_H2={os.environ.get('USE_FUSED_H2','<unset>')}  ICHIMOKU_LIVE_DIR={os.environ.get('ICHIMOKU_LIVE_DIR')}",
+        flush=True,
+    )
 
     for sd in seeds:
         if deadline is not None and time.monotonic() >= deadline:
