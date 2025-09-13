@@ -818,6 +818,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": exit_price,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "liquidation_forced",
                         "symbol": symbol,
                         "type": "long"
@@ -837,6 +838,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": exit_price,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "liquidation_forced",
                         "symbol": symbol,
                         "type": "short"
@@ -865,6 +867,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "margin_call",
                         "symbol": symbol,
                         "type": "long"
@@ -882,6 +885,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "margin_call",
                         "symbol": symbol,
                         "type": "short"
@@ -922,6 +926,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                     "entry": pos["entry"],
                     "exit": close,
                     "ret": ret,
+                    "position_value": pos["position_value"],
                     "exit_reason": "opposite_signal",
                     "symbol": symbol,
                     "type": "short",
@@ -977,6 +982,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                     "entry": pos["entry"],
                     "exit": close,
                     "ret": ret,
+                    "position_value": pos["position_value"],
                     "exit_reason": "opposite_signal",
                     "symbol": symbol,
                     "type": "long"
@@ -1038,6 +1044,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": exit_price,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "stop_global",
                         "symbol": symbol,
                         "type": "long"
@@ -1062,6 +1069,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "trailing_stop",
                         "symbol": symbol,
                         "type": "long"
@@ -1093,6 +1101,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "stop_global",
                         "symbol": symbol,
                         "type": "short"
@@ -1116,6 +1125,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
+                        "position_value": pos["position_value"],
                         "exit_reason": "trailing_stop",
                         "symbol": symbol,
                         "type": "short"
@@ -1144,6 +1154,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 "exit": close,
                 "ret": ret,
                 "ret_w": ret_w,
+                "position_value": pos["position_value"],
                 "exit_reason": "eod",
                 "symbol": symbol,
                 "type": "long"
@@ -1168,6 +1179,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 "exit": close,
                 "ret": ret,
                 "ret_w": ret_w,
+                "position_value": pos["position_value"],
                 "exit_reason": "eod",
                 "symbol": symbol,
                 "type": "short"

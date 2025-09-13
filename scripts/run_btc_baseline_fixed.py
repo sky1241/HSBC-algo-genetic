@@ -67,13 +67,11 @@ def main() -> int:
     }
     best_by_symbol = {"BTC/USDT": params}
 
-    # Backtest portfolio (single symbol)
-    shared = pipe.backtest_shared_portfolio(
-        market_data,
-        best_by_symbol,
-        timeframe=timeframe,
-        record_curve=True,
-        loss_mult=float(args.loss_mult),
+    # Backtest single symbol directly
+    shared = pipe.backtest_long_short(
+        df,
+        int(params["tenkan"]), int(params["kijun"]), int(params["senkou_b"]), int(params["shift"]), float(params["atr_mult"]),
+        loss_mult=float(args.loss_mult), symbol="BTC/USDT", timeframe=timeframe,
     )
 
     # Persist
@@ -88,7 +86,8 @@ def main() -> int:
     dd = float(shared.get("max_drawdown", float("nan")))
     tr = int(shared.get("trades", 0))
     sh = float(shared.get("sharpe_proxy", float("nan")))
-    print(f"BTC baseline {params} => equity× {eq:.3f}, MDD {dd:.2%}, trades {tr}, Sharpe≈{sh:.2f}")
+    # ASCII-only to avoid Windows console encoding issues
+    print(f"BTC baseline {params} => equity x {eq:.3f}, MDD {dd:.2%}, trades {tr}, Sharpe~{sh:.2f}")
     print(f"Saved: {out_path}")
     return 0
 

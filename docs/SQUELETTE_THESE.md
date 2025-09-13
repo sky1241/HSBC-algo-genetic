@@ -154,3 +154,20 @@
 - Points de vigilance
   - Les baselines précédentes incluaient ETH/DOGE par erreur pour la comparaison BTC‑only; elles sont écartées des comparatifs. Les nouvelles baselines seront strictement BTC‑only sur `BTC_FUSED_2h.csv`.
   - Normalisation temporelle UTC (tz‑naive) validée pour éviter les erreurs Pandas; chargement fused activé via `USE_FUSED_H2=1`.
+
+## 📅 Mise à jour du 2025-09-13
+- Réalisé aujourd’hui
+  - Baselines BTC‑only (fused, 2h) finalisées proprement en ATR×5 et ATR×8; ajout de `position_value` dans les trades et enregistrement d’un `min_equity` correct dans les JSON. Le champ `max_drawdown` affiché dans les logs reste erroné (100%); on utilise provisoirement `min_equity` comme proxy MDD en attendant un calcul pondéré uniforme.
+  - Ajout du balayage local d’ATR au scheduler WFA (CLI: `--atr-sweep --atr-sweep-span 1.0 --atr-sweep-step 0.2 --mdd-max 0.20`). Lancements WFA annuel et mensuel sur 4 seeds (123, 321, 777, 999). Logs: `outputs/scheduler_annual_btc/seed_*/RUN*.txt`, `outputs/scheduler_monthly_btc/seed_*/RUN*.txt`.
+  - Normalisation stricte des timestamps (UTC tz‑naive) appliquée dans le pipeline; chargement `BTC_FUSED_2h.csv` via `USE_FUSED_H2=1` confirmé.
+  - QC gaps (A/B original vs clean) confirmé négligeable; documenté dans `docs/QC_GAPS_H2.md`.
+- Résultats clés (baseline BTC‑only, historique complet)
+  - ATR×8: equity× 5.130; trades 1009; Sharpe ≈ 1.195; min_equity 0.9608 (~−3.92%).
+  - ATR×5: equity× 3.137; trades 1027; Sharpe ≈ 2.028; min_equity 0.9706 (~−2.94%).
+  - Lecture: ATR×8 maximise l’equity brute au prix d’un Sharpe plus faible; ATR×5 offre un meilleur compromis risque‑rendement.
+- Décisions
+  - Ne pas figer l’ATR globalement: optimiser `atr_mult` avec les paramètres Ichimoku et balayer localement autour du meilleur par fold (contrainte MDD). En stratégie par phase (K=3/5/8), autoriser un `atr_mult` spécifique par phase et vérifier la stabilité (médiane/IQR des ATR par phase).
+- Prochaines actions
+  - Agréger les runs WFA multi‑seeds et comparer mensuel vs annuel (médiane/IQR; equity, Sharpe, MDD, trades).
+  - Lancer/valider la stratégie par phase (K=3/5/8) avec ATR par phase en WFA.
+  - Corriger le calcul MDD pondéré dans les JSON et mettre à jour les rapports (MD/PDF).

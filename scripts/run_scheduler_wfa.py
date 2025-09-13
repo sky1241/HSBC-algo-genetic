@@ -98,6 +98,78 @@ def _apply_on_test(test_df: pd.DataFrame, timeframe: str, params: Dict[str, floa
     return {k: float(v) if isinstance(v, (int, float, np.floating)) else v for k, v in m.items()}
 
 
+def _sweep_atr_local(
+    train_df: pd.DataFrame,
+    timeframe: str,
+    base_params: Dict[str, float],
+    loss_mult: float,
+    span: float,
+    step: float,
+    mdd_max: float | None,
+) -> Dict[str, float]:
+    """Affiner atr_mult autour du centre (train uniquement) et retenir le meilleur sous contrainte MDD.
+
+    Sélection primaire: Sharpe maximum sous MDD<=mdd_max (si fourni). Égalité: equity_mult plus élevée.
+    """
+    params = dict(base_params)
+    center = float(params.get("atr_mult", 3.0))
+    span = max(0.0, float(span))
+    step = max(1e-6, float(step))
+    start = max(0.05, center - span)
+    end = center + span + 1e-12
+
+    # Grille de candidats incluant le centre
+    n_steps = int(round((end - start) / step)) + 1
+    candidates: List[float] = []
+    for i in range(max(1, n_steps)):
+        v = start + i * step
+        if v <= 0:
+            continue
+        candidates.append(float(round(v, 6)))
+    if center not in candidates:
+        candidates.append(center)
+    candidates = sorted(set(candidates))
+
+    best_any: Dict[str, float] | None = None
+    best_allowed: Dict[str, float] | None = None
+    for atr in candidates:
+        m = pipe.backtest_long_short(
+            train_df,
+            int(params["tenkan"]), int(params["kijun"]), int(params["senkou_b"]), int(params["shift"]), float(atr),
+            loss_mult=float(loss_mult), symbol="BTC/USDT", timeframe=timeframe,
+        )
+        rec: Dict[str, float] = {
+            "atr": float(atr),
+            "sharpe": float(m.get("sharpe_proxy", 0.0)),
+            "dd": float(m.get("max_drawdown", 0.0)),
+            "eq": float(m.get("equity_mult", 0.0)),
+        }
+
+        if (best_any is None) or (rec["sharpe"] > best_any["sharpe"]) or (
+            rec["sharpe"] == best_any["sharpe"] and rec["eq"] > best_any["eq"]
+        ):
+            best_any = rec
+
+        allowed = (mdd_max is None) or (rec["dd"] <= float(mdd_max))
+        if allowed:
+            if (best_allowed is None) or (rec["sharpe"] > best_allowed["sharpe"]) or (
+                rec["sharpe"] == best_allowed["sharpe"] and rec["eq"] > best_allowed["eq"]
+            ):
+                best_allowed = rec
+
+    chosen = best_allowed if best_allowed is not None else best_any
+    if chosen is not None:
+        params["atr_mult"] = float(chosen["atr"])
+        try:
+            print(
+                f"[ATR SWEEP] center={center:.3f} span={span:.3f} step={step:.3f} -> best={params['atr_mult']:.3f} "
+                f"(train Sharpe≈{chosen['sharpe']:.3f}, MDD≈{chosen['dd']:.2%}, eq×{chosen['eq']:.3f})"
+            )
+        except Exception:
+            pass
+    return params
+
+
 def _year_bounds(df: pd.DataFrame) -> Tuple[int, int]:
     years = pd.Index(sorted(df.index.year.unique()))
     return int(years.min()), int(years.max())
@@ -107,7 +179,18 @@ def _month_list(df: pd.DataFrame) -> List[pd.Timestamp]:
     return list(pd.Index(sorted(df.index.to_period('M').to_timestamp().unique())))
 
 
-def run_wfa(df: pd.DataFrame, granularity: str, n_trials: int, seed: int | None, jobs: int, loss_mult: float) -> Tuple[List[FoldResult], Dict[str, float]]:
+def run_wfa(
+    df: pd.DataFrame,
+    granularity: str,
+    n_trials: int,
+    seed: int | None,
+    jobs: int,
+    loss_mult: float,
+    atr_sweep: bool = False,
+    atr_sweep_span: float = 0.0,
+    atr_sweep_step: float = 0.2,
+    mdd_max: float | None = None,
+) -> Tuple[List[FoldResult], Dict[str, float]]:
     timeframe = "2h"
     folds: List[FoldResult] = []
     if granularity == "annual":
@@ -120,6 +203,8 @@ def run_wfa(df: pd.DataFrame, granularity: str, n_trials: int, seed: int | None,
             if train_df.empty or test_df.empty:
                 continue
             params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult)
+            if atr_sweep:
+                params = _sweep_atr_local(train_df, timeframe, params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
             metrics = _apply_on_test(test_df, timeframe, params, loss_mult)
             folds.append(FoldResult(
                 period_label=f"{y}",
@@ -142,6 +227,8 @@ def run_wfa(df: pd.DataFrame, granularity: str, n_trials: int, seed: int | None,
             if len(train_df) < 200 or len(test_df) < 10:
                 continue
             params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult)
+            if atr_sweep:
+                params = _sweep_atr_local(train_df, timeframe, params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
             metrics = _apply_on_test(test_df, timeframe, params, loss_mult)
             folds.append(FoldResult(
                 period_label=test_start.strftime('%Y-%m'),
@@ -153,19 +240,19 @@ def run_wfa(df: pd.DataFrame, granularity: str, n_trials: int, seed: int | None,
 
     # Aggregate OOS by compounding equity
     eq_mult = 1.0
-    dd_max = 0.0
+    dd_max_acc = 0.0
     trades_total = 0
     sharpes: List[float] = []
     cagrs: List[float] = []
     for fr in folds:
         eq_mult *= float(fr.metrics.get("equity_mult", 1.0))
-        dd_max = max(dd_max, float(fr.metrics.get("max_drawdown", 0.0)))
+        dd_max_acc = max(dd_max_acc, float(fr.metrics.get("max_drawdown", 0.0)))
         trades_total += int(fr.metrics.get("trades", 0))
         sharpes.append(float(fr.metrics.get("sharpe_proxy", 0.0)))
         cagrs.append(float(fr.metrics.get("CAGR", 0.0)))
     overall = {
         "equity_mult": float(eq_mult),
-        "max_drawdown": float(dd_max),
+        "max_drawdown": float(dd_max_acc),
         "trades": int(trades_total),
         "sharpe_proxy_mean": float(np.mean(sharpes) if sharpes else 0.0),
         "CAGR_mean": float(np.mean(cagrs) if cagrs else 0.0),
@@ -181,6 +268,10 @@ def main() -> int:
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--seed", type=int, default=123)
     ap.add_argument("--loss-mult", type=float, default=3.0)
+    ap.add_argument("--atr-sweep", action="store_true", help="Activer un balayage local de l'ATR autour du meilleur sur le train")
+    ap.add_argument("--atr-sweep-span", type=float, default=1.0, help="Demi-plage autour du centre (ex: 1.0 => centre±1.0)")
+    ap.add_argument("--atr-sweep-step", type=float, default=0.2, help="Pas de balayage ATR")
+    ap.add_argument("--mdd-max", type=float, default=None, help="MDD max (0-1) autorisée pour la sélection ATR; vide pour désactiver")
     ap.add_argument("--use-fused", action="store_true")
     ap.add_argument("--out-dir", default="outputs/scheduler_wfa")
     args = ap.parse_args()
@@ -194,7 +285,18 @@ def main() -> int:
     df = _load_btc_fused("2h")
     df = pipe.ensure_utc_index(df)
 
-    folds, overall = run_wfa(df, args.granularity, int(args.trials), int(args.seed), int(args.jobs), float(args.loss_mult))
+    folds, overall = run_wfa(
+        df,
+        args.granularity,
+        int(args.trials),
+        int(args.seed),
+        int(args.jobs),
+        float(args.loss_mult),
+        bool(args.atr_sweep),
+        float(args.atr_sweep_span),
+        float(args.atr_sweep_step),
+        (None if args.mdd_max is None else float(args.mdd_max)),
+    )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")
     out_json = out_dir / f"WFA_{args.granularity}_BTC_fused_{ts}.json"
