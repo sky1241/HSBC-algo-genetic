@@ -171,3 +171,11 @@
   - Agréger les runs WFA multi‑seeds et comparer mensuel vs annuel (médiane/IQR; equity, Sharpe, MDD, trades).
   - Lancer/valider la stratégie par phase (K=3/5/8) avec ATR par phase en WFA.
   - Corriger le calcul MDD pondéré dans les JSON et mettre à jour les rapports (MD/PDF).
+
+## 📅 Mise à jour du 2025-09-14
+- WFA annuel (BTC fused, 4 seeds, ATR sweep) — agrégation:
+  - equity_med ≈ 2.115 (IQR ≈ [1.779, 2.432])
+  - sharpe_med ≈ 1.283 (IQR ≈ [0.748, 1.549])
+  - MDD%_approx_med ≈ 14.30% (IQR ≈ [11.94%, 16.00%])
+- Lecture: ATR élevé → equity↑ mais Sharpe↓; choix selon objectif. `max_drawdown` JSON non fiable; usage de `min_equity` des folds en proxy MDD.
+- À faire: WFA mensuel multi-seeds (même protocole), stratégie par phase (K=3/5/8) avec ATR par phase et contrôle de stabilité (médiane/IQR), correction MDD pondéré dans la pipeline.

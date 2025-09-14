@@ -1,0 +1,660 @@
+{
+  "granularity": "annual",
+  "trials": 300,
+  "jobs": 1,
+  "loss_mult": 3.0,
+  "overall": {
+    "equity_mult": 2.291800373228133,
+    "max_drawdown": 1.0,
+    "trades": 932,
+    "sharpe_proxy_mean": 1.5475450185929376,
+    "CAGR_mean": 0.06983172220634419,
+    "folds": 14
+  },
+  "folds": [
+    {
+      "period": "2012",
+      "train": [
+        "2011-01-01",
+        "2011-12-31"
+      ],
+      "test": [
+        "2012-01-01",
+        "2012-12-31"
+      ],
+      "params": {
+        "tenkan": 5,
+        "kijun": 25,
+        "senkou_b": 45,
+        "shift": 23,
+        "atr_mult": 2.5
+      },
+      "metrics": {
+        "equity_mult": 0.8320447797388332,
+        "CAGR": -0.16805999945527417,
+        "sharpe_proxy": -5.043558887279742,
+        "max_drawdown": 1.0,
+        "trades": 99.0,
+        "win_rate": 0.18181818181818182,
+        "profit_factor": 0.3904773054429879,
+        "expectancy": -0.18133905040898193,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 47.0,
+        "nb_trades_short": 52.0,
+        "lyapunov_exponent": 0.004804084717552649,
+        "volume_quality": 0.296969696969697,
+        "liquidity_score": 0.8834474458305336,
+        "calmar_ratio": -0.16805999945527417,
+        "sortino_ratio": -0.48797033273585055,
+        "var_95": -0.9264108110010452,
+        "recovery_factor": -0.16795522026116683,
+        "recovery_days": Infinity,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.832595250037745,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2013",
+      "train": [
+        "2011-01-01",
+        "2012-12-31"
+      ],
+      "test": [
+        "2013-01-01",
+        "2013-12-31"
+      ],
+      "params": {
+        "tenkan": 9,
+        "kijun": 36,
+        "senkou_b": 54,
+        "shift": 27,
+        "atr_mult": 5.4
+      },
+      "metrics": {
+        "equity_mult": 1.408461376718667,
+        "CAGR": 0.4101189276898032,
+        "sharpe_proxy": 6.094936746427498,
+        "max_drawdown": 1.0,
+        "trades": 43.0,
+        "win_rate": 0.16279069767441862,
+        "profit_factor": 3.221929651636837,
+        "expectancy": 0.8588901366519252,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 21.0,
+        "nb_trades_short": 22.0,
+        "lyapunov_exponent": 0.0,
+        "volume_quality": 0.7209302325581395,
+        "liquidity_score": 0.9994876170554614,
+        "calmar_ratio": 0.4101189276898032,
+        "sortino_ratio": 0.7925790573054056,
+        "var_95": -2.8796177109050842,
+        "recovery_factor": 0.4084613767186669,
+        "recovery_days": 890.5953257447798,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 1.0,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2014",
+      "train": [
+        "2011-01-01",
+        "2013-12-31"
+      ],
+      "test": [
+        "2014-01-01",
+        "2014-12-31"
+      ],
+      "params": {
+        "tenkan": 11,
+        "kijun": 44,
+        "senkou_b": 55,
+        "shift": 29,
+        "atr_mult": 5.4
+      },
+      "metrics": {
+        "equity_mult": 0.9596356835353078,
+        "CAGR": -0.040500084641017065,
+        "sharpe_proxy": -0.7532045851560911,
+        "max_drawdown": 1.0,
+        "trades": 81.0,
+        "win_rate": 0.024691358024691357,
+        "profit_factor": 0.8728102493770773,
+        "expectancy": -0.039928080923350574,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 47.0,
+        "nb_trades_short": 34.0,
+        "lyapunov_exponent": 0.01032013879353942,
+        "volume_quality": 0.8666666666666665,
+        "liquidity_score": 0.9999636924142111,
+        "calmar_ratio": -0.040500084641017065,
+        "sortino_ratio": -0.08068927698678066,
+        "var_95": -1.2938146503884564,
+        "recovery_factor": -0.040364316464692185,
+        "recovery_days": Infinity,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.8684342334505677,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2015",
+      "train": [
+        "2011-01-01",
+        "2014-12-31"
+      ],
+      "test": [
+        "2015-01-01",
+        "2015-12-31"
+      ],
+      "params": {
+        "tenkan": 10,
+        "kijun": 40,
+        "senkou_b": 90,
+        "shift": 29,
+        "atr_mult": 2.1
+      },
+      "metrics": {
+        "equity_mult": 1.0580205532953468,
+        "CAGR": 0.058225491084174186,
+        "sharpe_proxy": 3.840866779368659,
+        "max_drawdown": 0.7479441793871078,
+        "trades": 49.0,
+        "win_rate": 0.4897959183673469,
+        "profit_factor": 2.116677996549187,
+        "expectancy": 0.11945336448610148,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 17.0,
+        "nb_trades_short": 32.0,
+        "lyapunov_exponent": 0.0,
+        "volume_quality": 0.7999999999999999,
+        "liquidity_score": 0.999946750029773,
+        "calmar_ratio": 0.0778473750967435,
+        "sortino_ratio": 0.8214578108534163,
+        "var_95": -0.39802955470992596,
+        "recovery_factor": 0.07757337364787162,
+        "recovery_days": 4691.873034204324,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 1.0,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2016",
+      "train": [
+        "2011-01-01",
+        "2015-12-31"
+      ],
+      "test": [
+        "2016-01-01",
+        "2016-12-31"
+      ],
+      "params": {
+        "tenkan": 12,
+        "kijun": 48,
+        "senkou_b": 72,
+        "shift": 28,
+        "atr_mult": 5.1
+      },
+      "metrics": {
+        "equity_mult": 1.0347712725739162,
+        "CAGR": 0.034795498135539615,
+        "sharpe_proxy": 1.1253900550122435,
+        "max_drawdown": 0.9883966437521443,
+        "trades": 73.0,
+        "win_rate": 0.0684931506849315,
+        "profit_factor": 1.410241567229527,
+        "expectancy": 0.05337296259234543,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 43.0,
+        "nb_trades_short": 30.0,
+        "lyapunov_exponent": 0.011045733845755508,
+        "volume_quality": 0.7972602739726026,
+        "liquidity_score": 0.9999418684456012,
+        "calmar_ratio": 0.035203982485664045,
+        "sortino_ratio": 0.3035907079805666,
+        "var_95": -0.46989388086369965,
+        "recovery_factor": 0.03517947252624994,
+        "recovery_days": 10375.246611622393,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9748132841444254,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2017",
+      "train": [
+        "2011-01-01",
+        "2016-12-31"
+      ],
+      "test": [
+        "2017-01-01",
+        "2017-12-31"
+      ],
+      "params": {
+        "tenkan": 9,
+        "kijun": 36,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 3.9
+      },
+      "metrics": {
+        "equity_mult": 1.2322815139595034,
+        "CAGR": 0.2331657024577931,
+        "sharpe_proxy": 3.9267652694809807,
+        "max_drawdown": 1.0,
+        "trades": 67.0,
+        "win_rate": 0.11940298507462686,
+        "profit_factor": 2.0852270864824045,
+        "expectancy": 0.33456202683963593,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 25.0,
+        "nb_trades_short": 42.0,
+        "lyapunov_exponent": 0.016665861663941156,
+        "volume_quality": 0.9731343283582088,
+        "liquidity_score": 0.9999951710104149,
+        "calmar_ratio": 0.2331657024577931,
+        "sortino_ratio": 0.6187244168183483,
+        "var_95": -1.0492392005757816,
+        "recovery_factor": 0.23228151395950336,
+        "recovery_days": 1566.482532164508,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9965056091381648,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2018",
+      "train": [
+        "2011-01-01",
+        "2017-12-31"
+      ],
+      "test": [
+        "2018-01-01",
+        "2018-12-31"
+      ],
+      "params": {
+        "tenkan": 10,
+        "kijun": 40,
+        "senkou_b": 60,
+        "shift": 29,
+        "atr_mult": 3.9
+      },
+      "metrics": {
+        "equity_mult": 1.065022026048618,
+        "CAGR": 0.06525244786171558,
+        "sharpe_proxy": 1.6562222957043617,
+        "max_drawdown": 1.0,
+        "trades": 68.0,
+        "win_rate": 0.014705882352941176,
+        "profit_factor": 1.3499623525909967,
+        "expectancy": 0.1068781948663655,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 37.0,
+        "nb_trades_short": 31.0,
+        "lyapunov_exponent": 0.012895054002615664,
+        "volume_quality": 0.9941176470588234,
+        "liquidity_score": 0.99999821199999,
+        "calmar_ratio": 0.06525244786171558,
+        "sortino_ratio": 0.26224885882177557,
+        "var_95": -1.0244678401641583,
+        "recovery_factor": 0.06502202604861806,
+        "recovery_days": 5597.491158861133,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.8737885817598882,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2019",
+      "train": [
+        "2011-01-01",
+        "2018-12-31"
+      ],
+      "test": [
+        "2019-01-01",
+        "2019-12-31"
+      ],
+      "params": {
+        "tenkan": 6,
+        "kijun": 24,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 3.9
+      },
+      "metrics": {
+        "equity_mult": 1.1090561473886311,
+        "CAGR": 0.10945044021353456,
+        "sharpe_proxy": 2.7062990489822156,
+        "max_drawdown": 1.0,
+        "trades": 68.0,
+        "win_rate": 0.0,
+        "profit_factor": 1.932880149539259,
+        "expectancy": 0.16563522485342502,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 30.0,
+        "nb_trades_short": 38.0,
+        "lyapunov_exponent": 0.005846081441275138,
+        "volume_quality": 0.9941176470588234,
+        "liquidity_score": 0.9999986297850488,
+        "calmar_ratio": 0.10945044021353456,
+        "sortino_ratio": 0.585647453525766,
+        "var_95": -0.7105129848946472,
+        "recovery_factor": 0.10905614738863112,
+        "recovery_days": 3337.126824592099,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9973579504317084,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2020",
+      "train": [
+        "2011-01-01",
+        "2019-12-31"
+      ],
+      "test": [
+        "2020-01-01",
+        "2020-12-31"
+      ],
+      "params": {
+        "tenkan": 6,
+        "kijun": 30,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 4.0
+      },
+      "metrics": {
+        "equity_mult": 1.1521988340089608,
+        "CAGR": 0.1523106438732591,
+        "sharpe_proxy": 3.1624857827451875,
+        "max_drawdown": 1.0,
+        "trades": 58.0,
+        "win_rate": 0.034482758620689655,
+        "profit_factor": 2.1320144631078235,
+        "expectancy": 0.26175750875865256,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 32.0,
+        "nb_trades_short": 26.0,
+        "lyapunov_exponent": 0.021319499084225743,
+        "volume_quality": 1.0,
+        "liquidity_score": 0.9999990089577607,
+        "calmar_ratio": 0.1523106438732591,
+        "sortino_ratio": 0.8030487408033002,
+        "var_95": -0.8963749624432431,
+        "recovery_factor": 0.15219883400896084,
+        "recovery_days": 2398.059588691203,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.98926436672101,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2021",
+      "train": [
+        "2011-01-01",
+        "2020-12-31"
+      ],
+      "test": [
+        "2021-01-01",
+        "2021-12-31"
+      ],
+      "params": {
+        "tenkan": 6,
+        "kijun": 24,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 3.9
+      },
+      "metrics": {
+        "equity_mult": 1.0197420168695515,
+        "CAGR": 0.019810479403199466,
+        "sharpe_proxy": 0.6164221780333144,
+        "max_drawdown": 1.0,
+        "trades": 75.0,
+        "win_rate": 0.013333333333333334,
+        "profit_factor": 1.1282939449581182,
+        "expectancy": 0.043147443055499377,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 34.0,
+        "nb_trades_short": 41.0,
+        "lyapunov_exponent": 0.01802707963411299,
+        "volume_quality": 1.0,
+        "liquidity_score": 0.9999996922450777,
+        "calmar_ratio": 0.019810479403199466,
+        "sortino_ratio": 0.1595865447695128,
+        "var_95": -0.8865030937432115,
+        "recovery_factor": 0.01974201686955146,
+        "recovery_days": 18437.211566975548,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9074291314487798,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2022",
+      "train": [
+        "2011-01-01",
+        "2021-12-31"
+      ],
+      "test": [
+        "2022-01-01",
+        "2022-12-31"
+      ],
+      "params": {
+        "tenkan": 6,
+        "kijun": 24,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 4.3
+      },
+      "metrics": {
+        "equity_mult": 1.0259176124002332,
+        "CAGR": 0.026007762683574187,
+        "sharpe_proxy": 1.0420825088129433,
+        "max_drawdown": 0.9999998833692889,
+        "trades": 71.0,
+        "win_rate": 0.08450704225352113,
+        "profit_factor": 1.2255434841285964,
+        "expectancy": 0.04377508644195586,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 32.0,
+        "nb_trades_short": 39.0,
+        "lyapunov_exponent": 0.008141346768036115,
+        "volume_quality": 0.9971830985915493,
+        "liquidity_score": 0.9999985669068763,
+        "calmar_ratio": 0.026007765716878396,
+        "sortino_ratio": 0.17588680049051109,
+        "var_95": -0.7591840278455555,
+        "recovery_factor": 0.025917615423023076,
+        "recovery_days": 14043.882276398768,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9169174181839589,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2023",
+      "train": [
+        "2011-01-01",
+        "2022-12-31"
+      ],
+      "test": [
+        "2023-01-01",
+        "2023-12-31"
+      ],
+      "params": {
+        "tenkan": 6,
+        "kijun": 30,
+        "senkou_b": 54,
+        "shift": 29,
+        "atr_mult": 4.0
+      },
+      "metrics": {
+        "equity_mult": 1.0219435460798032,
+        "CAGR": 0.022019725305389315,
+        "sharpe_proxy": 0.8971574565885578,
+        "max_drawdown": 0.9935493963021301,
+        "trades": 81.0,
+        "win_rate": 0.024691358024691357,
+        "profit_factor": 1.2389803257721188,
+        "expectancy": 0.03149845740916437,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 42.0,
+        "nb_trades_short": 39.0,
+        "lyapunov_exponent": 0.0055363734673012635,
+        "volume_quality": 0.9901234567901235,
+        "liquidity_score": 0.9999977790270367,
+        "calmar_ratio": 0.0221626880227033,
+        "sortino_ratio": 0.18390087923718637,
+        "var_95": -0.493112015486993,
+        "recovery_factor": 0.022086014204703266,
+        "recovery_days": 16480.401638368076,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9911295657594529,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2024",
+      "train": [
+        "2011-01-01",
+        "2023-12-31"
+      ],
+      "test": [
+        "2024-01-01",
+        "2024-12-31"
+      ],
+      "params": {
+        "tenkan": 8,
+        "kijun": 40,
+        "senkou_b": 56,
+        "shift": 27,
+        "atr_mult": 5.4
+      },
+      "metrics": {
+        "equity_mult": 1.0070519188857479,
+        "CAGR": 0.007056765969620127,
+        "sharpe_proxy": 0.4529152771253563,
+        "max_drawdown": 1.0,
+        "trades": 71.0,
+        "win_rate": 0.07042253521126761,
+        "profit_factor": 1.0847321216565124,
+        "expectancy": 0.015631393104165628,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 29.0,
+        "nb_trades_short": 42.0,
+        "lyapunov_exponent": 0.005326888328720172,
+        "volume_quality": 1.0,
+        "liquidity_score": 0.9999994260614988,
+        "calmar_ratio": 0.007056765969620127,
+        "sortino_ratio": 0.05654838880572953,
+        "var_95": -0.8264809503798028,
+        "recovery_factor": 0.007051918885747854,
+        "recovery_days": 51758.83706111651,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9988067004227208,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    },
+    {
+      "period": "2025",
+      "train": [
+        "2011-01-01",
+        "2024-12-31"
+      ],
+      "test": [
+        "2025-01-01",
+        "2025-12-31"
+      ],
+      "params": {
+        "tenkan": 22,
+        "kijun": 22,
+        "senkou_b": 198,
+        "shift": 29,
+        "atr_mult": 5.7
+      },
+      "metrics": {
+        "equity_mult": 1.0308826559663944,
+        "CAGR": 0.047990310307507444,
+        "sharpe_proxy": 1.9408503344556403,
+        "max_drawdown": 1.0,
+        "trades": 28.0,
+        "win_rate": 0.10714285714285714,
+        "profit_factor": 1.5244637781003347,
+        "expectancy": 0.13034258805885135,
+        "avg_time_long_hours": 2.0,
+        "avg_time_short_hours": 2.0,
+        "nb_trades_long": 17.0,
+        "nb_trades_short": 11.0,
+        "lyapunov_exponent": 0.0,
+        "volume_quality": 1.0,
+        "liquidity_score": 0.9999992719281804,
+        "calmar_ratio": 0.047990310307507444,
+        "sortino_ratio": 0.3755466226860112,
+        "var_95": -0.8662584320397722,
+        "recovery_factor": 0.03088265596639439,
+        "recovery_days": 7610.911403981097,
+        "margin_calls": 0.0,
+        "liquidations": 0.0,
+        "min_equity": 0.9387661498121544,
+        "avg_execution_latency": 0.0,
+        "execution_success_rate": 1.0,
+        "consecutive_errors": 0.0
+      }
+    }
+  ]
+}
