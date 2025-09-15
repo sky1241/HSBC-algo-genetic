@@ -1,0 +1,10 @@
+=== ANNUAL ===
+n=9
+equity_med=2.292  IQR=[1.938, 2.427]
+sharpe_med=1.160  IQR=[1.019, 1.548]
+MDD%_approx_med=13.710  IQR=[8.697, 15.757]
+=== MONTHLY ===
+n=8
+equity_med=1.149  IQR=[1.026, 1.250]
+sharpe_med=-18.227  IQR=[-19.983, -16.588]
+MDD%_approx_med=6.555  IQR=[6.233, 7.089]

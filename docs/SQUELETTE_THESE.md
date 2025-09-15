@@ -179,3 +179,8 @@
   - MDD%_approx_med ≈ 14.30% (IQR ≈ [11.94%, 16.00%])
 - Lecture: ATR élevé → equity↑ mais Sharpe↓; choix selon objectif. `max_drawdown` JSON non fiable; usage de `min_equity` des folds en proxy MDD.
 - À faire: WFA mensuel multi-seeds (même protocole), stratégie par phase (K=3/5/8) avec ATR par phase et contrôle de stabilité (médiane/IQR), correction MDD pondéré dans la pipeline.
+
+- Comparaison mensuel vs annuel (4 seeds chacun):
+  - Mensuel: equity_med ≈ 1.149; Sharpe_med ≈ −18.227; MDD%≈ ≈ 6.555%.
+  - Annuel: equity_med ≈ 2.292; Sharpe_med ≈ 1.160; MDD%≈ ≈ 13.710%.
+  - Décision: conserver la cadence annuelle comme référence; le mensuel dégrade nettement le Sharpe. Étape suivante: stratégie par phase (K=3/5/8) avec ATR par phase et validation multi‑seeds.
