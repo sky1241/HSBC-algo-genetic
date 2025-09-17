@@ -194,3 +194,5 @@
   - MDD%_approx_med=13.710  IQR=[8.697, 15.757]
 - Décision
   - Annuel > mensuel; prochaine étape: stratégie par phase (K=3/5) avec ATR par phase.
+ - En cours
+   - Lancement WFA par phase K=3/5 (4 seeds chacun), watcher d’agrégation automatique actif; résumés `docs/WFA_SUMMARY_PHASE_K3.txt` et `_K5.txt` seront générés à la fin.
