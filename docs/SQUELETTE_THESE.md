@@ -184,3 +184,13 @@
   - Mensuel: equity_med ≈ 1.149; Sharpe_med ≈ −18.227; MDD%≈ ≈ 6.555%.
   - Annuel: equity_med ≈ 2.292; Sharpe_med ≈ 1.160; MDD%≈ ≈ 13.710%.
   - Décision: conserver la cadence annuelle comme référence; le mensuel dégrade nettement le Sharpe. Étape suivante: stratégie par phase (K=3/5/8) avec ATR par phase et validation multi‑seeds.
+
+## 📅 Mise à jour du 2025-09-17
+- Réalisé aujourd’hui
+  - === ANNUAL ===
+  - n=9
+  - equity_med=2.292  IQR=[1.938, 2.427]
+  - sharpe_med=1.160  IQR=[1.019, 1.548]
+  - MDD%_approx_med=13.710  IQR=[8.697, 15.757]
+- Décision
+  - Annuel > mensuel; prochaine étape: stratégie par phase (K=3/5) avec ATR par phase.
