@@ -2483,7 +2483,8 @@ def sample_params_optuna(trial):
     senkou_b = max(kijun, r_senkou * tenkan)
     # Étend le domaine de recherche pour shift (≈ kijun/2 peut aller jusqu'à ~75)
     shift = trial.suggest_int("shift", 10, 75)
-    atr_mult = trial.suggest_float("atr_mult", 0.5, 6.0, step=0.1)
+    # Étend l'amplitude ATR pour permettre des stops plus larges (~3000 pts si ATR H2 élevé)
+    atr_mult = trial.suggest_float("atr_mult", 0.5, 15.0, step=0.1)
     return {"tenkan": int(tenkan), "kijun": int(kijun), "senkou_b": int(senkou_b), "shift": int(shift), "atr_mult": float(atr_mult)}
 
 def compute_score_optuna(cagr_list, sharpe_list, dd_list, trades_list):
