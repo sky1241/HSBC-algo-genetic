@@ -163,7 +163,7 @@ def _sweep_atr_local(
         try:
             print(
                 f"[ATR SWEEP] center={center:.3f} span={span:.3f} step={step:.3f} -> best={params['atr_mult']:.3f} "
-                f"(train Sharpe≈{chosen['sharpe']:.3f}, MDD≈{chosen['dd']:.2%}, eq×{chosen['eq']:.3f})"
+                f"(train Sharpe~{chosen['sharpe']:.3f}, MDD~{chosen['dd']:.2%}, eqx{chosen['eq']:.3f})"
             )
         except Exception:
             pass
@@ -271,7 +271,7 @@ def main() -> int:
     ap.add_argument("--atr-sweep", action="store_true", help="Activer un balayage local de l'ATR autour du meilleur sur le train")
     ap.add_argument("--atr-sweep-span", type=float, default=1.0, help="Demi-plage autour du centre (ex: 1.0 => centre±1.0)")
     ap.add_argument("--atr-sweep-step", type=float, default=0.2, help="Pas de balayage ATR")
-    ap.add_argument("--mdd-max", type=float, default=None, help="MDD max (0-1) autorisée pour la sélection ATR; vide pour désactiver")
+    ap.add_argument("--mdd-max", type=float, default=0.50, help="MDD max (0-1) autorisée pour la sélection ATR; bornée à 0.50")
     ap.add_argument("--use-fused", action="store_true")
     ap.add_argument("--out-dir", default="outputs/scheduler_wfa")
     args = ap.parse_args()
@@ -285,6 +285,8 @@ def main() -> int:
     df = _load_btc_fused("2h")
     df = pipe.ensure_utc_index(df)
 
+    # Clamp MDD à ≤ 0.50 par sécurité
+    _mdd = 0.50 if args.mdd_max is None else min(float(args.mdd_max), 0.50)
     folds, overall = run_wfa(
         df,
         args.granularity,
@@ -295,7 +297,7 @@ def main() -> int:
         bool(args.atr_sweep),
         float(args.atr_sweep_span),
         float(args.atr_sweep_step),
-        (None if args.mdd_max is None else float(args.mdd_max)),
+        _mdd,
     )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")
@@ -320,7 +322,7 @@ def main() -> int:
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"Saved: {out_json}")
-    print(f"Overall: equity× {overall['equity_mult']:.3f}, MDD {overall['max_drawdown']:.2%}, trades {overall['trades']}, Sharpe≈{overall['sharpe_proxy_mean']:.2f}")
+    print(f"Overall: equity x {overall['equity_mult']:.3f}, MDD {overall['max_drawdown']:.2%}, trades {overall['trades']}, Sharpe~{overall['sharpe_proxy_mean']:.2f}")
     return 0
 
 
