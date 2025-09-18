@@ -196,3 +196,4 @@
   - Annuel > mensuel; prochaine étape: stratégie par phase (K=3/5) avec ATR par phase.
  - En cours
    - Lancement WFA par phase K=3/5 (4 seeds chacun), watcher d’agrégation automatique actif; résumés `docs/WFA_SUMMARY_PHASE_K3.txt` et `_K5.txt` seront générés à la fin.
+  - Journal du 2025-09-18 ajouté (bilan du jour, prochaines étapes).
