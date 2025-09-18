@@ -2481,7 +2481,8 @@ def sample_params_optuna(trial):
     r_senkou = trial.suggest_int("r_senkou", 1, 9)
     kijun = max(tenkan, r_kijun * tenkan)
     senkou_b = max(kijun, r_senkou * tenkan)
-    shift = trial.suggest_int("shift", 20, 30)
+    # Étend le domaine de recherche pour shift (≈ kijun/2 peut aller jusqu'à ~75)
+    shift = trial.suggest_int("shift", 10, 75)
     atr_mult = trial.suggest_float("atr_mult", 0.5, 6.0, step=0.1)
     return {"tenkan": int(tenkan), "kijun": int(kijun), "senkou_b": int(senkou_b), "shift": int(shift), "atr_mult": float(atr_mult)}
 
