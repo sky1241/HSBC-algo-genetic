@@ -12,6 +12,7 @@ from scripts.fourier_core import (
     low_freq_power_ratio,
     spectral_flatness,
 )
+from src.features_fourier import compute_welch_features
 
 
 def scale_ichimoku(base: Tuple[int, int, int] = (9, 26, 52), *, days_per_week: int = 7, bars_per_day: int = 12) -> Tuple[int, int, int]:
@@ -66,13 +67,25 @@ def analyze_csv(path: Path, timeframe_hours: float = 2.0, window_days: int = 180
     bars_per_day = int(round(24.0 / timeframe_hours))
     n = max(256, window_days * bars_per_day)
     close_win = close[-n:]
-    fs = 1.0  # 1 unit per bar
-    freqs, psd = compute_welch_psd(close_win, fs=fs)
-    P = dominant_period(freqs, psd)
-    # f0 = cycles > 5 days in H2 → 5*bars_per_day bars period → freq threshold
-    f0 = 1.0 / float(5 * bars_per_day)
-    lfp = low_freq_power_ratio(freqs, psd, f0=f0)
-    flat = spectral_flatness(psd)
+    series = pd.Series(close_win, index=pd.RangeIndex(len(close_win)))
+    features = compute_welch_features(
+        series,
+        fs_per_day=float(bars_per_day),
+        window="hann",
+        nperseg_grid=[128, 256, 512],
+        noverlap_ratio=(0.5, 0.75),
+    )
+    last = features.iloc[-1] if not features.empty else pd.Series(dtype=float)
+    P = float(last.get("P1_period", float("nan"))) if not last.empty else float("nan")
+    lfp = float(last.get("LFP_ratio", float("nan"))) if not last.empty else float("nan")
+    flat = float(last.get("spectral_flatness", float("nan"))) if not last.empty else float("nan")
+    if not np.isfinite(P) or P <= 0 or not np.isfinite(lfp):
+        fs = 1.0  # fallback frequency in bars^-1
+        freqs, psd = compute_welch_psd(close_win, fs=fs)
+        P = dominant_period(freqs, psd)
+        f0 = 1.0 / float(5 * bars_per_day)
+        lfp = low_freq_power_ratio(freqs, psd, f0=f0)
+        flat = spectral_flatness(psd)
     return {"P_bars": float(P), "LFP": float(lfp), "flatness": float(flat)}
 
 
