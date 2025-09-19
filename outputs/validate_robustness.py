@@ -1,7 +1,8 @@
 import os
 import sys
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 
@@ -12,10 +13,16 @@ if REPO_ROOT not in sys.path:
 
 from ichimoku_pipeline_web_v4_8_fixed import (
     PROFILES,
-    fetch_ohlcv_range,
     backtest_shared_portfolio,
-    utc_ms,
 )
+
+from src.io_loader import (
+    align_funding_to_ohlcv,
+    load_funding,
+    load_ohlcv,
+)
+
+DATA_ROOT = Path(REPO_ROOT) / "data"
 
 
 def load_baseline(outputs_dir: str) -> dict:
@@ -31,23 +38,73 @@ def load_baseline(outputs_dir: str) -> dict:
     raise FileNotFoundError('No baseline JSON found in outputs/')
 
 
+def _ohlcv_candidates(symbol: str, timeframe: str) -> list[list[Path]]:
+    symbol_key = symbol.replace('/', '_').upper()
+    tf_key = timeframe.lower()
+    candidates: list[list[Path]] = []
+    if symbol_key == "BTC_USDT" and tf_key == "2h":
+        bitstamp = DATA_ROOT / "BTC_USD_2h.csv"
+        binance = DATA_ROOT / "BTC_USDT_2h.csv"
+        fused_clean = DATA_ROOT / "BTC_FUSED_2h_clean.csv"
+        fused = DATA_ROOT / "BTC_FUSED_2h.csv"
+        if bitstamp.exists() and binance.exists():
+            candidates.append([bitstamp, binance])
+        if fused_clean.exists():
+            candidates.append([fused_clean])
+        if fused.exists():
+            candidates.append([fused])
+    else:
+        direct = DATA_ROOT / f"{symbol_key}_{tf_key}.csv"
+        if direct.exists():
+            candidates.append([direct])
+    if not candidates:
+        raise FileNotFoundError(f"aucun CSV OHLCV trouvé pour {symbol} {timeframe}")
+    return candidates
+
+
+def _resolve_funding_paths(symbol: str) -> list[Path]:
+    base = symbol.replace('/', '').upper()
+    for name in (
+        f"{base}_funding_8h.csv",
+        f"{base}_funding.csv",
+        f"{base}_funding_rate_8h.csv",
+    ):
+        path = DATA_ROOT / name
+        if path.exists():
+            return [path]
+    raise FileNotFoundError(f"aucun CSV de funding trouvé pour {symbol}")
+
+
 def build_market(profile: str, use_cache: bool = True) -> dict[str, pd.DataFrame]:
+    del use_cache  # legacy parameter kept for backward compatibility
     cfg = PROFILES[profile]
     timeframe = cfg['timeframe']
-    years_back = cfg['years_back']
-    end_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-    start_dt = end_dt - timedelta(days=int(365.25 * years_back))
-    since_ms = utc_ms(start_dt)
-    until_ms = utc_ms(end_dt)
-    ex = __import__('ccxt').binance({'enableRateLimit': True})
-    out = {}
+    market: dict[str, pd.DataFrame] = {}
     for sym in cfg['symbols']:
-        df = fetch_ohlcv_range(ex, sym, timeframe, since_ms, until_ms, cache_dir='data', use_cache=use_cache)
-        if not df.empty:
-            out[sym] = df
-    if not out:
+        last_error: Exception | None = None
+        df_prices: pd.DataFrame | None = None
+        for bundle in _ohlcv_candidates(sym, timeframe):
+            try:
+                df_prices = load_ohlcv(bundle, tz="UTC")
+                last_error = None
+                break
+            except Exception as exc:  # pragma: no cover - fallback when a bundle is invalid
+                last_error = exc
+                continue
+        if df_prices is None:
+            raise RuntimeError(f"échec du chargement OHLCV pour {sym}: {last_error}")
+        funding_paths = _resolve_funding_paths(sym)
+        df_funding = load_funding(funding_paths)
+        aligned = align_funding_to_ohlcv(df_prices, df_funding, freq=timeframe.upper())
+        close_match = aligned['close']
+        if not close_match.equals(df_prices['close']):
+            raise ValueError(f"close désaligné après fusion pour {sym}")
+        df_combined = df_prices.copy()
+        df_combined['funding'] = aligned['funding']
+        market[sym] = df_combined
+    if not market:
         raise RuntimeError('No market data loaded')
-    return out
+    return market
 
 
 def split_is_oos(df: pd.DataFrame, oos_ratio: float = 0.2) -> tuple[pd.DataFrame, pd.DataFrame]:
