@@ -66,8 +66,13 @@ def compute_monthly_returns(returns: pd.Series) -> pd.Series:
     if not isinstance(returns.index, pd.DatetimeIndex):
         return pd.Series(dtype=float)
     monthly = (1.0 + returns).resample("ME").prod() - 1.0
-    if not monthly.empty:
+    if monthly.empty:
+        return monthly
+    if monthly.index.tz is not None:
+        monthly.index = monthly.index.tz_convert(None).tz_localize(None)
+    else:
         monthly.index = monthly.index.tz_localize(None)
+    monthly.index = monthly.index.to_period("M")
     return monthly
 
 
