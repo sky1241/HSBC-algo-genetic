@@ -43,3 +43,28 @@ def test_enforce_max_drawdown_stops_series():
     adjusted = risk_sizing.enforce_max_drawdown(returns, 0.1)
     assert adjusted.loc[index[1]] == returns.loc[index[1]]
     assert (adjusted.loc[index[2:]] == 0.0).all()
+
+
+def test_atr_mult_by_regime_uses_default_for_unknown():
+    labels = pd.Series(["trend", "range", "transition", "unknown"], index=pd.RangeIndex(4))
+    cfg = {"trend": 1.5, "range": 0.8, "default": 1.0}
+    multipliers = risk_sizing.atr_mult_by_regime(labels, cfg)
+    assert multipliers.loc[0] == 1.5
+    assert multipliers.loc[1] == 0.8
+    assert multipliers.loc[2] == 1.0
+    assert multipliers.loc[3] == 1.0
+
+
+def test_position_size_handles_invalid_inputs():
+    assert risk_sizing.position_size(1000.0, 0.0, 1.0, 2.0) == 0.0
+    assert risk_sizing.position_size(0.0, 1.0, 1.0, 2.0) == 0.0
+    value = risk_sizing.position_size(1000.0, 10.0, 2.0, 1.0)
+    assert value == 50.0
+
+
+def test_apply_funding_gating_thresholds():
+    index = pd.date_range("2024-01-01", periods=4, freq="8h")
+    series = pd.Series([0.01, -0.02, 0.03, 0.0], index=index)
+    gating = risk_sizing.apply_funding_gating(series, {"min": -0.01, "max": 0.02})
+    expected = pd.Series([1.0, 0.0, 0.0, 1.0], index=index)
+    pd.testing.assert_series_equal(gating, expected)
