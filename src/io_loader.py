@@ -292,7 +292,7 @@ def align_funding_to_ohlcv(
     timestamps: list[pd.Timestamp] = []
     values: list[float] = []
     for ts, value in df_funding["funding"].items():
-        start = ts - base_interval + target_delta
+        start = ts - base_interval
         per_slice = float(value) / steps_int
         for i in range(steps_int):
             target_ts = start + i * target_delta
