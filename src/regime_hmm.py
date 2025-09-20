@@ -30,7 +30,7 @@ def fit_regime_model(
 
     if config is None:
         config = HMMConfig()
-    columns = ["dominant_period", "lfp_ratio", "volatility"]
+    columns = ["P1_period", "LFP_ratio", "volatility"]
     X, _ = _prepare_matrix(features, columns)
     if len(X) < config.n_states:
         raise ValueError("Pas assez d'observations pour entraîner le HMM")
@@ -52,7 +52,7 @@ def predict_regimes(
     """Predict the hidden state sequence for ``features`` using ``model``."""
 
     if columns is None:
-        columns = ("dominant_period", "lfp_ratio", "volatility")
+        columns = ("P1_period", "LFP_ratio", "volatility")
     X, idx = _prepare_matrix(features, columns)
     if len(X) == 0:
         return pd.Series(dtype=float, index=features.index)

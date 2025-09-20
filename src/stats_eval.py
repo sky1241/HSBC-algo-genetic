@@ -47,7 +47,9 @@ def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, floa
     mdd = float(drawdown.min()) if not drawdown.empty else float("nan")
     calmar = float(cagr / abs(mdd)) if mdd < 0 and np.isfinite(cagr) else float("nan")
     if isinstance(returns.index, pd.DatetimeIndex):
-        monthly = (1.0 + returns).resample("M").prod() - 1.0
+        monthly = (1.0 + returns).resample("ME").prod() - 1.0
+        if not monthly.empty:
+            monthly = monthly.tz_localize(None)
         per_month = float(monthly.mean()) if not monthly.empty else float("nan")
     else:
         per_month = float("nan")
@@ -63,8 +65,9 @@ def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, floa
 def compute_monthly_returns(returns: pd.Series) -> pd.Series:
     if not isinstance(returns.index, pd.DatetimeIndex):
         return pd.Series(dtype=float)
-    monthly = (1.0 + returns).resample("M").prod() - 1.0
-    monthly.index = monthly.index.to_period("M").to_timestamp("M")
+    monthly = (1.0 + returns).resample("ME").prod() - 1.0
+    if not monthly.empty:
+        monthly.index = monthly.index.tz_localize(None)
     return monthly
 
 
@@ -178,7 +181,7 @@ def _plot_boxplots(metrics_long: pd.DataFrame, output_dir: Path) -> None:
         ]
         labels = ["phaseaware", "baseline"]
         plt.figure(figsize=(6, 4))
-        plt.boxplot(data, labels=labels, notch=True)
+        plt.boxplot(data, tick_labels=labels, notch=True)
         plt.title(f"Distribution {metric} (global)")
         plt.tight_layout()
         plt.savefig(output_dir / f"boxplot_{metric}.png", dpi=150)
