@@ -12,7 +12,18 @@ from . import features_fourier, optimizer, regime_hmm, risk_sizing, stats_eval
 
 @dataclass(slots=True)
 class WalkForwardConfig:
-    n_states: int = 3
+    n_states: int | None = 3
+    hmm_state_candidates: Sequence[int] = (2, 3, 4)
+    hmm_feature_cols: Sequence[str] = ("P1_period", "LFP_ratio", "volatility")
+    hmm_min_duration_frac: float = 0.05
+    hmm_min_trade_frac: float = 0.05
+    hmm_min_trades: float = 5.0
+    hmm_min_obs: int = 15
+    hmm_duration_col: str | None = None
+    hmm_trade_count_col: str | None = None
+    hmm_quantiles: tuple[float, float] = (0.25, 0.75)
+    hmm_fourier_p1_col: str = "P1_period"
+    hmm_fourier_lfp_col: str = "LFP_ratio"
     n_trials: int = 25
     welch_nperseg_grid: Sequence[int] = (128, 256, 512)
     welch_noverlap: float = 0.5
@@ -43,8 +54,18 @@ class WFAResult:
 
 
 def _prepare_phases(series: pd.Series) -> pd.Series:
-    mapped = series.copy()
-    mapped = mapped.map(lambda x: f"phase_{int(x)}" if pd.notna(x) else np.nan)
+    def _map(value: object) -> object:
+        if pd.isna(value):
+            return np.nan
+        if isinstance(value, (str, bytes)):
+            return str(value)
+        if isinstance(value, (np.integer, int)):
+            return f"phase_{int(value)}"
+        if isinstance(value, (np.floating, float)) and np.isfinite(value):
+            return f"phase_{int(value)}"
+        return str(value)
+
+    mapped = series.map(_map)
     return mapped.astype("object")
 
 
@@ -101,7 +122,36 @@ def run_walk_forward(
     skipped: list[dict[str, object]] = []
 
     for seed in seeds:
-        hmm_cfg = regime_hmm.HMMConfig(n_states=config.n_states)
+        if config.hmm_state_candidates:
+            candidate_states = tuple(
+                dict.fromkeys(int(s) for s in config.hmm_state_candidates if int(s) > 0)
+            )
+        else:
+            candidate_states = ()
+        if config.n_states is not None:
+            candidate_states = (int(config.n_states),)
+        if not candidate_states:
+            candidate_states = (2, 3, 4)
+        hmm_cfg: dict[str, object] = {
+            "feature_cols": list(config.hmm_feature_cols),
+            "K": candidate_states,
+            "seed": seed,
+            "min_duration_frac": config.hmm_min_duration_frac,
+            "min_trade_frac": config.hmm_min_trade_frac,
+            "min_trades": config.hmm_min_trades,
+            "min_obs": config.hmm_min_obs,
+            "fourier_cols": {
+                "P1": config.hmm_fourier_p1_col,
+                "LFP": config.hmm_fourier_lfp_col,
+            },
+            "quantiles": config.hmm_quantiles,
+            "return_train_states": True,
+        }
+        if config.hmm_duration_col:
+            hmm_cfg["duration_col"] = config.hmm_duration_col
+        if config.hmm_trade_count_col:
+            hmm_cfg["trade_count_col"] = config.hmm_trade_count_col
+
         opt_cfg = optimizer.OptimiserConfig(n_trials=config.n_trials, seed=seed)
         for idx in range(config.min_train_years, len(years)):
             test_year = years[idx]
@@ -112,16 +162,22 @@ def run_walk_forward(
                 continue
             test_df = df[df.index.year == test_year]
             train_features = features.loc[train_df.index]
+            test_features = features.loc[test_df.index]
             try:
-                model = regime_hmm.fit_regime_model(train_features, hmm_cfg, random_state=seed)
+                hmm_result = regime_hmm.apply_hmm(train_features, test_features, hmm_cfg)
             except ValueError:
                 skipped.append({"seed": seed, "year": test_year, "reason": "hmm_fit"})
                 continue
-            train_states = regime_hmm.predict_regimes(model, train_features)
-            train_phases = _prepare_phases(train_states)
-            test_features = features.loc[test_df.index]
-            test_states = regime_hmm.predict_regimes(model, test_features)
-            test_phases = _prepare_phases(test_states)
+            test_states = hmm_result["oos_states"].reindex(test_df.index)
+            if "train_states" in hmm_result:
+                train_states = hmm_result["train_states"].reindex(train_df.index)
+            elif hmm_result.get("model") is None:
+                train_states = regime_hmm.rules_fourier(train_features, train_features, hmm_cfg)
+                train_states = train_states.reindex(train_df.index)
+            else:
+                train_states = pd.Series(np.nan, index=train_df.index, name="state")
+            train_phases = _prepare_phases(train_states).reindex(train_df.index)
+            test_phases = _prepare_phases(test_states).reindex(test_df.index)
             if test_phases.isna().all():
                 skipped.append({"seed": seed, "year": test_year, "reason": "no_phases"})
                 continue

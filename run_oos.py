@@ -20,7 +20,7 @@ from typing import Sequence
 
 import pandas as pd
 
-from src import features_fourier, io_loader, optimizer, regime_hmm, risk_sizing, stats_eval, wfa
+from src import features_fourier, io_loader, optimizer, risk_sizing, stats_eval, wfa
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -160,9 +160,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         lfp_horizon_days=args.lfp_horizon_days,
         volatility_window=args.volatility_window,
     )
-    hmm_cfg = regime_hmm.HMMConfig(n_states=args.n_states)
+    if config.n_states is not None:
+        hmm_candidates = (int(config.n_states),)
+    else:
+        hmm_candidates = tuple(dict.fromkeys(int(s) for s in config.hmm_state_candidates))
     print(f"Fourier config: {feature_cfg}")
-    print(f"HMM config: {hmm_cfg}")
+    print(f"HMM state candidates: {hmm_candidates}")
+    print(f"HMM feature columns: {list(config.hmm_feature_cols)}")
     preview_slice = df.head(min(200, len(df)))
     preview_funding = None
     if funding_series is not None:
