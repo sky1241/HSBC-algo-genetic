@@ -14,8 +14,13 @@ from . import features_fourier, optimizer, regime_hmm, risk_sizing, stats_eval
 class WalkForwardConfig:
     n_states: int = 3
     n_trials: int = 25
-    feature_window: int = 128
-    lfp_cutoff: float = 0.1
+    welch_nperseg_grid: Sequence[int] = (128, 256, 512)
+    welch_noverlap: float = 0.5
+    welch_window: str = "hann"
+    lfp_horizon_days: float = 5.0
+    volatility_window: int = 96
+    fs_per_day: float | None = None
+    price_col: str = "close"
     min_train_size: int = 200
     min_train_years: int = 1
     start_year: int | None = None
@@ -24,6 +29,8 @@ class WalkForwardConfig:
         default_factory=lambda: optimizer.BASELINE_PARAMS.copy()
     )
     periods_per_year: int = 252
+    taker_fee: float = 0.0004
+    max_drawdown: float = 0.5
 
 
 @dataclass(slots=True)
@@ -59,18 +66,27 @@ def run_walk_forward(
     df: pd.DataFrame,
     seeds: Sequence[int],
     config: WalkForwardConfig,
+    *,
+    funding: pd.Series | None = None,
 ) -> WFAResult:
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("L'index doit être de type DatetimeIndex")
     df = df.sort_index()
-    features = features_fourier.compute_fourier_features(
-        df,
-        features_fourier.FourierConfig(
-            window=config.feature_window,
-            lfp_cutoff=config.lfp_cutoff,
-            price_col="close",
-        ),
+    fs_per_day = (
+        float(config.fs_per_day)
+        if config.fs_per_day is not None
+        else features_fourier.estimate_fs_per_day(df.index)
     )
+    features_cfg = features_fourier.FourierConfig(
+        price_col=config.price_col,
+        fs_per_day=fs_per_day,
+        window=config.welch_window,
+        nperseg_grid=config.welch_nperseg_grid,
+        noverlap_ratio=config.welch_noverlap,
+        lfp_horizon_days=config.lfp_horizon_days,
+        volatility_window=config.volatility_window,
+    )
+    features = features_fourier.compute_fourier_features(df, features_cfg)
     years = sorted(df.index.year.unique())
     if config.start_year is not None:
         years = [y for y in years if y >= config.start_year]
@@ -109,7 +125,10 @@ def run_walk_forward(
             if test_phases.isna().all():
                 skipped.append({"seed": seed, "year": test_year, "reason": "no_phases"})
                 continue
-            test_phases = test_phases.fillna(method="ffill").fillna(method="bfill").fillna("phase_unknown")
+            test_phases = test_phases.ffill().bfill().fillna("phase_unknown")
+            funding_slice = None
+            if funding is not None:
+                funding_slice = funding.reindex(test_df.index).fillna(0.0)
             params_by_phase = optimizer.optimise_phase_parameters(
                 train_df,
                 train_phases,
@@ -126,8 +145,17 @@ def run_walk_forward(
                 test_df,
                 test_phases,
                 params_by_phase,
+                fee=config.taker_fee,
+                funding=funding_slice,
+                max_drawdown=config.max_drawdown,
             )
-            baseline_returns = risk_sizing.simulate_strategy(test_df, config.baseline_params)
+            baseline_returns = risk_sizing.simulate_strategy(
+                test_df,
+                config.baseline_params,
+                fee=config.taker_fee,
+                funding=funding_slice,
+                max_drawdown=config.max_drawdown,
+            )
             records = pd.DataFrame(
                 {
                     "timestamp": test_df.index,

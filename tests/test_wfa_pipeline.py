@@ -37,16 +37,20 @@ def test_walk_forward_pipeline(tmp_path: Path) -> None:
     csv_path = tmp_path / "mock.csv"
     df.reset_index().to_csv(csv_path, index=False)
     loaded = io_loader.load_ohlcv_csv(csv_path)
+    funding = pd.Series(0.0005, index=loaded.index, name="funding_rate")
     config = wfa.WalkForwardConfig(
         n_states=2,
         n_trials=5,
-        feature_window=32,
-        lfp_cutoff=0.2,
+        welch_nperseg_grid=(64,),
+        welch_noverlap=0.5,
+        lfp_horizon_days=10.0,
+        volatility_window=32,
         min_train_size=200,
         min_train_years=1,
         periods_per_year=365,
+        fs_per_day=1.0,
     )
-    result = wfa.run_walk_forward(loaded, seeds=[0, 1], config=config)
+    result = wfa.run_walk_forward(loaded, seeds=[0, 1], config=config, funding=funding)
     assert not result.returns.empty
     assert {"phaseaware", "baseline"} <= set(result.returns["strategy"].unique())
     reports_dir = tmp_path / "reports"
@@ -61,6 +65,16 @@ def test_run_oos_main(tmp_path: Path) -> None:
     csv_path = tmp_path / "mock.csv"
     df.reset_index().to_csv(csv_path, index=False)
     out_dir = tmp_path / "out"
+    funding_index = pd.date_range("2018-01-01", "2023-12-31", freq="8h")
+    funding_df = pd.DataFrame(
+        {
+            "timestamp": funding_index,
+            "funding_rate": np.linspace(0.0002, 0.0004, len(funding_index)),
+        }
+    )
+    funding_path = tmp_path / "funding.csv"
+    funding_df.to_csv(funding_path, index=False)
+
     args = [
         "--data",
         str(csv_path),
@@ -73,16 +87,30 @@ def test_run_oos_main(tmp_path: Path) -> None:
         "2",
         "--n-trials",
         "5",
-        "--feature-window",
+        "--welch-nperseg",
+        "64",
+        "--welch-noverlap",
+        "0.5",
+        "--welch-window",
+        "hann",
+        "--lfp-horizon-days",
+        "10.0",
+        "--volatility-window",
         "32",
-        "--lfp-cutoff",
-        "0.2",
+        "--fs-per-day",
+        "1.0",
         "--periods-per-year",
         "365",
         "--start-year",
         "2019",
         "--end-year",
         "2022",
+        "--funding",
+        str(funding_path),
+        "--taker-fee",
+        "0.001",
+        "--max-mdd",
+        "0.4",
     ]
     exit_code = run_oos.main(args)
     assert exit_code == 0
