@@ -98,3 +98,39 @@ def test_run_oos_main(tmp_path: Path) -> None:
     exit_code = run_oos.main(args)
     assert exit_code == 0
     assert (out_dir / "wilcoxon_comparison.csv").exists()
+
+
+def test_run_oos_skips_evaluation_when_returns_invalid(tmp_path: Path, capsys) -> None:
+    df = _make_mock_dataset().loc["2018":"2019"]
+    csv_path = tmp_path / "short.csv"
+    df.reset_index().to_csv(csv_path, index=False)
+    out_dir = tmp_path / "short_out"
+    args = [
+        "--data",
+        str(csv_path),
+        "--output",
+        str(out_dir),
+        "--seeds",
+        "0",
+        "--n-states",
+        "2",
+        "--n-trials",
+        "1",
+        "--welch-nperseg",
+        "64",
+        "--min-train-size",
+        "5000",
+        "--fs-per-day",
+        "1.0",
+        "--periods-per-year",
+        "365",
+    ]
+    exit_code = run_oos.main(args)
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "DataFrame des retours vide" in captured.out
+    assert not (out_dir / "wilcoxon_comparison.csv").exists()
+    skipped_path = out_dir / "skipped_folds.csv"
+    assert skipped_path.exists()
+    skipped_df = pd.read_csv(skipped_path)
+    assert not skipped_df.empty
