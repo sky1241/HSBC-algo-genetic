@@ -125,6 +125,7 @@ def _make_config(args: argparse.Namespace, periods_per_year: int) -> wfa.WalkFor
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     data_path = Path(args.data)
+    output_path = Path(args.output)
     df = io_loader.load_ohlcv_csv(data_path)
     df = io_loader.ensure_ohlcv_dataframe(df)
     periods_per_year = args.periods_per_year or io_loader.infer_periods_per_year(df.index)
@@ -145,9 +146,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     preview = risk_sizing.simulate_strategy(df.head(min(200, len(df))), config.baseline_params)
     print(f"Baseline risk sizing preview: {preview.head(3).to_list()}")
     result = wfa.run_walk_forward(df, args.seeds, config)
-    evaluation = stats_eval.evaluate_results(result.returns, periods_per_year, args.output)
-    summary = evaluation.summary
-    global_summary = summary[summary["phase"] == "global"]
+    returns_df = result.returns
+    expected_columns = {"timestamp", "return", "strategy", "seed", "phase"}
+    evaluation: stats_eval.EvaluationResult | None = None
+    summary = pd.DataFrame()
+    if not isinstance(returns_df, pd.DataFrame):
+        print(
+            "Résultats WFA inattendus: objet de retours non conforme, "
+            "évaluation statistique sautée."
+        )
+    elif returns_df.empty:
+        print("Résultats WFA: DataFrame des retours vide, évaluation statistique sautée.")
+    else:
+        missing_columns = expected_columns.difference(returns_df.columns)
+        if missing_columns:
+            missing_list = ", ".join(sorted(missing_columns))
+            print(
+                "Résultats WFA incomplets: colonnes manquantes "
+                f"({missing_list}). Évaluation statistique sautée."
+            )
+        else:
+            evaluation = stats_eval.evaluate_results(returns_df, periods_per_year, output_path)
+            summary = evaluation.summary
+    if "phase" in summary.columns:
+        global_summary = summary[summary["phase"] == "global"]
+    else:
+        global_summary = pd.DataFrame()
     if not global_summary.empty:
         print("\nRésumé global (médiane / IQR):")
         for _, row in global_summary.iterrows():
@@ -157,10 +181,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
     else:
         print("Aucun résultat disponible pour la synthèse globale.")
-    print(f"\nRapports sauvegardés dans: {Path(args.output).resolve()}")
+    if evaluation is not None:
+        print(f"\nRapports sauvegardés dans: {output_path.resolve()}")
+    else:
+        print("\nAucun rapport généré en l'absence de retours exploitables.")
     if result.skipped_folds:
         skipped_df = pd.DataFrame(result.skipped_folds)
-        skipped_path = Path(args.output) / "skipped_folds.csv"
+        skipped_path = output_path / "skipped_folds.csv"
+        skipped_path.parent.mkdir(parents=True, exist_ok=True)
         skipped_df.to_csv(skipped_path, index=False)
         print(f"Folds ignorés: {len(skipped_df)} (voir {skipped_path})")
     return 0
