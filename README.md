@@ -72,3 +72,23 @@ Licence
 Ce projet est distribué sous licence MIT — voir [LICENSE](LICENSE). Usage à des fins éducatives et expérimentales. Le trading comporte des risques.
 
 
+
+Walk-forward OOS (phase-aware)
+------------------------------
+Un pipeline complet est fourni pour lancer une analyse walk-forward annualisée (features Fourier + HMM + optimisation Ichimoku par phase) et comparer la stratégie phase-aware à la baseline 9-26-52-26.
+
+Commande minimale :
+
+```bash
+python run_oos.py --data path/to/BTC_USDT.csv --output outputs/wfa --seeds 0 1 2
+```
+
+Le script :
+
+- charge les données avec ``io_loader`` ;
+- calcule les features Fourier (``features_fourier``) ;
+- ajuste un HMM (``regime_hmm``) et optimise les paramètres par phase (``optimizer``) ;
+- applique le sizing simplifié (``risk_sizing``) ;
+- orchestre le walk-forward expanding (``wfa``) et agrège les métriques (``stats_eval``).
+
+Les métriques (Sharpe, Calmar, CAGR, MDD, moyenne mensuelle) sont exportées dans ``outputs/wfa`` avec comparatif Wilcoxon/Hodges–Lehmann contre la baseline. Des tests unitaires (``pytest``) valident le flux complet avec un dataset synthétique.
