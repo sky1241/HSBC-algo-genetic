@@ -58,3 +58,22 @@ Prochaines étapes (priorisées)
 4) Mise en page thèse continue (ajout figures et tableaux synthèse au fil de l’eau).
 
 
+
+Mise à jour — 2025-09-24 (actions concrètes K3/K5, phase-aware)
+
+- Objectif 1 (Semaine 1–3): stabiliser K3/K5 par phase
+  - Lancer/achever 30 seeds par K (phase puis fixed), 300 trials, MDD≤50%, DATA locale, résultats sur E:.
+  - Agrégation par phase: médiane/IQR des paramètres (tenkan/kijun/senkouB/shift/atr_mult) et des métriques (Calmar, Sharpe, Lyap, rendement mensuel OOS).
+  - Critères de stabilité: IQR/median ≤ 10–15% par phase; si non atteint, augmenter les seeds.
+
+- Objectif 2 (Semaine 3–4): métriques mensuelles OOS par phase
+  - Extraire rendements mensuels OOS par phase; calculer médiane, IQR, CV; filtrer sous MDD≤50%.
+  - Sélectionner K (3 vs 5) et mode (phase vs fixed) par Calmar/Sharpe/Lyap, pondérés, avec contrainte MDD.
+
+- Objectif 3 (Semaine 5): timeframe gagnant
+  - Comparer H2 vs D1 (avec anti‑alias D1) sur le meilleur K/mode (réglages figés par phase).
+  - Retenir le timeframe par Calmar (MDD≤50%) + robustesse mensuelle.
+
+- Objectif 4 (Semaine 6): documentation et release
+  - Mettre à jour `docs/FOURIER_CONCLUSIONS/` (conclusion datée) et `docs/TOP_BEST_RESULTS.md`.
+  - Générer graphs/tableaux; préparer un draft de publication et pack de réplication.

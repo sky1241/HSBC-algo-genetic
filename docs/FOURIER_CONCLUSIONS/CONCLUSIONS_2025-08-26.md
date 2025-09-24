@@ -50,3 +50,18 @@ Sources:
   - Dominance de basses fréquences sur longues fenêtres ⇒ vigilance sur non‑stationnarité; conserver fenêtres roulantes + contrôle IS/OOS.
   - Périodes proches des bornes de fenêtre (biais de Welch) à surveiller; compléter avec STFT/ondelettes si nécessaire.
 
+### Mise à jour — 2025-09-24
+
+- Croisement Fourier/HMM (BTC Fused 2h, WFA annuel, MDD≤50%)
+  - Classement par Calmar/Lyapunov (préliminaire): K3 > K5 >> K8 ~ 0 > K2 < 0.
+  - Phase-aware: en régimes tendanciels, réglages Ichimoku « longs » (kijun/senkouB élevés, shift élargi) dominent; en régimes neutres, réglages plus « courts ».
+  - Référence: K3 seed=123 (run antérieur) Eqx×2.63, MDD≈8.8%, Calmar≈0.82.
+
+- Robustesse et agrégation
+  - Médianes/IQR par phase (K3/K5) différencient bien les paramètres; IQR encore élevé à 1–2 seeds ⇒ viser ≥10–15 seeds avant gel.
+  - Exclure les segments « nan » du mapping.
+
+- Implications opérationnelles
+  - Prioriser K3 puis K5 (phase) pour finaliser 30 seeds; sélection par Calmar (CAGR/MDD) sous MDD≤50%, Sharpe et Lyap en appui.
+  - Calculer rendements mensuels OOS par phase (médiane/IQR) et comparer H2 vs D1 (anti‑alias) pour retenir le timeframe gagnant.
+
