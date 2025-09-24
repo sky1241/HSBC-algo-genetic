@@ -1,0 +1,44 @@
+{
+  "0": {
+    "shift": 57.0,
+    "atr_mult": 13.8,
+    "kijun": 130.0,
+    "tenkan": 26.0,
+    "senkou_b": 78.0
+  },
+  "nan": {
+    "shift": 40.0,
+    "atr_mult": 7.8,
+    "kijun": 7.0,
+    "tenkan": 7.0,
+    "senkou_b": 28.0
+  },
+  "2": {
+    "shift": 39.0,
+    "atr_mult": 11.4,
+    "kijun": 59.0,
+    "tenkan": 24.0,
+    "senkou_b": 64.0
+  },
+  "1": {
+    "shift": 65.0,
+    "atr_mult": 13.65,
+    "kijun": 58.5,
+    "tenkan": 27.5,
+    "senkou_b": 225.0
+  },
+  "4": {
+    "shift": 37.0,
+    "atr_mult": 11.8,
+    "kijun": 100.0,
+    "tenkan": 25.0,
+    "senkou_b": 224.0
+  },
+  "3": {
+    "shift": 54.5,
+    "atr_mult": 7.15,
+    "kijun": 85.5,
+    "tenkan": 21.0,
+    "senkou_b": 168.0
+  }
+}

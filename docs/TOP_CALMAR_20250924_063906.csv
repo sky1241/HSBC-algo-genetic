@@ -1,0 +1,6 @@
+"K","mode","seed","calmar","cagr","max_dd","sharpe","equity_mult","trades","years","file"
+"K3","phase","123","0.8150589050308273","7.14%","8.76%","0.5575025491760355","2.6273586970684937","507","14","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k3_fast_atrwide\seed_123\WFA_phase_K3_BTC_fused_20250920_100217.json"
+"K5","phase","1","0.6574484984940785","3.36%","5.12%","6.09858466619548","1.5889749859327307","177","14","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k5\seed_1\WFA_phase_K5_BTC_fused_20250923_111330.json"
+"K3","phase","1","0.25358697544010517","2.20%","8.69%","23.738126938473062","1.35695941159362","463","14","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k3\seed_1\WFA_phase_K3_BTC_fused_20250923_073125.json"
+"K8","phase","1","0.010698771268236778","0.08%","7.07%","-1.3254802226224296","1.0106354095395182","410","14","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k8\seed_1\WFA_phase_K8_BTC_fused_20250923_080013.json"
+"K2","phase","1","-0.02804988435913313","-1.10%","39.23%","-2.2905657814720817","0.8564974363252522","483","14","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k2\seed_1\WFA_phase_K2_BTC_fused_20250923_182005.json"

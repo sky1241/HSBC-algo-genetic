@@ -1,0 +1,5 @@
+Microsoft.PowerShell.Commands.FileHashInfo
+Microsoft.PowerShell.Commands.FileHashInfo
+Microsoft.PowerShell.Commands.FileHashInfo
+Microsoft.PowerShell.Commands.FileHashInfo
+Microsoft.PowerShell.Commands.FileHashInfo

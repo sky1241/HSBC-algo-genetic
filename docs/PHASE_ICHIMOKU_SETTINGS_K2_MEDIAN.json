@@ -1,0 +1,23 @@
+{
+  "nan": {
+    "shift": 40.0,
+    "atr_mult": 7.8,
+    "kijun": 7.0,
+    "tenkan": 7.0,
+    "senkou_b": 28.0
+  },
+  "0": {
+    "shift": 34.5,
+    "atr_mult": 8.75,
+    "kijun": 46.0,
+    "tenkan": 24.0,
+    "senkou_b": 160.5
+  },
+  "1": {
+    "shift": 69.0,
+    "atr_mult": 12.9,
+    "kijun": 95.0,
+    "tenkan": 19.0,
+    "senkou_b": 171.0
+  }
+}

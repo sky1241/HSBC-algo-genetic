@@ -19,7 +19,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -53,7 +53,8 @@ def _load_btc_fused(timeframe: str = "2h") -> pd.DataFrame:
     return pipe.ensure_utc_index(df)
 
 
-def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, seed: int | None, jobs: int, loss_mult: float) -> Dict[str, float]:
+def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, seed: int | None, jobs: int, loss_mult: float,
+                       progress_path: Optional[Path] = None, folds_done: int = 0, folds_total: int = 1) -> Dict[str, float]:
     if optuna is None:
         raise RuntimeError("Optuna non disponible. pip install optuna")
 
@@ -76,7 +77,30 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         sampler=optuna.samplers.TPESampler(seed=seed, multivariate=True),
         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=5, reduction_factor=3),
     )
-    study.optimize(_objective, n_trials=int(n_trials), n_jobs=int(jobs))
+    def _cb(st: "optuna.study.Study", tr: "optuna.trial.FrozenTrial") -> None:  # type: ignore[name-defined]
+        if progress_path is None:
+            return
+        try:
+            # trial.number is 0-based; percent is coarse: (folds_done + (trial+1)/n_trials) / folds_total
+            tnum = int(getattr(tr, "number", 0)) + 1
+            frac_trials = float(tnum) / float(max(1, int(n_trials)))
+            percent = max(0.0, min(100.0, 100.0 * (float(folds_done) + frac_trials) / float(max(1, folds_total))))
+            payload = {
+                "folds_done": int(folds_done),
+                "folds_total": int(folds_total),
+                "trial": int(tnum),
+                "trials_total": int(n_trials),
+                "percent": float(round(percent, 2)),
+                "phase": "optuna"
+            }
+            tmp = str(progress_path) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False)
+            os.replace(tmp, progress_path)
+        except Exception:
+            pass
+
+    study.optimize(_objective, n_trials=int(n_trials), n_jobs=int(jobs), callbacks=[_cb])
     bp = study.best_trial.params
     # Normalize keys
     params = {
@@ -190,11 +214,14 @@ def run_wfa(
     atr_sweep_span: float = 0.0,
     atr_sweep_step: float = 0.2,
     mdd_max: float | None = None,
+    progress_path: Optional[Path] = None,
 ) -> Tuple[List[FoldResult], Dict[str, float]]:
     timeframe = "2h"
     folds: List[FoldResult] = []
     if granularity == "annual":
         y0, y1 = _year_bounds(df)
+        folds_total = max(0, (y1 - (y0 + 1) + 1))
+        folds_done = 0
         for y in range(y0 + 1, y1 + 1):
             train_start = pd.Timestamp(f"{y0}-01-01"); train_end = pd.Timestamp(f"{y-1}-12-31")
             test_start = pd.Timestamp(f"{y}-01-01");  test_end = pd.Timestamp(f"{y}-12-31")
@@ -202,7 +229,8 @@ def run_wfa(
             test_df = df.loc[test_start:test_end]
             if train_df.empty or test_df.empty:
                 continue
-            params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult)
+            params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult,
+                                        progress_path=progress_path, folds_done=folds_done, folds_total=folds_total or 1)
             if atr_sweep:
                 params = _sweep_atr_local(train_df, timeframe, params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
             metrics = _apply_on_test(test_df, timeframe, params, loss_mult)
@@ -213,6 +241,25 @@ def run_wfa(
                 params=params,
                 metrics=metrics,
             ))
+            # Update coarse progress at end of fold
+            folds_done += 1
+            if progress_path is not None:
+                try:
+                    percent = max(0.0, min(100.0, 100.0 * float(folds_done) / float(max(1, folds_total))))
+                    payload = {
+                        "folds_done": int(folds_done),
+                        "folds_total": int(folds_total),
+                        "trial": None,
+                        "trials_total": int(n_trials),
+                        "percent": float(round(percent, 2)),
+                        "phase": "fold_complete"
+                    }
+                    tmp = str(progress_path) + ".tmp"
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(payload, f, ensure_ascii=False)
+                    os.replace(tmp, progress_path)
+                except Exception:
+                    pass
     else:  # monthly rolling 12m train
         months = _month_list(df)
         for i in range(12, len(months)):
@@ -287,6 +334,7 @@ def main() -> int:
 
     # Clamp MDD à ≤ 0.50 par sécurité
     _mdd = 0.50 if args.mdd_max is None else min(float(args.mdd_max), 0.50)
+    progress_path = out_dir / "PROGRESS.json"
     folds, overall = run_wfa(
         df,
         args.granularity,
@@ -298,6 +346,7 @@ def main() -> int:
         float(args.atr_sweep_span),
         float(args.atr_sweep_step),
         _mdd,
+        progress_path=progress_path,
     )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")

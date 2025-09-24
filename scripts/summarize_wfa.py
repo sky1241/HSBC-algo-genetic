@@ -127,8 +127,10 @@ def main() -> int:
     ap.add_argument("--out", type=str, help="Output summary path", default=None)
     args = ap.parse_args()
 
-    annual_dirs = [Path(args.annual), *(Path(args.annual).glob("seed_*"))]
-    monthly_dirs = [Path(args.monthly), *(Path(args.monthly).glob("seed_*"))]
+    # Only pass the root directories; summarize_dir will recurse.
+    # Passing both root and subdirs would double-count files.
+    annual_dirs = [Path(args.annual)]
+    monthly_dirs = [Path(args.monthly)]
 
     annual_s = summarize_dir(annual_dirs)
     monthly_s = summarize_dir(monthly_dirs)
