@@ -73,12 +73,14 @@ def load_trials(jsonl_path: Path) -> pd.DataFrame:
 
 def discover_jsonl_paths(k_arg: str, root: Path) -> List[Path]:
     paths: List[Path] = []
-    if "," in k_arg:
-        for part in [x.strip().upper() for x in k_arg.split(",") if x.strip()]:
+    k_arg_u = k_arg.strip().upper()
+    # Phase JSONL selection
+    if "," in k_arg_u:
+        for part in [x.strip().upper() for x in k_arg_u.split(",") if x.strip()]:
             p = root / "outputs" / "trial_logs" / "phase" / part / "trials_from_wfa.jsonl"
             if p.exists():
                 paths.append(p)
-    elif k_arg.strip().upper() == "ALL":
+    elif k_arg_u == "ALL":
         phase_root = root / "outputs" / "trial_logs" / "phase"
         if phase_root.exists():
             for sub in sorted(phase_root.iterdir()):
@@ -87,9 +89,16 @@ def discover_jsonl_paths(k_arg: str, root: Path) -> List[Path]:
                     if p.exists():
                         paths.append(p)
     else:
-        p = root / "outputs" / "trial_logs" / "phase" / k_arg.strip().upper() / "trials_from_wfa.jsonl"
+        p = root / "outputs" / "trial_logs" / "phase" / k_arg_u / "trials_from_wfa.jsonl"
         if p.exists():
             paths.append(p)
+
+    # Optionally include FIXED aggregate when viewing ALL
+    if k_arg_u == "ALL":
+        p_fixed = root / "outputs" / "trial_logs" / "fixed" / "trials_from_wfa.jsonl"
+        if p_fixed.exists():
+            paths.append(p_fixed)
+
     return paths
 
 
@@ -144,7 +153,7 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
                 )
             )
             trace_meta.append(dict(pair=f"{a}×{b}", phase=ph, a=a, b=b, kind="heat"))
-            # Overlay scatter points (each trial as a dot)
+            # Overlay scatter points (each trial as a dot), aligned to same bins as heatmap
             pts = df[df["phase"] == ph][[a, b, "eq_ret"]].dropna()
             marker = dict(
                 color=(pts["eq_ret"] * 100.0).tolist() if len(pts) else None,
@@ -155,10 +164,19 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
                 opacity=0.75,
                 showscale=False,
             )
+            # Use identical binning so points land on the heatmap grid categories
+            if len(pts):
+                A_pts = cut_series(pts[a], nbins)
+                B_pts = cut_series(pts[b], nbins)
+                x_pts = [str(x) for x in B_pts]
+                y_pts = [str(y) for y in A_pts]
+            else:
+                x_pts = []
+                y_pts = []
             traces.append(
                 go.Scattergl(
-                    x=pts[b] if len(pts) else [],
-                    y=pts[a] if len(pts) else [],
+                    x=x_pts,
+                    y=y_pts,
                     mode="markers",
                     marker=marker,
                     visible=False,
