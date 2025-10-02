@@ -1,0 +1,29 @@
+{
+  "top_overall": [],
+  "per_K": [
+    {
+      "K": "K2",
+      "top": []
+    },
+    {
+      "K": "K3",
+      "top": []
+    },
+    {
+      "K": "K5",
+      "top": []
+    },
+    {
+      "K": "K8",
+      "top": []
+    },
+    {
+      "K": "fixed",
+      "top": []
+    },
+    {
+      "K": "wfa_phase_k3_fast_atrwide",
+      "top": []
+    }
+  ]
+}

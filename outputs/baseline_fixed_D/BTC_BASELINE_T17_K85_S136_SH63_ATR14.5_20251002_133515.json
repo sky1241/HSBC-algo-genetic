@@ -1,0 +1,39 @@
+{
+  "best_params": {
+    "BTC/USDT": {
+      "tenkan": 17,
+      "kijun": 85,
+      "senkou_b": 136,
+      "shift": 63,
+      "atr_mult": 14.5
+    }
+  },
+  "shared_metrics": {
+    "equity_mult": 8.31967706569549,
+    "CAGR": 0.16308866865506788,
+    "sharpe_proxy": 1.7274039799566452,
+    "max_drawdown": 1.0,
+    "trades": 485,
+    "win_rate": 0.020618556701030927,
+    "profit_factor": 2.8346542482169017,
+    "expectancy": 0.7097723391392436,
+    "avg_time_long_hours": 2.0,
+    "avg_time_short_hours": 2.0,
+    "nb_trades_long": 210,
+    "nb_trades_short": 275,
+    "lyapunov_exponent": 0.00453293626208697,
+    "volume_quality": 0.8668041237113402,
+    "liquidity_score": 0.9863268493471811,
+    "calmar_ratio": 0.16308866865506788,
+    "sortino_ratio": 1.1945877515315897,
+    "var_95": -1.4268646478465599,
+    "recovery_factor": 7.31967706569549,
+    "recovery_days": 2239.5792608528973,
+    "margin_calls": 0,
+    "liquidations": 0,
+    "min_equity": 0.9085302465027681,
+    "avg_execution_latency": 0.0,
+    "execution_success_rate": 1.0,
+    "consecutive_errors": 0
+  }
+}

@@ -66,11 +66,30 @@ def low_freq_power_ratio(freqs: np.ndarray, psd: np.ndarray, *, f0: float) -> fl
 
 
 def spectral_flatness(psd: np.ndarray) -> float:
-    """GM/AM de la densité spectrale (proche de 0: picquée; proche de 1: plate)."""
+    """GM/AM de la densité spectrale (proche de 0: piquée; proche de 1: plate).
+
+    Règles corrigées (compatibles thèse):
+    - Si la PSD contient au moins une composante nulle (s_i == 0) et au moins une strictly positive,
+      renvoyer 0 (plateau de GM dû à zéro, sans biais additif).
+    - Si toutes les composantes sont nulles, renvoyer 0.
+    - Sinon, renvoyer GM/AM sur les composantes positives uniquement.
+    """
     psd = np.asarray(psd, dtype=float)
-    psd = psd + 1e-12
-    gmean = np.exp(float(np.nanmean(np.log(psd))))
-    amean = float(np.nanmean(psd))
+    if psd.size == 0:
+        return float("nan")
+    finite = psd[np.isfinite(psd)]
+    if finite.size == 0:
+        return float("nan")
+    has_zero = np.any(finite == 0.0)
+    positives = finite[finite > 0.0]
+    if positives.size == 0:
+        # toutes nulles ou non-positives
+        return 0.0
+    if has_zero:
+        # au moins un zéro et au moins un positif -> GM=0
+        return 0.0
+    gmean = float(np.exp(np.mean(np.log(positives))))
+    amean = float(np.mean(positives))
     return float(gmean / amean) if amean > 0 else float("nan")
 
 

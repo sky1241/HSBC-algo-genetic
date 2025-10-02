@@ -120,9 +120,15 @@ def _select_nperseg(values: Iterable[float], grid: Sequence[int], fs: float, win
 
 
 def _spectral_flatness(power: np.ndarray) -> float:
-    positive = power[(power > 0) & np.isfinite(power)]
-    if positive.size == 0:
+    finite = power[np.isfinite(power)]
+    if finite.size == 0:
         return float("nan")
+    has_zero = np.any(finite == 0.0)
+    positive = finite[finite > 0.0]
+    if positive.size == 0:
+        return 0.0
+    if has_zero:
+        return 0.0
     geometric = float(np.exp(np.mean(np.log(positive))))
     arithmetic = float(np.mean(positive))
     if arithmetic <= 0:

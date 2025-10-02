@@ -41,7 +41,7 @@ Objectif: produire et exploiter P1–P3 (périodes dominantes) et LFP (ratio bas
   - `compute_welch_psd(close, fs) -> (freqs, psd)`
   - `dominant_period(freqs, psd) -> float`
   - `low_freq_power_ratio(freqs, psd, f0) -> float`
-  - `spectral_flatness(psd) -> float`
+  - `spectral_flatness(psd) -> float` (GM/AM sur composantes positives; renvoie 0 si au moins un zéro est présent ou si toutes sont nulles)
   - `fir_lowpass_subsample(df, q, fs, cutoff) -> DataFrame`
   - `anti_aliased_daily(df_2h) -> DataFrame` (H2→D1 avec filtre anti‑alias, cutoff≈0.4 cycles/jour)
 

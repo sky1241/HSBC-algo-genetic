@@ -18,6 +18,7 @@ function Add-TrialsFromWFAJson {
     [string]$OutJsonl
   )
   try {
+    # Ensure newline at end of each record and avoid appending to stale file without header
     $j = Get-Content $JsonPath -Raw | ConvertFrom-Json
     foreach ($fr in $j.folds) {
       $eq  = [double]$fr.metrics.equity_mult
@@ -30,7 +31,7 @@ function Add-TrialsFromWFAJson {
           metrics_train = @{ eq_ret=[double]$ert; max_drawdown=[double]$dd }
           run_context   = @{ phase_label=$kv.Name; fold=$fr.period }
         } | ConvertTo-Json -Compress -Depth 6
-        Add-Content -Path $OutJsonl -Value $rec
+        Add-Content -Path $OutJsonl -Value ($rec + "`n")
       }
     }
   } catch {
@@ -48,6 +49,7 @@ if (-not $files) {
   exit 0
 }
 
+$cleared = @{}
 foreach ($f in $files) {
   $parent = Split-Path -Leaf $f.DirectoryName
   $fallbackK = if ($parent -match 'wfa_phase_k\d+') { $parent.ToUpper().Replace('WFA_PHASE_', '') } else { '' }
@@ -55,6 +57,11 @@ foreach ($f in $files) {
   $outDir = Join-Path $OutputsRoot ("trial_logs/phase/$K")
   New-Item -ItemType Directory -Path $outDir -Force | Out-Null
   $jsonl = Join-Path $outDir 'trials_from_wfa.jsonl'
+  if (-not $cleared.ContainsKey($K)) {
+    # Reset per-K JSONL to avoid single-line concatenation from previous runs
+    Set-Content -Path $jsonl -Value '' -NoNewline
+    $cleared[$K] = $true
+  }
   Add-TrialsFromWFAJson -JsonPath $f.FullName -OutJsonl $jsonl
 }
 

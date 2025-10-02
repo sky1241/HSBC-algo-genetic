@@ -36,8 +36,12 @@ def _stft_window_features(x: np.ndarray, fs: float, n: int) -> dict:
     freqs, psd = compute_welch_psd(x[-n:], fs=fs)
     if len(freqs) == 0:
         return {"centroid": np.nan, "entropy": np.nan, "low_share": np.nan, "high_share": np.nan}
-    psd = psd + 1e-12
-    p = psd / psd.sum()
+    # Avoid epsilon bias: derive probabilities from strictly positive mass only
+    total = float(psd.sum())
+    if total <= 0:
+        return {"centroid": float("nan"), "entropy": float("nan"), "low_share": float("nan"), "high_share": float("nan")}
+    p = psd / total
+    p = np.where(p > 0, p, 0.0)
     centroid = float((freqs * p).sum())
     entropy = float(-(p * np.log(p)).sum())
     # low/high split around 1/10 day^-1 (≈ cycles > 10 jours en H2)

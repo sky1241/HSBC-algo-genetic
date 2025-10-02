@@ -43,6 +43,26 @@ def load_trials(jsonl_path: Path) -> pd.DataFrame:
             except Exception:
                 continue
             params = rec.get("params") or {}
+            # Derive absolute params if only ratios are present
+            try:
+                tenkan_v = params.get("tenkan")
+                kijun_v = params.get("kijun")
+                senkou_v = params.get("senkou_b")
+                r_kijun_v = params.get("r_kijun")
+                r_senkou_v = params.get("r_senkou")
+                if (kijun_v is None or (isinstance(kijun_v, float) and math.isnan(kijun_v))) and tenkan_v is not None and r_kijun_v is not None:
+                    kijun_v = float(r_kijun_v) * float(tenkan_v)
+                if (senkou_v is None or (isinstance(senkou_v, float) and math.isnan(senkou_v))):
+                    base_kijun = kijun_v if kijun_v is not None else (float(r_kijun_v) * float(tenkan_v) if (tenkan_v is not None and r_kijun_v is not None) else None)
+                    if base_kijun is not None and tenkan_v is not None and r_senkou_v is not None:
+                        senkou_v = max(float(base_kijun), float(r_senkou_v) * float(tenkan_v))
+                params = dict(params)
+                if kijun_v is not None:
+                    params["kijun"] = kijun_v
+                if senkou_v is not None:
+                    params["senkou_b"] = senkou_v
+            except Exception:
+                pass
             mt = rec.get("metrics_train") or {}
             eq_ret = mt.get("eq_ret")
             if eq_ret is None:
@@ -114,7 +134,8 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
     # All parameter pairs
     params = ["tenkan", "kijun", "senkou_b", "shift", "atr_mult"]
     pairs = list(combinations(params, 2))
-    phases = sorted([str(x) for x in df["phase"].dropna().unique()]) or ["?"]
+    phases_actual = sorted([str(x) for x in df["phase"].dropna().unique()]) or ["?"]
+    phases = ["ALL"] + phases_actual
 
     traces: List[go.BaseTraceType] = []
     trace_meta: List[Dict[str, Any]] = []
@@ -122,57 +143,87 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
     # Precompute traces for each (pair, phase)
     for (a, b) in pairs:
         for ph in phases:
-            sub = df[df["phase"] == ph][[a, b, "eq_ret"]].dropna()
+            if ph == "ALL":
+                sub = df[[a, b, "eq_ret"]].dropna()
+            else:
+                sub = df[df["phase"] == ph][[a, b, "eq_ret"]].dropna()
             if len(sub) < 20:
                 # build an empty trace placeholder to keep indexing consistent
                 z = np.array([[np.nan]])
-                xcats = [""]
-                ycats = [""]
+                # use numeric axes placeholders
+                xvals = [0]
+                yvals = [0]
+                xtickvals = [0]
+                ytickvals = [0]
+                xticktext = [""]
+                yticktext = [""]
+                x_pts = []
+                y_pts = []
             else:
                 A = cut_series(sub[a], nbins)
                 B = cut_series(sub[b], nbins)
                 piv = sub.assign(A=A, B=B).groupby(["A", "B"])["eq_ret"].median().unstack("B")
                 if piv is None or piv.shape[0] == 0:
                     z = np.array([[np.nan]])
-                    xcats = [""]
-                    ycats = [""]
+                    xvals = [0]
+                    yvals = [0]
+                    xtickvals = [0]
+                    ytickvals = [0]
+                    xticktext = [""]
+                    yticktext = [""]
+                    x_pts = []
+                    y_pts = []
                 else:
+                    # Numeric axes with tick labels from intervals
                     z = piv.values * 100.0  # % color
-                    ycats = [str(x) for x in piv.index]
-                    xcats = [str(x) for x in piv.columns]
+                    ycats_int = list(piv.index)
+                    xcats_int = list(piv.columns)
+                    ny = len(ycats_int)
+                    nx = len(xcats_int)
+                    yvals = list(range(ny))
+                    xvals = list(range(nx))
+                    ytickvals = yvals
+                    xtickvals = xvals
+                    yticktext = [str(x) for x in ycats_int]
+                    xticktext = [str(x) for x in xcats_int]
+                    # Scatter points with jitter inside bins for visibility
+                    pts = (df[[a, b, "eq_ret"]].dropna() if ph == "ALL" else df[df["phase"] == ph][[a, b, "eq_ret"]].dropna())
+                    if len(pts):
+                        A_pts = pd.cut(pts[a], nbins)
+                        B_pts = pd.cut(pts[b], nbins)
+                        a_codes = pd.Categorical(A_pts).codes
+                        b_codes = pd.Categorical(B_pts).codes
+                        rng = np.random.default_rng(abs(hash(f"{a}|{b}|{ph}")) % (2**32))
+                        jitter_x = (rng.random(len(b_codes)) - 0.5) * 0.8
+                        jitter_y = (rng.random(len(a_codes)) - 0.5) * 0.8
+                        x_pts = (b_codes.astype(float) + jitter_x).tolist()
+                        y_pts = (a_codes.astype(float) + jitter_y).tolist()
+                    else:
+                        x_pts = []
+                        y_pts = []
             # Heatmap trace
             traces.append(
                 go.Heatmap(
                     z=z,
-                    x=xcats,
-                    y=ycats,
+                    x=xvals,
+                    y=yvals,
                     colorscale="RdYlGn",
                     zmid=0.0,
                     colorbar=dict(title="eq_ret median (%)"),
                     visible=False,
                 )
             )
-            trace_meta.append(dict(pair=f"{a}×{b}", phase=ph, a=a, b=b, kind="heat"))
-            # Overlay scatter points (each trial as a dot), aligned to same bins as heatmap
-            pts = df[df["phase"] == ph][[a, b, "eq_ret"]].dropna()
+            trace_meta.append(dict(pair=f"{a}×{b}", phase=ph, a=a, b=b, kind="heat", xtickvals=xtickvals, xticktext=xticktext, ytickvals=ytickvals, yticktext=yticktext))
+            # Overlay scatter points (each trial as a dot), jittered within bins for visibility
             marker = dict(
-                color=(pts["eq_ret"] * 100.0).tolist() if len(pts) else None,
+                color=(sub["eq_ret"] * 100.0).tolist() if len(sub) else None,
                 colorscale="RdYlGn",
                 cmin=-max(1.0, abs(float(df["eq_ret"].quantile(0.95) * 100.0))) if len(df) else -50,
                 cmax=max(1.0, abs(float(df["eq_ret"].quantile(0.95) * 100.0))) if len(df) else 50,
-                size=6,
-                opacity=0.75,
+                size=4,
+                opacity=0.6,
                 showscale=False,
             )
-            # Use identical binning so points land on the heatmap grid categories
-            if len(pts):
-                A_pts = cut_series(pts[a], nbins)
-                B_pts = cut_series(pts[b], nbins)
-                x_pts = [str(x) for x in B_pts]
-                y_pts = [str(y) for y in A_pts]
-            else:
-                x_pts = []
-                y_pts = []
             traces.append(
                 go.Scattergl(
                     x=x_pts,
@@ -193,6 +244,11 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
 
     fig = go.Figure(data=traces)
     fig.update_layout(title=title, xaxis_title=trace_meta[0]["b"] if trace_meta else "", yaxis_title=trace_meta[0]["a"] if trace_meta else "")
+    # Set initial tick labels for default trace
+    if trace_meta:
+        m0 = trace_meta[0]
+        fig.update_xaxes(tickvals=m0.get("xtickvals", None), ticktext=m0.get("xticktext", None))
+        fig.update_yaxes(tickvals=m0.get("ytickvals", None), ticktext=m0.get("yticktext", None))
 
     # Build dropdowns for pair and phase
     pair_names = sorted({m["pair"] for m in trace_meta})
@@ -215,11 +271,14 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
     default_phase = phase_names[0] if phase_names else "?"
     for p in pair_names:
         vis = visibility_mask(p, default_phase)
+        # find meta of first matching trace to update ticks
+        meta_idx = next((i for i, m in enumerate(trace_meta) if m["pair"] == p and m["phase"] == default_phase and m["kind"] == "heat"), 0)
+        msel = trace_meta[meta_idx] if trace_meta else {}
         pair_buttons.append(
             dict(
                 label=p,
                 method="update",
-                args=[{"visible": vis}, {"xaxis": {"title": p.split("×")[1]}, "yaxis": {"title": p.split("×")[0]}}],
+                args=[{"visible": vis}, {"xaxis": {"title": p.split("×")[1], "tickvals": msel.get("xtickvals"), "ticktext": msel.get("xticktext")}, "yaxis": {"title": p.split("×")[0], "tickvals": msel.get("ytickvals"), "ticktext": msel.get("yticktext")}}],
             )
         )
     updatemenus.append(dict(buttons=pair_buttons, direction="down", x=0.0, y=1.15, xanchor="left"))
@@ -229,8 +288,10 @@ def build_fig(df: pd.DataFrame, mdd_max: float, nbins: int, title: str) -> go.Fi
     default_pair = pair_names[0] if pair_names else "tenkan×kijun"
     for ph in phase_names:
         vis = visibility_mask(default_pair, ph)
+        meta_idx = next((i for i, m in enumerate(trace_meta) if m["pair"] == default_pair and m["phase"] == ph and m["kind"] == "heat"), 0)
+        msel = trace_meta[meta_idx] if trace_meta else {}
         phase_buttons.append(
-            dict(label=str(ph), method="update", args=[{"visible": vis}])
+            dict(label=str(ph), method="update", args=[{"visible": vis}, {"xaxis": {"tickvals": msel.get("xtickvals"), "ticktext": msel.get("xticktext")}, "yaxis": {"tickvals": msel.get("ytickvals"), "ticktext": msel.get("yticktext")}}])
         )
     updatemenus.append(dict(buttons=phase_buttons, direction="down", x=0.25, y=1.15, xanchor="left"))
 
