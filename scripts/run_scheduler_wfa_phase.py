@@ -23,7 +23,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -66,7 +66,8 @@ def _load_btc_fused(timeframe: str = "2h") -> pd.DataFrame:
 
 
 def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, seed: int | None, jobs: int, loss_mult: float,
-                       progress_path: Optional[Path] = None, folds_done: int = 0, folds_total: int = 1) -> Dict[str, float]:
+                       progress_path: Optional[Path] = None, folds_done: int = 0, folds_total: int = 1,
+                       trial_log_path: Optional[Path] = None, trial_context: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     if optuna is None:
         raise RuntimeError("Optuna non disponible. pip install optuna")
 
@@ -82,6 +83,11 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         dd = float(m.get("max_drawdown", 0.0))
         trades = int(m.get("trades", 0))
         score = 0.6 * sharpe + 0.3 * cagr - 0.3 * dd - (0.5 if trades < 30 else 0.0)
+        try:
+            # Attach train metrics to the trial for callback logging
+            trial.set_user_attr("train_metrics", {k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in m.items()})
+        except Exception:
+            pass
         return score
 
     study = optuna.create_study(
@@ -90,24 +96,43 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=5, reduction_factor=3),
     )
     def _cb(st: "optuna.study.Study", tr: "optuna.trial.FrozenTrial") -> None:  # type: ignore[name-defined]
-        if progress_path is None:
-            return
+        # Update PROGRESS.json if available
+        if progress_path is not None:
+            try:
+                tnum = int(getattr(tr, "number", 0)) + 1
+                frac_trials = float(tnum) / float(max(1, int(n_trials)))
+                percent = max(0.0, min(100.0, 100.0 * (float(folds_done) + frac_trials) / float(max(1, folds_total))))
+                payload = {
+                    "folds_done": int(folds_done),
+                    "folds_total": int(folds_total),
+                    "trial": int(tnum),
+                    "trials_total": int(n_trials),
+                    "percent": float(round(percent, 2)),
+                    "phase": "optuna"
+                }
+                tmp = str(progress_path) + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False)
+                os.replace(tmp, progress_path)
+            except Exception:
+                pass
+
+        # Per-trial JSONL logging (for live heatmaps)
         try:
-            tnum = int(getattr(tr, "number", 0)) + 1
-            frac_trials = float(tnum) / float(max(1, int(n_trials)))
-            percent = max(0.0, min(100.0, 100.0 * (float(folds_done) + frac_trials) / float(max(1, folds_total))))
-            payload = {
-                "folds_done": int(folds_done),
-                "folds_total": int(folds_total),
-                "trial": int(tnum),
-                "trials_total": int(n_trials),
-                "percent": float(round(percent, 2)),
-                "phase": "optuna"
-            }
-            tmp = str(progress_path) + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False)
-            os.replace(tmp, progress_path)
+            if trial_log_path is not None:
+                trial_log_path.parent.mkdir(parents=True, exist_ok=True)
+                rec: Dict[str, Any] = {
+                    "kind": "phase",
+                    "trial_number": int(getattr(tr, "number", 0)),
+                    "params": dict(tr.params or {}),
+                    "score": (float(tr.value) if isinstance(tr.value, (int, float, np.floating)) else tr.value),
+                    "run_context": (trial_context or {}),
+                }
+                tm = getattr(tr, "user_attrs", {}).get("train_metrics") if hasattr(tr, "user_attrs") else None
+                if isinstance(tm, dict):
+                    rec["metrics_train"] = {k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in tm.items()}
+                with open(trial_log_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         except Exception:
             pass
 
@@ -214,6 +239,8 @@ def run_phase_wfa(
     atr_sweep_step: float,
     mdd_max: float | None,
     progress_path: Optional[Path] = None,
+    trial_log_path: Optional[Path] = None,
+    k_hint: Optional[str] = None,
 ) -> Tuple[List[FoldResult], Dict[str, float]]:
     timeframe = "2h"
     folds: List[FoldResult] = []
@@ -242,8 +269,12 @@ def run_phase_wfa(
         params_by_state: Dict[str, Dict[str, float]] = {}
 
         # Fallback: global params if state subset too small
-        global_params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult,
-                                           progress_path=progress_path, folds_done=folds_done, folds_total=folds_total or 1)
+        global_params = _optimize_on_train(
+            train_df, timeframe, n_trials, seed, jobs, loss_mult,
+            progress_path=progress_path, folds_done=folds_done, folds_total=folds_total or 1,
+            trial_log_path=trial_log_path,
+            trial_context={"k": (k_hint or "K"), "fold": f"{y}", "phase_label": "GLOBAL", "seed": seed},
+        )
         if atr_sweep:
             global_params = _sweep_atr_local(train_df, timeframe, global_params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
 
@@ -253,7 +284,11 @@ def run_phase_wfa(
             if len(sub) < 200:
                 params_by_state[st] = dict(global_params)
             else:
-                p = _optimize_on_train(sub, timeframe, n_trials, seed, jobs, loss_mult)
+                p = _optimize_on_train(
+                    sub, timeframe, n_trials, seed, jobs, loss_mult,
+                    trial_log_path=trial_log_path,
+                    trial_context={"k": (k_hint or "K"), "fold": f"{y}", "phase_label": str(st), "seed": seed},
+                )
                 if atr_sweep:
                     p = _sweep_atr_local(sub, timeframe, p, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
                 params_by_state[st] = p
@@ -384,6 +419,22 @@ def main() -> int:
     labels = labels_df.set_index("timestamp").sort_index()["label"].astype(str)
 
     progress_path = out_dir / "PROGRESS.json"
+    # Prepare per-trial JSONL path for live heatmaps
+    k_hint = None
+    try:
+        name = Path(args.labels_csv).stem  # e.g., K3
+        if name.upper().startswith("K"):
+            k_hint = name.upper()
+    except Exception:
+        pass
+    jsonl_path: Optional[Path] = None
+    try:
+        jsonl_dir = ROOT / "outputs" / "trial_logs" / "phase" / (k_hint or "K")
+        jsonl_dir.mkdir(parents=True, exist_ok=True)
+        jsonl_path = jsonl_dir / "trials_from_wfa.jsonl"
+    except Exception:
+        jsonl_path = None
+
     folds, overall = run_phase_wfa(
         df,
         labels,
@@ -397,17 +448,11 @@ def main() -> int:
         float(args.atr_sweep_step),
         (None if args.mdd_max is None else float(args.mdd_max)),
         progress_path=progress_path,
+        trial_log_path=jsonl_path,
+        k_hint=k_hint,
     )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")
-    # Derive K from labels path if possible
-    k_hint = None
-    try:
-        name = Path(args.labels_csv).stem  # e.g., K3
-        if name.upper().startswith("K"):
-            k_hint = name.upper()
-    except Exception:
-        pass
     k_suffix = (k_hint or "K").upper()
     out_json = out_dir / f"WFA_phase_{k_suffix}_BTC_fused_{ts}.json"
 

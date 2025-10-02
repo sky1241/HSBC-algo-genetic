@@ -1,0 +1,160 @@
+{
+  "generated": "20251001_034310",
+  "global_percent": 8.63,
+  "rows": [
+    {
+      "K": "K2",
+      "Kind": "phase",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K2",
+      "Kind": "phase",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K2",
+      "Kind": "phase",
+      "Seed": 3,
+      "Status": "InProgress",
+      "Percent": 85.0
+    },
+    {
+      "K": "K2",
+      "Kind": "fixed",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K2",
+      "Kind": "fixed",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "phase",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "phase",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "phase",
+      "Seed": 3,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "fixed",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "fixed",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K3",
+      "Kind": "fixed",
+      "Seed": 3,
+      "Status": "InProgress",
+      "Percent": 25.8
+    },
+    {
+      "K": "K5",
+      "Kind": "phase",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K5",
+      "Kind": "phase",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K5",
+      "Kind": "phase",
+      "Seed": 3,
+      "Status": "InProgress",
+      "Percent": 100.0
+    },
+    {
+      "K": "K5",
+      "Kind": "fixed",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K5",
+      "Kind": "fixed",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "phase",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "phase",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "phase",
+      "Seed": 3,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "fixed",
+      "Seed": 1,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "fixed",
+      "Seed": 2,
+      "Status": "Done",
+      "Percent": 100.0
+    },
+    {
+      "K": "K8",
+      "Kind": "fixed",
+      "Seed": 3,
+      "Status": "InProgress",
+      "Percent": 61.5
+    }
+  ]
+}

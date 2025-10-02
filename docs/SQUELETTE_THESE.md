@@ -197,3 +197,9 @@
  - En cours
    - Lancement WFA par phase K=3/5 (4 seeds chacun), watcher d’agrégation automatique actif; résumés `docs/WFA_SUMMARY_PHASE_K3.txt` et `_K5.txt` seront générés à la fin.
   - Journal du 2025-09-18 ajouté (bilan du jour, prochaines étapes).
+
+## 📅 Mise à jour du 2025-10-02
+- Avancement WFA phase (BTC H2): global 31.2% (K2/K3/K5/K8)
+- K3 prioritaire (Eqx élevé sous MDD≤50%); K5 en backup défensif; K2/K8 en pause
+- Rapports: `outputs/reports/progress_20251002_083254.csv`, `outputs/reports/metrics_20251002_083254.csv`
+- Note: auto-refresh dashboards instable sous PowerShell; watcher Python ajouté (à confirmer)

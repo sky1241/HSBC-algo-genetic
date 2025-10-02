@@ -19,7 +19,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -54,7 +54,8 @@ def _load_btc_fused(timeframe: str = "2h") -> pd.DataFrame:
 
 
 def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, seed: int | None, jobs: int, loss_mult: float,
-                       progress_path: Optional[Path] = None, folds_done: int = 0, folds_total: int = 1) -> Dict[str, float]:
+                       progress_path: Optional[Path] = None, folds_done: int = 0, folds_total: int = 1,
+                       trial_log_path: Optional[Path] = None, trial_context: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     if optuna is None:
         raise RuntimeError("Optuna non disponible. pip install optuna")
 
@@ -70,6 +71,10 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         dd = float(m.get("max_drawdown", 0.0))
         trades = int(m.get("trades", 0))
         score = 0.6 * sharpe + 0.3 * cagr - 0.3 * dd - (0.5 if trades < 30 else 0.0)
+        try:
+            trial.set_user_attr("train_metrics", {k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in m.items()})
+        except Exception:
+            pass
         return score
 
     study = optuna.create_study(
@@ -78,25 +83,44 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=5, reduction_factor=3),
     )
     def _cb(st: "optuna.study.Study", tr: "optuna.trial.FrozenTrial") -> None:  # type: ignore[name-defined]
-        if progress_path is None:
-            return
+        # Update PROGRESS.json if available
+        if progress_path is not None:
+            try:
+                # trial.number is 0-based; percent is coarse: (folds_done + (trial+1)/n_trials) / folds_total
+                tnum = int(getattr(tr, "number", 0)) + 1
+                frac_trials = float(tnum) / float(max(1, int(n_trials)))
+                percent = max(0.0, min(100.0, 100.0 * (float(folds_done) + frac_trials) / float(max(1, folds_total))))
+                payload = {
+                    "folds_done": int(folds_done),
+                    "folds_total": int(folds_total),
+                    "trial": int(tnum),
+                    "trials_total": int(n_trials),
+                    "percent": float(round(percent, 2)),
+                    "phase": "optuna"
+                }
+                tmp = str(progress_path) + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False)
+                os.replace(tmp, progress_path)
+            except Exception:
+                pass
+
+        # Per-trial JSONL logging for live heatmaps
         try:
-            # trial.number is 0-based; percent is coarse: (folds_done + (trial+1)/n_trials) / folds_total
-            tnum = int(getattr(tr, "number", 0)) + 1
-            frac_trials = float(tnum) / float(max(1, int(n_trials)))
-            percent = max(0.0, min(100.0, 100.0 * (float(folds_done) + frac_trials) / float(max(1, folds_total))))
-            payload = {
-                "folds_done": int(folds_done),
-                "folds_total": int(folds_total),
-                "trial": int(tnum),
-                "trials_total": int(n_trials),
-                "percent": float(round(percent, 2)),
-                "phase": "optuna"
-            }
-            tmp = str(progress_path) + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False)
-            os.replace(tmp, progress_path)
+            if trial_log_path is not None:
+                trial_log_path.parent.mkdir(parents=True, exist_ok=True)
+                rec: Dict[str, Any] = {
+                    "kind": "fixed",
+                    "trial_number": int(getattr(tr, "number", 0)),
+                    "params": dict(tr.params or {}),
+                    "score": (float(tr.value) if isinstance(tr.value, (int, float, np.floating)) else tr.value),
+                    "run_context": (trial_context or {}),
+                }
+                tm = getattr(tr, "user_attrs", {}).get("train_metrics") if hasattr(tr, "user_attrs") else None
+                if isinstance(tm, dict):
+                    rec["metrics_train"] = {k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in tm.items()}
+                with open(trial_log_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         except Exception:
             pass
 
@@ -215,6 +239,7 @@ def run_wfa(
     atr_sweep_step: float = 0.2,
     mdd_max: float | None = None,
     progress_path: Optional[Path] = None,
+    trial_log_path: Optional[Path] = None,
 ) -> Tuple[List[FoldResult], Dict[str, float]]:
     timeframe = "2h"
     folds: List[FoldResult] = []
@@ -229,8 +254,12 @@ def run_wfa(
             test_df = df.loc[test_start:test_end]
             if train_df.empty or test_df.empty:
                 continue
-            params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult,
-                                        progress_path=progress_path, folds_done=folds_done, folds_total=folds_total or 1)
+            params = _optimize_on_train(
+                train_df, timeframe, n_trials, seed, jobs, loss_mult,
+                progress_path=progress_path, folds_done=folds_done, folds_total=folds_total or 1,
+                trial_log_path=trial_log_path,
+                trial_context={"granularity": "annual", "fold": f"{y}", "phase_label": "GLOBAL", "seed": seed},
+            )
             if atr_sweep:
                 params = _sweep_atr_local(train_df, timeframe, params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
             metrics = _apply_on_test(test_df, timeframe, params, loss_mult)
@@ -273,7 +302,11 @@ def run_wfa(
             test_df = df.loc[test_start:test_end]
             if len(train_df) < 200 or len(test_df) < 10:
                 continue
-            params = _optimize_on_train(train_df, timeframe, n_trials, seed, jobs, loss_mult)
+            params = _optimize_on_train(
+                train_df, timeframe, n_trials, seed, jobs, loss_mult,
+                trial_log_path=trial_log_path,
+                trial_context={"granularity": "monthly", "fold": test_start.strftime('%Y-%m'), "phase_label": "GLOBAL", "seed": seed},
+            )
             if atr_sweep:
                 params = _sweep_atr_local(train_df, timeframe, params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
             metrics = _apply_on_test(test_df, timeframe, params, loss_mult)
@@ -285,21 +318,31 @@ def run_wfa(
                 metrics=metrics,
             ))
 
-    # Aggregate OOS by compounding equity
-    eq_mult = 1.0
-    dd_max_acc = 0.0
+    # Aggregate OOS by compounding equity with stitched MDD across folds
+    eq_mult_all = 1.0
+    min_equity_global = 1.0
+    cur_equity = 1.0
     trades_total = 0
     sharpes: List[float] = []
     cagrs: List[float] = []
     for fr in folds:
-        eq_mult *= float(fr.metrics.get("equity_mult", 1.0))
-        dd_max_acc = max(dd_max_acc, float(fr.metrics.get("max_drawdown", 0.0)))
-        trades_total += int(fr.metrics.get("trades", 0))
-        sharpes.append(float(fr.metrics.get("sharpe_proxy", 0.0)))
-        cagrs.append(float(fr.metrics.get("CAGR", 0.0)))
+        m = fr.metrics
+        eq = float(m.get("equity_mult", 1.0))
+        # prefer explicit min_equity if present; else reconstruct from dd
+        me_fold = m.get("min_equity", None)
+        if isinstance(me_fold, (int, float, np.floating)):
+            me = float(me_fold)
+        else:
+            me = float(1.0 - float(m.get("max_drawdown", 0.0)))
+        min_equity_global = min(min_equity_global, cur_equity * me)
+        cur_equity *= eq
+        eq_mult_all *= eq
+        trades_total += int(m.get("trades", 0))
+        sharpes.append(float(m.get("sharpe_proxy", 0.0)))
+        cagrs.append(float(m.get("CAGR", 0.0)))
     overall = {
-        "equity_mult": float(eq_mult),
-        "max_drawdown": float(dd_max_acc),
+        "equity_mult": float(eq_mult_all),
+        "max_drawdown": float(1.0 - min_equity_global),
         "trades": int(trades_total),
         "sharpe_proxy_mean": float(np.mean(sharpes) if sharpes else 0.0),
         "CAGR_mean": float(np.mean(cagrs) if cagrs else 0.0),
@@ -335,6 +378,15 @@ def main() -> int:
     # Clamp MDD à ≤ 0.50 par sécurité
     _mdd = 0.50 if args.mdd_max is None else min(float(args.mdd_max), 0.50)
     progress_path = out_dir / "PROGRESS.json"
+    # Prepare per-trial JSONL path for live heatmaps (fixed)
+    jsonl_path: Optional[Path] = None
+    try:
+        jsonl_dir = ROOT / "outputs" / "trial_logs" / "fixed"
+        jsonl_dir.mkdir(parents=True, exist_ok=True)
+        jsonl_path = jsonl_dir / "trials_from_wfa.jsonl"
+    except Exception:
+        jsonl_path = None
+
     folds, overall = run_wfa(
         df,
         args.granularity,
@@ -347,6 +399,7 @@ def main() -> int:
         float(args.atr_sweep_step),
         _mdd,
         progress_path=progress_path,
+        trial_log_path=jsonl_path,
     )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")
