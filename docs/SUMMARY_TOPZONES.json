@@ -1,5 +1,32 @@
 {
-  "top_overall": [],
+  "top_overall": [
+    {
+      "median_pct": 8.88,
+      "iqr_pct": 2.82,
+      "n": 8,
+      "median_trades": 73,
+      "tenkan": 5.5555,
+      "kijun": 28.0685,
+      "senkou_b": 27.727000000000004,
+      "shift": 43.75,
+      "atr_mult": 13.5775,
+      "kijun_over_tenkan": 5.052380523805238,
+      "senkou_over_kijun": 0.9878333363022607
+    },
+    {
+      "median_pct": 8.09,
+      "iqr_pct": 2.23,
+      "n": 8,
+      "median_trades": 72,
+      "tenkan": 5.5555,
+      "kijun": 28.0685,
+      "senkou_b": 27.727000000000004,
+      "shift": 52.75,
+      "atr_mult": 12.586500000000001,
+      "kijun_over_tenkan": 5.052380523805238,
+      "senkou_over_kijun": 0.9878333363022607
+    }
+  ],
   "per_K": [
     {
       "K": "K2",

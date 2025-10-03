@@ -606,9 +606,16 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     max_trades_per_symbol = 50  # Maximum 50 trades par type par paire (pour 200 signaux/an)
     max_total_trades = 300  # Maximum 300 positions totales (50 par type × 3 paires)
     
-    # STOP LOSSES OPTIMISÉS AVEC ATR (RÉDUCTION DES LIQUIDATIONS !)
+    # STOP LOSSES / GARDES-FOUS
     liquidation_threshold = 0.05  # 5% liquidation threshold (augmenté de 2% à 5%)
-    stop_global = 0.80  # Stop global à 80% du capital (plus conservateur)
+    # Global equity stop: stop trading if equity falls below this multiple of initial equity (default 0.50)
+    try:
+        _env_stop = os.getenv("GLOBAL_EQUITY_STOP")
+    except Exception:
+        _env_stop = None
+    stop_global_equity = float(_env_stop) if (_env_stop is not None and str(_env_stop).strip() != "") else 0.50
+    log(f"GLOBAL_EQUITY_STOP actif (portfolio): seuil={stop_global_equity:.2f}x equity initiale")
+    log(f"GLOBAL_EQUITY_STOP actif: seuil={stop_global_equity:.2f}x equity initiale")
     
     # Paramètres de volume et liquidité (OPTIMISÉS POUR PLUS DE SIGNALS !)
     min_volume_usdt = 100000  # Volume minimum 100K USDT (réduit de 1M à 100K)
@@ -1017,15 +1024,12 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         execution_count += 1
                         log(f"📉 Entrée SHORT {symbol} - Prix: {entry_price:.4f}, Slippage: {dynamic_slippage*100:.3f}%, Latence: {execution_latency*1000:.1f}ms")
 
-        # Sorties LONG: trailing stop ou stop global
+        # Sorties LONG: trailing stop ou stop global equity
         if len(positions_long) > 0:
-            # Stop global dynamique
-            current_capital = equity * 1000
-            stop_global_euros = current_capital * stop_global
-            
-            # Vérifier le stop global dynamique
-            if current_capital <= stop_global_euros:
-                # Stop global touché, fermer toutes les positions
+            # Global equity stop (compare equity multiple against stop threshold)
+            if equity <= stop_global_equity:
+                log(f"STOP GLOBAL atteint (LONG) — equity={equity:.4f} <= seuil={stop_global_equity:.2f}")
+                # Stop global touché, fermer toutes les positions et arrêter le run
                 for pos in positions_long:
                     exit_price = close
                     ret = ((exit_price / pos["entry"]) - 1.0) * leverage
@@ -1045,12 +1049,13 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "exit": exit_price,
                         "ret": ret,
                         "position_value": pos["position_value"],
-                        "exit_reason": "stop_global",
+                        "exit_reason": "stop_global_equity",
                         "symbol": symbol,
                         "type": "long"
                     })
                 positions_long = []
-                continue
+                # Stop the entire backtest after global equity stop
+                break
             
             # Sorties par trailing stop pour chaque position LONG
             remaining = []
@@ -1080,13 +1085,10 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         
         # Sorties SHORT
         if len(positions_short) > 0:
-            # Stop global dynamique
-            current_capital = equity * 1000
-            stop_global_euros = current_capital * stop_global
-            
-            # Vérifier le stop global dynamique
-            if current_capital <= stop_global_euros:
-                # Stop global touché, fermer toutes les positions
+            # Global equity stop
+            if equity <= stop_global_equity:
+                log(f"STOP GLOBAL atteint (SHORT) — equity={equity:.4f} <= seuil={stop_global_equity:.2f}")
+                # Stop global touché, fermer toutes les positions et arrêter le run
                 for pos in positions_short:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
@@ -1102,12 +1104,12 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         "exit": close,
                         "ret": ret,
                         "position_value": pos["position_value"],
-                        "exit_reason": "stop_global",
+                        "exit_reason": "stop_global_equity",
                         "symbol": symbol,
                         "type": "short"
                     })
                 positions_short = []
-                continue
+                break
             
             remaining = []
             for pos in positions_short:
@@ -1504,7 +1506,14 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
     rollover_cost = 0.0005
     rollover_interval_days = 30
     base_slippage = 0.0005
+    # Backward-compat local stop kept but superseded by portfolio equity stop
     stop_global = 0.80
+    # Global equity stop env override (equity multiple threshold, default 0.50)
+    try:
+        _env_stop = os.getenv("GLOBAL_EQUITY_STOP")
+    except Exception:
+        _env_stop = None
+    stop_global_equity = float(_env_stop) if (_env_stop is not None and str(_env_stop).strip() != "") else 0.50
     liquidation_threshold = 0.02
     maintenance_margin = 0.025
 
@@ -1595,6 +1604,44 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
             filled = int(bar_len * step_idx // total_steps)
             bar = '█' * filled + '░' * (bar_len - filled)
             log(f"Portfolio partagé {step_idx:,}/{total_steps:,} ({progress:.1f}%) [{bar}] equity≈{equity:.3f}")
+
+        # Global equity stop (portfolio-level)
+        if equity <= stop_global_equity:
+            # Close all positions across symbols at current bar price where available, then exit loop
+            for sym, df in processed.items():
+                if ts not in df.index:
+                    continue
+                close = float(df.loc[ts, "close"]) if "close" in df.columns else float(df.loc[ts, "open"]) 
+                # Close longs
+                if positions_long[sym]:
+                    for pos in positions_long[sym]:
+                        ret = ((close / pos["entry"]) - 1.0) * leverage
+                        commission_cost = pos["position_value"] * commission_rate * 2
+                        ret -= commission_cost / pos["position_value"]
+                        current_capital = max(1e-12, equity * 1000.0)
+                        weight = pos["position_value"] / current_capital
+                        ret_w = ret * weight
+                        pnl_eur = ret * pos["position_value"]
+                        equity *= (1.0 + ret_w)
+                        all_trades.append({"timestamp": ts, "entry_ts": pos.get("entry_ts", ts), "entry": pos["entry"], "exit": close, "ret": ret, "ret_w": ret_w, "pnl_eur": pnl_eur, "symbol": sym, "type": "long", "exit_reason": "stop_global_equity"})
+                    positions_long[sym] = []
+                # Close shorts
+                if positions_short[sym]:
+                    for pos in positions_short[sym]:
+                        ret = ((pos["entry"] / close) - 1.0) * leverage
+                        commission_cost = pos["position_value"] * commission_rate * 2
+                        ret -= commission_cost / pos["position_value"]
+                        current_capital = max(1e-12, equity * 1000.0)
+                        weight = pos["position_value"] / current_capital
+                        ret_w = ret * weight
+                        pnl_eur = ret * pos["position_value"]
+                        equity *= (1.0 + ret_w)
+                        all_trades.append({"timestamp": ts, "entry_ts": pos.get("entry_ts", ts), "entry": pos["entry"], "exit": close, "ret": ret, "ret_w": ret_w, "pnl_eur": pnl_eur, "symbol": sym, "type": "short", "exit_reason": "stop_global_equity"})
+                    positions_short[sym] = []
+            if equity < min_equity:
+                min_equity = equity
+                min_equity_ts = ts
+            break
 
         # Rollover quotidien (mesuré par changement de jour)
         if last_day is None or ts.date() != last_day:
