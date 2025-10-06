@@ -683,7 +683,10 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     daily_loss = 0.0
     daily_threshold = float("inf")
 
-    for ts, row in data.iterrows():
+    # Iterate without materializing the full DataFrame into a single object-dtype array
+    # Using index/iloc avoids DataFrame.values allocation that can OOM on low pagefile
+    for idx, ts in enumerate(data.index):
+        row = data.iloc[idx]
         close = row["close"]
 
         day = ts.date()
@@ -2530,8 +2533,8 @@ def sample_params_optuna(trial):
     senkou_b = max(kijun, r_senkou * tenkan)
     # Étend le domaine de recherche pour shift (1 à 100)
     shift = trial.suggest_int("shift", 1, 100)
-    # Étend l'amplitude ATR pour permettre des stops plus larges (~3000 pts si ATR H2 élevé)
-    atr_mult = trial.suggest_float("atr_mult", 0.5, 15.0, step=0.1)
+    # Restreint la recherche aux ATR élevés (>=5.0) et étend la borne max pour explorer la zone haute
+    atr_mult = trial.suggest_float("atr_mult", 5.0, 25.0, step=0.1)
     return {"tenkan": int(tenkan), "kijun": int(kijun), "senkou_b": int(senkou_b), "shift": int(shift), "atr_mult": float(atr_mult)}
 
 def compute_score_optuna(cagr_list, sharpe_list, dd_list, trades_list):

@@ -1,0 +1,6 @@
+"K","seed","phase","percent","folds_done","folds_total","trial","trials_total","path"
+"wfa_phase_k2","seed_4","optuna","38.33","5","14","110","300","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k2\seed_4\PROGRESS.json"
+"wfa_phase_k3","seed_4","optuna","78.57","10","14","300","300","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k3\seed_4\PROGRESS.json"
+"wfa_phase_k3","seed_42","optuna","23.33","3","14","8","30","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k3\seed_42\PROGRESS.json"
+"wfa_phase_k5","seed_4","optuna","79.36","11","14","33","300","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k5\seed_4\PROGRESS.json"
+"wfa_phase_k8","seed_4","optuna","91.88","12","14","259","300","C:\Users\ludov\OneDrive\Bureau\teste algo\ichimoku_pipeline_web_v4_8\outputs\wfa_phase_k8\seed_4\PROGRESS.json"

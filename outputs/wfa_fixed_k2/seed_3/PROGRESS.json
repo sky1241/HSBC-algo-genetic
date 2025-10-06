@@ -1,1 +1,1 @@
-{"folds_done": 12, "folds_total": 14, "trial": 9, "trials_total": 300, "percent": 85.93, "phase": "optuna"}
+{"folds_done": 14, "folds_total": 14, "trial": null, "trials_total": 300, "percent": 100.0, "phase": "fold_complete"}

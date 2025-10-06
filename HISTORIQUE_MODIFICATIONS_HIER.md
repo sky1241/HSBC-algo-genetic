@@ -398,3 +398,12 @@ def simulate_execution_latency()
 - Impact: export et logs sans décimales excessives; réglage réaliste pour trailing ATR
 
 Dernière modification: 14 août 2025 - 17h05
+
+## 📅 06 octobre 2025 - Mises à jour récentes
+
+- Backtest: passage d'une boucle `iterrows()` à une itération index/iloc pour éviter les allocations mémoire et les `ArrayMemoryError` lors des WFA Optuna.
+- WFA phase-aware (K3/K5/K8): exécution spéciale “sans lookahead” (annual), sortie sur E:, suivi live 3D/heatmaps.
+- Commandes PowerShell robustes: backup vers E:, agrégations de progrès (`RUNS_PROGRESS_CURRENT.csv`), extraction TOP live depuis JSONL, relance/auto-ouverture 3D.
+- Optimiseur: resserrage ciblé et extension haute de la plage ATR — `atr_mult ∈ [5.0, 25.0]` (pas 0.1) afin d'explorer la zone supérieure où les premiers résultats sont meilleurs, sans augmenter le nombre d'essais.
+
+Dernière modification : 06 octobre 2025
