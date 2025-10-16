@@ -119,9 +119,10 @@ Write-Host ""
 Write-Host "⏱️  Durée estimée: 24-48h pour les 5 seeds" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "📈 Suivi avancement:" -ForegroundColor Cyan
-Write-Host "   Commande à exécuter toutes les 5-10 min:" -ForegroundColor Yellow
+Write-Host "   Commande à copier/coller toutes les 5-10 min:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "   Get-ChildItem '$OUT_ROOT' -Recurse -Filter 'PROGRESS.json' -ErrorAction SilentlyContinue | ForEach-Object { try { `$j = Get-Content `$_.FullName -Raw | ConvertFrom-Json; `$seed = Split-Path `$_.Directory -Leaf; \"`$seed : `$([math]::Round(`$j.percent,1))%\" } catch {} }" -ForegroundColor White
+$monitorCmd = "Get-ChildItem 'E:\ichimoku_runs\wfa_phase_k3_1d_stable' -Recurse -Filter 'PROGRESS.json' -ErrorAction SilentlyContinue | ForEach-Object { try { " + '$j = Get-Content $_.FullName -Raw | ConvertFrom-Json; $seed = Split-Path $_.Directory -Leaf; "$seed : $([math]::Round($j.percent,1))%"' + " } catch {} }"
+Write-Host "   $monitorCmd" -ForegroundColor White
 Write-Host ""
 Write-Host ""
 Write-Host "🎯 Une fois terminé, comparer avec:" -ForegroundColor Green
