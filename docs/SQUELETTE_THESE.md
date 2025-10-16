@@ -203,3 +203,76 @@
 - K3 prioritaire (Eqx élevé sous MDD≤50%); K5 en backup défensif; K2/K8 en pause
 - Rapports: `outputs/reports/progress_20251002_083254.csv`, `outputs/reports/metrics_20251002_083254.csv`
 - Note: auto-refresh dashboards instable sous PowerShell; watcher Python ajouté (à confirmer)
+
+## 📅 Mise à jour du 2025-10-16 — RÉSULTATS PROVISOIRES K3 & VALIDATION PARTIELLE
+### État des runs WFA phase-adapté
+- **K3**: 11 seeds terminés (sur ~22 en cours) | 61.99% avancement global
+- **K5**: 4 seeds terminés | 46.47% avancement
+- **K8**: 4 seeds terminés | 37.30% avancement
+- **K3 Fixed (baseline Ichimoku classique)**: 3 seeds terminés (tous MDD=100% = ruine)
+
+### Résultats K3 phase-adapté (11 seeds)
+**Performance médiane:**
+- Monthly return: **0.30%/mois** (~3.7%/an)
+- Equity 14 ans: **1.64x** (+64%)
+- MDD médian: **13.2%**
+- Trades médian: **450** sur 14 ans
+- **Taux de survie: 100%** (MDD<=50%, trades>=280)
+
+**Meilleur seed (seed_1):**
+- Monthly return: **0.47%/mois** (~5.8%/an)
+- Equity 14 ans: **2.20x** (+120%)
+- MDD: **12.3%**
+- Trades: **457**
+
+### Comparaison K3 Phase-Adapté vs Fixed (Ichimoku classique)
+| Métrique | K3 Phase-Adapté | K3 Fixed | Amélioration |
+|----------|----------------|----------|--------------|
+| Survie (MDD<=50%) | **100%** (11/11) | **0%** (0/3) | ✅ +100% |
+| MDD médian | **13.2%** | **100%** (ruine) | ✅ -87 pts |
+| Monthly return | 0.30% | N/A | ⚠️ Faible mais stable |
+| Trades médian | 450 | ~550 (avant ruine) | Comparable |
+
+**Verdict provisoire:**
+- ✅ **Fourier/HMM évite la ruine complète** (robustesse validée)
+- ✅ **Adaptation par phase améliore drastiquement la survie**
+- ❌ **Rendement insuffisant** pour objectif 5%/mois (6% de l'objectif atteint)
+- ⚠️ **Hypothèse partiellement validée**: Fourier guide vers robustesse, pas vers alpha élevé
+
+### Analyse de stabilité Fourier K3
+**Distribution des phases par année (variance temporelle):**
+- Phase 0: 2012-2016 ≈ 50% → 2020-2025 ≈ 0% (écart-type **22.5%** = instable)
+- Phase 1: stable ≈ 35-50% (écart-type **19.1%**)
+- Phase 2: 2012-2019 ≈ 0-46% → 2020-2025 ≈ **100%** (écart-type **35.2%** = très instable)
+
+**Cohérence des paramètres optimaux par phase:**
+- **Différenciation inter-phases**: tenkan (CV=1.42), kijun (CV=1.08), atr (CV=1.18) ✅ forte
+- **Variabilité intra-phase**: kijun (CV=1.50), shift (CV=0.63), atr (CV=0.90) ❌ élevée
+- **Conclusion**: Les phases K3 guident bien la stratégie, mais l'optimisation Optuna trouve des solutions dispersées
+
+### Paramètres médians K3 par phase
+| Phase | Tenkan | Kijun | Shift | ATR mult | Comportement |
+|-------|--------|-------|-------|----------|--------------|
+| 0 | 8 | 40 | 32 | 4.0 | Conservateur (marché calme) |
+| 1 | 29 | 35 | 65 | 13.9 | Agressif (haute volatilité) |
+| 2 | 18 | 40 | 45 | 8.0 | Équilibré (trend long) |
+
+### Limitations identifiées
+1. **ATR trop élevé** (médian 8-14) → peu de trades (~32/an) → opportunités manquées
+2. **Signaux Fourier instables** (variance >20%) → difficulté d'apprentissage
+3. **Sur-représentation phase 2** (100% depuis 2020) → biais d'optimisation
+4. **Variabilité Optuna** (IQR>60% médiane) → convergence difficile avec 300 trials
+
+### Recommandations pour amélioration
+1. **Tester K5/K8** (en cours) pour discrimination plus fine
+2. **Réduire range ATR** (5.0-10.0 vs actuel 10-15) → plus de trades
+3. **Changer loss function** Optuna: Calmar ratio vs equity_mult actuel
+4. **Augmenter trials** (300 → 500-1000) pour réduire variance
+5. **Contraindre ratios** kijun/tenkan (2-3×) pour stabilité
+6. **Accepter objectif réaliste**: 0.3-0.5%/mois avec MDD<15% = déjà performant
+
+### Prochaines actions
+- ⏳ Attendre fin runs K3 (20 seeds restants), K5 (5 restants), K8 (8 restants)
+- 📊 Comparaison finale K3 vs K5 vs K8 pour sélection meilleur modèle
+- 🔧 Script de sélection automatique phase actuelle + réglages live
+- 📄 Rapport final avec recommandations stratégiques
