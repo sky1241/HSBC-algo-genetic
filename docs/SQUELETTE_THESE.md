@@ -276,3 +276,43 @@
 - 📊 Comparaison finale K3 vs K5 vs K8 pour sélection meilleur modèle
 - 🔧 Script de sélection automatique phase actuelle + réglages live
 - 📄 Rapport final avec recommandations stratégiques
+
+## 📅 Mise à jour du 2025-10-16 (suite) — TEST STRATÉGIE HYBRIDE 1D STABLE
+### Nouvelle approche: Phases 1D + Trading H2
+
+**Idée:** Exploiter la stabilité 1D pour détecter les phases, tout en maintenant le trading H2 pour maximiser les opportunités.
+
+**Principe:**
+1. Calculer le **label majoritaire** de chaque jour J (sur les 12 barres 2h)
+2. Appliquer ce label à **toutes les barres 2h** du jour J+1
+3. Trading Ichimoku sur H2 avec paramètres de la phase stable
+
+**No Lookahead:** Label majoritaire du jour J (passé) → appliqué au jour J+1 (futur), conforme WFA.
+
+### Implémentation
+**Script créé:** `scripts/downsample_labels_2h_to_1d.py`
+- Input: `K3.csv` (60,531 barres 2h)
+- Output: `K3_1d_stable.csv` (même grid 2h, labels stabilisés)
+- Réduction changements: 213 → 207 (-2.8%)
+- Switches/jour: 0.04 (vs potentiel 12)
+
+**Test lancé:** 5 seeds K3 1D stable (1001-1005)
+- Script: `scripts/launch_k3_1d_stable_test.ps1`
+- Output: `outputs/wfa_phase_k3_1d_stable/seed_XXXX/`
+- Durée estimée: 24-48h
+- Objectif: Valider si phases stables → plus de trades → meilleur rendement
+
+### Résultats attendus (hypothèse)
+| Métrique | H2 Pur | 1D Stable + H2 | Amélioration |
+|----------|--------|----------------|--------------|
+| Trades/an | 32 | 100-150 | +300% |
+| Monthly return | 0.30% | 0.5-0.7% | +100% |
+| MDD | 13.2% | 12-15% | Similaire |
+| Stabilité | Moyenne | Haute | +1000% |
+
+**Décision:** Si test positif → lancer 30 seeds complets K3/K5/K8 en version 1D stable
+
+### Documentation
+- `docs/HYBRID_1D_STABLE_PHASES.md` — Méthodologie complète stratégie hybride
+- `docs/METHODOLOGIE_COMPLETE.md` — Mise à jour avec approche multi-timeframe
+- `scripts/compare_h2_vs_1d_stable.py` — Script comparaison résultats

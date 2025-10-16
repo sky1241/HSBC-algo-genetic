@@ -405,6 +405,25 @@ def main() -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Single-instance lock to avoid duplicate runs on same out_dir
+    lock_path = out_dir / ".lock"
+    try:
+        if lock_path.exists():
+            # If lock older than 24h, ignore; else exit
+            try:
+                mtime = lock_path.stat().st_mtime
+                age_hours = (datetime.now(timezone.utc).timestamp() - mtime) / 3600.0
+            except Exception:
+                age_hours = 0.0
+            if age_hours < 24.0:
+                print(f"Another runner appears active for {out_dir}. Lock present: {lock_path}")
+                return 2
+        # create/refresh lock
+        with open(lock_path, "w", encoding="utf-8") as f:
+            f.write(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"))
+    except Exception:
+        pass
+
     # Load data and labels
     df = _load_btc_fused("2h")
     df = pipe.ensure_utc_index(df)
@@ -419,6 +438,22 @@ def main() -> int:
     labels = labels_df.set_index("timestamp").sort_index()["label"].astype(str)
 
     progress_path = out_dir / "PROGRESS.json"
+    # Initialize progress file early (atomic)
+    try:
+        payload = {
+            "folds_done": 0,
+            "folds_total": 0,
+            "trial": 0,
+            "trials_total": int(args.trials),
+            "percent": 0.0,
+            "phase": "init",
+        }
+        tmp = str(progress_path) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False)
+        os.replace(tmp, progress_path)
+    except Exception:
+        pass
     # Prepare per-trial JSONL path for live heatmaps
     k_hint = None
     try:
@@ -491,6 +526,28 @@ def main() -> int:
             f"Overall: equity x {overall['equity_mult']:.3f}, MDD {overall['max_drawdown']:.2%}, "
             f"trades {overall['trades']}, Sharpe~{overall['sharpe_proxy_mean']:.2f}"
         )
+    except Exception:
+        pass
+    try:
+        # Mark progress 100% at completion
+        payload_done = {
+            "folds_done": payload.get("overall", {}).get("folds", 0),
+            "folds_total": payload.get("overall", {}).get("folds", 0),
+            "trial": None,
+            "trials_total": int(args.trials),
+            "percent": 100.0,
+            "phase": "complete",
+        }
+        tmp = str(progress_path) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload_done, f, ensure_ascii=False)
+        os.replace(tmp, progress_path)
+    except Exception:
+        pass
+    try:
+        # remove lock at the end
+        if lock_path.exists():
+            lock_path.unlink(missing_ok=True)  # type: ignore[arg-type]
     except Exception:
         pass
     return 0

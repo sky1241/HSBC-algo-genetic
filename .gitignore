@@ -31,6 +31,11 @@ outputs/TESTNET_ENV.txt
 !**/outputs/**/*.py
 !**/outputs/**/*.md
 !**/outputs/**/*.png
+
+# Ignore large JSONL trial logs (>100MB)
+outputs/trial_logs/**/*.jsonl
+!outputs/trial_logs/**/*.jsonl.sample
+
 .DS_Store
 Thumbs.db
 outputs/TESTNET_ENV.txt
