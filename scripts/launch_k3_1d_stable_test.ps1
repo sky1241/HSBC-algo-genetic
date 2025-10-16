@@ -93,7 +93,7 @@ foreach ($seed in $SEEDS) {
             --out-dir $outDir `
             --seed $seed `
             --trials $trials `
-            --data-csv "data\BTC_FUSED_2h.csv" `
+            --use-fused `
             *> $logFile 2> $errFile
             
     } -ArgumentList $PYTHON, $SCRIPT, $LABELS_CSV, $outDir, $seed, $TRIALS, $logFile, $errFile
