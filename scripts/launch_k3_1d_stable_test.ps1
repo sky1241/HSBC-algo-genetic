@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 
 # Configuration
 $LABELS_CSV = "outputs\fourier\labels_frozen\BTC_FUSED_2h\K3_1d_stable.csv"
-$OUT_ROOT = "outputs\wfa_phase_k3_1d_stable"
+$OUT_ROOT = "E:\ichimoku_runs\wfa_phase_k3_1d_stable"
 $SEEDS = @(1001, 1002, 1003, 1004, 1005)
 $TRIALS = 300
 $PYTHON = ".venv\Scripts\python.exe"
@@ -119,13 +119,10 @@ Write-Host ""
 Write-Host "⏱️  Durée estimée: 24-48h pour les 5 seeds" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "📈 Suivi avancement:" -ForegroundColor Cyan
-Write-Host "   while (\$true) {" -ForegroundColor Gray
-Write-Host "     Get-ChildItem '$OUT_ROOT' -Recurse -Filter 'PROGRESS.json' | ForEach-Object {" -ForegroundColor Gray
-Write-Host "       \$j = Get-Content \$_.FullName | ConvertFrom-Json" -ForegroundColor Gray
-Write-Host "       Write-Host \"`$(\$_.Directory.Name): \$(\$j.percent)%\"" -ForegroundColor Gray
-Write-Host "     }" -ForegroundColor Gray
-Write-Host "     Start-Sleep -Seconds 300  # toutes les 5min" -ForegroundColor Gray
-Write-Host "   }" -ForegroundColor Gray
+Write-Host "   Commande à exécuter toutes les 5-10 min:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "   Get-ChildItem '$OUT_ROOT' -Recurse -Filter 'PROGRESS.json' -ErrorAction SilentlyContinue | ForEach-Object { try { `$j = Get-Content `$_.FullName -Raw | ConvertFrom-Json; `$seed = Split-Path `$_.Directory -Leaf; \"`$seed : `$([math]::Round(`$j.percent,1))%\" } catch {} }" -ForegroundColor White
+Write-Host ""
 Write-Host ""
 Write-Host "🎯 Une fois terminé, comparer avec:" -ForegroundColor Green
 Write-Host "   python scripts\compare_h2_vs_1d_stable.py" -ForegroundColor White
