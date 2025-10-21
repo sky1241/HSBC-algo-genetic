@@ -1,0 +1,400 @@
+[2025-10-18T22:43:51Z]  Entre SHORT BTC/USDT - Prix: 5.6689, Slippage: 0.196%, Latence: 0.0ms
+[2025-10-18T22:43:51Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:51Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:51Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:51Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:51Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:51Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:51Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:51Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:51Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:51Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:51Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:52Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:52Z]  Entre SHORT BTC/USDT - Prix: 4.7705, Slippage: 0.615%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0022
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z]  Entre LONG BTC/USDT - Prix: 5.7452, Slippage: 0.265%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Entre SHORT BTC/USDT - Prix: 4.7930, Slippage: 0.147%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9988
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9988
+[2025-10-18T22:43:52Z]  Entre LONG BTC/USDT - Prix: 4.5142, Slippage: 0.093%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:52Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Entre SHORT BTC/USDT - Prix: 4.8587, Slippage: 0.641%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0022
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:52Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:52Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:52Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:52Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 4.8587, Slippage: 0.641%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0022
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 4.7705, Slippage: 0.615%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0022
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 4.5141, Slippage: 0.092%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 50): 5 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Indicateur kijun: 100.0% de donnes manquantes', 'Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 8.3495, Slippage: 0.717%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.06 - Cot_eq: 0.000005 - Nouvelle equity: 1.0063
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 4.7703, Slippage: 0.619%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.08 - Cot_eq: 0.000005 - Nouvelle equity: 1.0085
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.08 - Cot_eq: 0.000005 - Nouvelle equity: 1.0085
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 4.8585, Slippage: 0.644%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.07 - Cot_eq: 0.000005 - Nouvelle equity: 1.0074
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.07 - Cot_eq: 0.000005 - Nouvelle equity: 1.0074
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.07 - Cot_eq: 0.000005 - Nouvelle equity: 1.0074
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 7.3234, Slippage: 1.035%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:53Z]  Entre SHORT BTC/USDT - Prix: 4.7706, Slippage: 0.613%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9989
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9989
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 5.3347, Slippage: 0.655%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 9.98 - Cot_eq: 0.000005 - Nouvelle equity: 0.9979
+[2025-10-18T22:43:53Z]  Entre LONG BTC/USDT - Prix: 4.9266, Slippage: 0.135%, Latence: 0.0ms
+[2025-10-18T22:43:53Z]  Rollover futures - Notional: 19.96 - Cot_eq: 0.000010 - Nouvelle equity: 0.9978
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:53Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:53Z]  Validation BTC/USDT (bougie 50): 4 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 4.8587, Slippage: 0.641%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0022
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.02 - Cot_eq: 0.000005 - Nouvelle equity: 1.0021
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 50): 5 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur kijun: 100.0% de donnes manquantes', 'Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 7.3234, Slippage: 1.035%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 4.7706, Slippage: 0.613%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9989
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 9.99 - Cot_eq: 0.000005 - Nouvelle equity: 0.9989
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 5.3347, Slippage: 0.655%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 9.98 - Cot_eq: 0.000005 - Nouvelle equity: 0.9979
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 4.9266, Slippage: 0.135%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 5.5580, Slippage: 0.144%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 10.00 - Cot_eq: 0.000005 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 500): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 550): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 600): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 650): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 700): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 750): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 1']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 800): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 2']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 850): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 3']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 900): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Gaps extrmes dtects: 4']
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif (portfolio): seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z] GLOBAL_EQUITY_STOP actif: seuil=0.50x equity initiale
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 50): 5 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur kijun: 100.0% de donnes manquantes', 'Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 100): 4 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_a: 100.0% de donnes manquantes', 'Indicateur senkou_b: 100.0% de donnes manquantes', 'Indicateur cloud_top: 100.0% de donnes manquantes', 'Indicateur cloud_bottom: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 150): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_b: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Validation BTC/USDT (bougie 200): 1 erreurs dtectes
+[2025-10-18T22:43:54Z]  Erreurs de donnes BTC/USDT: ['Indicateur senkou_b: 100.0% de donnes manquantes']
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 98998.4860, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 98711.7394, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Entre SHORT BTC/USDT - Prix: 99100.4350, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 1.0000
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9999
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9999
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9999
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9998
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9998
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9998
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9997
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9997
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 30.00 - Cot_eq: 0.000015 - Nouvelle equity: 0.9996
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 97247.5995, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 98003.9275, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 20.10 - Cot_eq: 0.000010 - Nouvelle equity: 1.0049
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 20.10 - Cot_eq: 0.000010 - Nouvelle equity: 1.0049
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 94199.0760, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 9.92 - Cot_eq: 0.000005 - Nouvelle equity: 0.9923
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 89859.1671, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Entre LONG BTC/USDT - Prix: 89732.8340, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 29.77 - Cot_eq: 0.000015 - Nouvelle equity: 0.9923
+[2025-10-18T22:43:54Z]  Rollover futures - Notional: 29.77 - Cot_eq: 0.000015 - Nouvelle equity: 0.9923
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 86913.4350, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 9.56 - Cot_eq: 0.000005 - Nouvelle equity: 0.9556
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 85136.1368, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 19.11 - Cot_eq: 0.000010 - Nouvelle equity: 0.9556
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 19.11 - Cot_eq: 0.000010 - Nouvelle equity: 0.9556
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 19.11 - Cot_eq: 0.000010 - Nouvelle equity: 0.9555
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 84541.7080, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 83307.6330, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 82199.1090, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 82077.7384, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9466
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9466
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9466
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9465
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9465
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9465
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9464
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9464
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9463
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9463
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9463
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9462
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9462
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9462
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9461
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9461
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9460
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9460
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9460
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 28.40 - Cot_eq: 0.000015 - Nouvelle equity: 0.9459
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 106253.8465, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 105536.9551, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.55 - Cot_eq: 0.000010 - Nouvelle equity: 1.0277
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.55 - Cot_eq: 0.000010 - Nouvelle equity: 1.0276
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.55 - Cot_eq: 0.000010 - Nouvelle equity: 1.0276
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.55 - Cot_eq: 0.000010 - Nouvelle equity: 1.0276
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 106665.8363, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.27 - Cot_eq: 0.000005 - Nouvelle equity: 1.0266
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.27 - Cot_eq: 0.000005 - Nouvelle equity: 1.0266
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 105417.6148, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.24 - Cot_eq: 0.000005 - Nouvelle equity: 1.0238
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 105375.2860, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 105271.3380, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.71 - Cot_eq: 0.000015 - Nouvelle equity: 1.0238
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.71 - Cot_eq: 0.000015 - Nouvelle equity: 1.0237
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.71 - Cot_eq: 0.000015 - Nouvelle equity: 1.0237
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 105470.7090, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre LONG BTC/USDT - Prix: 106099.7133, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.47 - Cot_eq: 0.000010 - Nouvelle equity: 1.0233
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.47 - Cot_eq: 0.000010 - Nouvelle equity: 1.0233
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 20.47 - Cot_eq: 0.000010 - Nouvelle equity: 1.0233
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 115269.3365, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.22 - Cot_eq: 0.000005 - Nouvelle equity: 1.0225
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.22 - Cot_eq: 0.000005 - Nouvelle equity: 1.0225
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.22 - Cot_eq: 0.000005 - Nouvelle equity: 1.0224
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.22 - Cot_eq: 0.000005 - Nouvelle equity: 1.0224
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.22 - Cot_eq: 0.000005 - Nouvelle equity: 1.0224
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 116952.4945, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 10.21 - Cot_eq: 0.000005 - Nouvelle equity: 1.0213
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 117472.2345, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Entre SHORT BTC/USDT - Prix: 117841.0600, Slippage: 0.050%, Latence: 0.0ms
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.64 - Cot_eq: 0.000015 - Nouvelle equity: 1.0212
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.64 - Cot_eq: 0.000015 - Nouvelle equity: 1.0212
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.64 - Cot_eq: 0.000015 - Nouvelle equity: 1.0212
+[2025-10-18T22:43:55Z]  Rollover futures - Notional: 30.64 - Cot_eq: 0.000015 - Nouvelle equity: 1.0211
+Saved: E:\ichimoku_runs\wfa_phase_k3_1d_stable\seed_1003\WFA_phase_K3_1D_STABLE_BTC_fused_20251018_224355.json
+Overall: equity x 1.848, MDD 15.32%, trades 423, Sharpe~10.78

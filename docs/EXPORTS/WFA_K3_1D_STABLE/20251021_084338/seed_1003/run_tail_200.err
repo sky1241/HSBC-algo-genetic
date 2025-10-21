@@ -1,0 +1,9 @@
+usage: run_scheduler_wfa_phase.py [-h] --labels-csv LABELS_CSV
+                                  [--granularity {annual}] [--trials TRIALS]
+                                  [--jobs JOBS] [--seed SEED]
+                                  [--loss-mult LOSS_MULT] [--atr-sweep]
+                                  [--atr-sweep-span ATR_SWEEP_SPAN]
+                                  [--atr-sweep-step ATR_SWEEP_STEP]
+                                  [--mdd-max MDD_MAX] [--use-fused]
+                                  [--out-dir OUT_DIR]
+run_scheduler_wfa_phase.py: error: unrecognized arguments: --data-csv data\BTC_FUSED_2h.csv
