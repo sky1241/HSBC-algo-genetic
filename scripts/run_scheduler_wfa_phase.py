@@ -397,7 +397,8 @@ def main() -> int:
     ap.add_argument("--mdd-max", type=float, default=None)
     ap.add_argument("--use-fused", action="store_true")
     ap.add_argument("--out-dir", default="outputs/wfa_phase")
-    args = ap.parse_args()
+    # Accept unknown args to be robust against wrapper scripts that append extra flags
+    args, _unknown = ap.parse_known_args()
 
     if args.use_fused:
         os.environ["USE_FUSED_H2"] = "1"
