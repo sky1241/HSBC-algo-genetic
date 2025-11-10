@@ -574,12 +574,17 @@ def calculate_ichimoku(df, tenkan, kijun, senkou_b, shift):
     
     return df
 
-def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h"):
-    """Backtest avec stratégie long + short"""
+def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h", tp_mult=None):
+    """Backtest avec stratégie long + short + take profit adaptatif
+    
+    Args:
+        tp_mult: Multiplicateur ATR pour take profit (None = pas de TP, float = TP actif)
+                 TP indépendant du SL, optimisé par Optuna séparément
+    """
     data = calculate_ichimoku(df.copy(), tenkan, kijun, senkou_b, shift)
     
     # Positions long et short (jusqu'à 3 par côté, jamais les deux en même temps sur un symbole)
-    # Chaque position: {"entry": float, "trailing": float, "position_value": float}
+    # Chaque position: {"entry": float, "trailing": float, "tp_price": float, "position_value": float}
     positions_long = []
     positions_short = []
 
@@ -964,9 +969,12 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         entry_price = next_open * (1 + dynamic_slippage)
                         atr_stop_mult = atr_mult * 2.0
                         trailing = entry_price - (row["ATR"] * atr_stop_mult) if pd.notna(row["ATR"]) else np.nan
+                        # Take profit adaptatif (si tp_mult fourni)
+                        tp_price = (entry_price + (row["ATR"] * tp_mult)) if (tp_mult is not None and pd.notna(row["ATR"])) else np.nan
                         positions_long.append({
                             "entry": entry_price,
                             "trailing": trailing,
+                            "tp_price": tp_price,
                             "position_value": position_value
                         })
                         execution_latency = simulate_execution_latency()
@@ -1017,9 +1025,12 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                         entry_price = next_open * (1 - dynamic_slippage)
                         atr_stop_mult = atr_mult * 2.0
                         trailing = entry_price + (row["ATR"] * atr_stop_mult) if pd.notna(row["ATR"]) else np.nan
+                        # Take profit adaptatif SHORT (si tp_mult fourni)
+                        tp_price = (entry_price - (row["ATR"] * tp_mult)) if (tp_mult is not None and pd.notna(row["ATR"])) else np.nan
                         positions_short.append({
                             "entry": entry_price,
                             "trailing": trailing,
+                            "tp_price": tp_price,
                             "position_value": position_value
                         })
                         execution_latency = simulate_execution_latency()
@@ -1060,10 +1071,14 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 # Stop the entire backtest after global equity stop
                 break
             
-            # Sorties par trailing stop pour chaque position LONG
+            # Sorties par take profit ou trailing stop pour chaque position LONG
             remaining = []
             for pos in positions_long:
-                if (not np.isnan(pos["trailing"])) and (close <= pos["trailing"]):
+                # Vérifier TP d'abord (priorité sur trailing stop)
+                tp_hit = (not np.isnan(pos.get("tp_price", np.nan))) and (close >= pos["tp_price"])
+                trailing_hit = (not np.isnan(pos["trailing"])) and (close <= pos["trailing"])
+                
+                if tp_hit or trailing_hit:
                     ret = ((close / pos["entry"]) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
                     ret -= commission_cost / pos["position_value"]
@@ -1072,13 +1087,14 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                     wins_long += 1 if ret > 0 else 0
+                    exit_reason = "take_profit" if tp_hit else "trailing_stop"
                     trades_long.append({
                         "timestamp": ts,
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
                         "position_value": pos["position_value"],
-                        "exit_reason": "trailing_stop",
+                        "exit_reason": exit_reason,
                         "symbol": symbol,
                         "type": "long"
                     })
@@ -1116,7 +1132,11 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             
             remaining = []
             for pos in positions_short:
-                if (not np.isnan(pos["trailing"])) and (close >= pos["trailing"]):
+                # Vérifier TP d'abord (priorité sur trailing stop)
+                tp_hit = (not np.isnan(pos.get("tp_price", np.nan))) and (close <= pos["tp_price"])
+                trailing_hit = (not np.isnan(pos["trailing"])) and (close >= pos["trailing"])
+                
+                if tp_hit or trailing_hit:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
                     commission_cost = pos["position_value"] * commission_rate * 2
                     ret -= commission_cost / pos["position_value"]
@@ -1125,13 +1145,14 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
                     wins_short += 1 if ret > 0 else 0
+                    exit_reason = "take_profit" if tp_hit else "trailing_stop"
                     trades_short.append({
                         "timestamp": ts,
                         "entry": pos["entry"],
                         "exit": close,
                         "ret": ret,
                         "position_value": pos["position_value"],
-                        "exit_reason": "trailing_stop",
+                        "exit_reason": exit_reason,
                         "symbol": symbol,
                         "type": "short"
                     })
@@ -2525,7 +2546,7 @@ def make_annual_folds(df: pd.DataFrame, start_year: int | None = None, end_year:
     return folds
 
 def sample_params_optuna(trial):
-    """Params Ichimoku + ATR_mult sous contraintes: Tenkan ≤ Kijun ≤ SenkouB"""
+    """Params Ichimoku + ATR_mult + TP_mult sous contraintes: Tenkan ≤ Kijun ≤ SenkouB"""
     tenkan = trial.suggest_int("tenkan", 5, 30)
     r_kijun = trial.suggest_int("r_kijun", 1, 5)
     r_senkou = trial.suggest_int("r_senkou", 1, 9)
@@ -2535,7 +2556,10 @@ def sample_params_optuna(trial):
     shift = trial.suggest_int("shift", 1, 100)
     # Restreint la recherche aux ATR élevés (>=5.0) et étend la borne max pour explorer la zone haute
     atr_mult = trial.suggest_float("atr_mult", 5.0, 25.0, step=0.1)
-    return {"tenkan": int(tenkan), "kijun": int(kijun), "senkou_b": int(senkou_b), "shift": int(shift), "atr_mult": float(atr_mult)}
+    # Take profit adaptatif (indépendant du stop loss, optimisé par Optuna)
+    # Range large pour permettre asymétrie positive (TP > SL) ou prise rapide (TP < SL)
+    tp_mult = trial.suggest_float("tp_mult", 3.0, 40.0, step=0.5)
+    return {"tenkan": int(tenkan), "kijun": int(kijun), "senkou_b": int(senkou_b), "shift": int(shift), "atr_mult": float(atr_mult), "tp_mult": float(tp_mult)}
 
 def compute_score_optuna(cagr_list, sharpe_list, dd_list, trades_list):
     mean_sharpe = float(np.mean(sharpe_list)) if sharpe_list else 0.0

@@ -77,6 +77,7 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
             train_df,
             int(p["tenkan"]), int(p["kijun"]), int(p["senkou_b"]), int(p["shift"]), float(p["atr_mult"]),
             loss_mult=float(loss_mult), symbol="BTC/USDT", timeframe=timeframe,
+            tp_mult=float(p.get("tp_mult")) if "tp_mult" in p else None,
         )
         cagr = float(m.get("CAGR", 0.0))
         sharpe = float(m.get("sharpe_proxy", 0.0))
@@ -144,6 +145,7 @@ def _optimize_on_train(train_df: pd.DataFrame, timeframe: str, n_trials: int, se
         "senkou_b": int(bp.get("senkou_b", max(int(bp.get("kijun", 26)), int(bp.get("r_senkou", 1)) * int(bp.get("tenkan"))))),
         "shift": int(bp.get("shift")),
         "atr_mult": float(bp.get("atr_mult")),
+        "tp_mult": float(bp.get("tp_mult")) if "tp_mult" in bp else None,
     }
     return params
 
@@ -153,6 +155,7 @@ def _apply_on_segment(test_df: pd.DataFrame, timeframe: str, params: Dict[str, f
         test_df,
         int(params["tenkan"]), int(params["kijun"]), int(params["senkou_b"]), int(params["shift"]), float(params["atr_mult"]),
         loss_mult=float(loss_mult), symbol="BTC/USDT", timeframe=timeframe,
+        tp_mult=float(params.get("tp_mult")) if "tp_mult" in params else None,
     )
     # normalize numeric
     return {k: float(v) if isinstance(v, (int, float, np.floating)) else v for k, v in m.items()}
@@ -191,6 +194,7 @@ def _sweep_atr_local(
             train_df,
             int(params["tenkan"]), int(params["kijun"]), int(params["senkou_b"]), int(params["shift"]), float(atr),
             loss_mult=float(loss_mult), symbol="BTC/USDT", timeframe=timeframe,
+            tp_mult=float(params.get("tp_mult")) if "tp_mult" in params else None,
         )
         rec: Dict[str, float] = {
             "atr": float(atr),
