@@ -1,0 +1,12 @@
+# Paramètres opérationnels du bot Binance
+symbol: "BTC/USDT"
+timeframe: "2h"
+position_size_pct: 0.01   # 1% du capital par trade
+max_leverage: 10
+max_positions_per_side: 3
+stop_global_equity: 0.50   # equity minimale (50% du capital initial)
+slippage_bps: 5            # slippage par défaut (0.05%)
+atr_period: 14
+atr_trailing_multiplier: 2.0
+log_file: "logs/bot.log"
+state_file: "data/state.json"

@@ -83,6 +83,25 @@
 - Sources de données (Binance, Yahoo Finance, Coin Metrics).
 - Ouvrages théoriques sur l’Ichimoku, les cycles boursiers et la transformée de Fourier.
 
+## 📅 Mise à jour du 2025-11-13
+- Réalisé aujourd'hui
+  - **Déploiement bot trading live sur Binance:** Architecture complète modulaire (services/bot/routines) pour exécution automatique stratégie K3 phase-adaptée en temps réel.
+  - **Synchronisation temporelle précise:** Bot synchronisé avec fermeture bougies H2 (00:00, 02:00, 04:00... UTC) pour garantir analyse bougies complètes et cohérence avec backtest.
+  - **Configuration sécurisée:** Clés API Binance stockées localement (`.env` dans `.gitignore`), permissions limitées, mode LIVE activé.
+  - **Tests validation:** Connexion Binance réussie (solde vérifié), daily phase job fonctionnel (Phase 2 détectée), intraday runner synchronisé H2.
+  - **Documentation complète:** Guides installation, configuration, déploiement, et quick start créés.
+- Architecture technique
+  - **Services:** DataFetcher (CCXT), PhaseLabeller (labels K3 1D stable), ParamsLoader (médianes par phase), IchimokuEngine, SignalEngine (logique backtest).
+  - **Bot:** StateManager (persistance état), TradeManager (exécution ordres), RiskManager (stop global, position sizing).
+  - **Routines:** Daily phase job (1×/jour à 00:05 UTC), Intraday runner (toutes les 2h après fermeture bougie H2).
+- Paramètres utilisés
+  - Source: Médianes WFA K3 1D stable (30 seeds, 300 trials × 14 folds).
+  - Phase 2 actuelle: Tenkan=21, Kijun=35, SenkouB=90, Shift=44, ATR_mult=10.5, TP_mult=8.0.
+- Prochaines étapes
+  - Monitoring premiers trades live (validation cohérence avec backtest).
+  - Ajustements position sizing selon capital réel si nécessaire.
+  - Extension K4/K5/K8 si K3 validé en production.
+
 ## 📅 Mise à jour du 2025-08-26
 - Réalisé aujourd’hui
   - Comparatif des phases 3/5/6 (durées en jours et en barres H2, distance au halving médiane, P1..P6 médians, LFP moyen) sur BTC pour Binance (USDT) et Bitstamp (USD) en 2h/1d.

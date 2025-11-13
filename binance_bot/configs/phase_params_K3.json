@@ -1,0 +1,27 @@
+{
+  "0": {
+    "tenkan": 27,
+    "kijun": 100,
+    "senkou_b": 180,
+    "shift": 93,
+    "atr_mult": 11.8,
+    "tp_mult": 20.0
+  },
+  "1": {
+    "tenkan": 29,
+    "kijun": 52,
+    "senkou_b": 210,
+    "shift": 96,
+    "atr_mult": 19.3,
+    "tp_mult": 30.0
+  },
+  "2": {
+    "tenkan": 21,
+    "kijun": 35,
+    "senkou_b": 90,
+    "shift": 44,
+    "atr_mult": 10.5,
+    "tp_mult": 8.0
+  }
+}
+

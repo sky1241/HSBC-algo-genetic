@@ -1,0 +1,22 @@
+# Secrets - JAMAIS sur GitHub
+.env
+*.key
+*.pem
+*.secret
+
+# État runtime
+data/state.json
+data/*.json
+logs/*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
