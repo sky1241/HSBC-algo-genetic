@@ -1,0 +1,11 @@
+ccxt
+pandas
+numpy
+optuna
+matplotlib
+markdown
+scipy
+PyWavelets
+tqdm
+hmmlearn
+scikit-learn

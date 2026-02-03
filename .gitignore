@@ -1,0 +1,58 @@
+__pycache__/
+*.pyc
+.venv/
+.vscode/
+.idea/
+.env
+*.log
+*.tmp
+
+# Data files (too large for git)
+data/*.csv
+data/*.parquet
+data/*.zip
+
+# Outputs - keep structure but ignore heavy files
+outputs/*.json
+outputs/*.csv
+outputs/*.log
+outputs/*.txt
+outputs/*.html
+outputs/*_report.zip
+!outputs/*.py
+!outputs/*.md
+!outputs/*.png
+
+# WFA results (generated, can be reproduced)
+outputs/wfa_*/**/*.json
+outputs/wfa_*/**/*.csv
+outputs/wfa_*/**/*.log
+
+# Fourier/HMM heavy files
+outputs/fourier/**/*.zip
+outputs/fourier/hmm/**/*.csv
+!outputs/fourier/labels_frozen/**/*.csv
+
+# Archives
+archives/*.zip
+archives/**/*.zip
+
+# Live trading secrets
+$live/
+outputs/TESTNET_ENV.txt
+binance_bot/.env
+binance_bot/configs/.env
+
+# Trial logs (very large)
+outputs/trial_logs/**/*.jsonl
+!outputs/trial_logs/**/*.jsonl.sample
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp files
+*_temp.csv
+*.tmp
+
