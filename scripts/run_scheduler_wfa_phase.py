@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
+import atexit
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,10 +36,20 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 import ichimoku_pipeline_web_v4_8_fixed as pipe  # type: ignore
 
+# Checkpoint system for crash recovery
+try:
+    from src.checkpoint_manager import RobustRunner, CheckpointManager
+except ImportError:
+    RobustRunner = None
+    CheckpointManager = None
+
 try:
     import optuna  # type: ignore
 except Exception:
     optuna = None
+
+# Global runner for signal handlers
+_global_runner: Optional["RobustRunner"] = None
 
 
 @dataclass
@@ -245,7 +257,15 @@ def run_phase_wfa(
     progress_path: Optional[Path] = None,
     trial_log_path: Optional[Path] = None,
     k_hint: Optional[str] = None,
+    checkpoint_callback: Optional[Any] = None,
 ) -> Tuple[List[FoldResult], Dict[str, float]]:
+    """
+    Run phase-aware Walk-Forward Analysis.
+
+    Args:
+        checkpoint_callback: Optional callback(fold, phase, trial, total_trials, best_params, best_score, completed_phases)
+                            Called periodically to save progress for crash recovery.
+    """
     timeframe = "2h"
     folds: List[FoldResult] = []
 
@@ -272,6 +292,9 @@ def run_phase_wfa(
         states = sorted(set(lbl_train.dropna().astype(str).unique().tolist()))
         params_by_state: Dict[str, Dict[str, float]] = {}
 
+        # Track completed phases for checkpoint
+        completed_phases: List[str] = []
+
         # Fallback: global params if state subset too small
         global_params = _optimize_on_train(
             train_df, timeframe, n_trials, seed, jobs, loss_mult,
@@ -281,6 +304,23 @@ def run_phase_wfa(
         )
         if atr_sweep:
             global_params = _sweep_atr_local(train_df, timeframe, global_params, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
+
+        completed_phases.append("GLOBAL")
+
+        # Checkpoint after global optimization
+        if checkpoint_callback is not None:
+            try:
+                checkpoint_callback(
+                    fold=y,
+                    phase="GLOBAL",
+                    trial=n_trials,
+                    total_trials=n_trials,
+                    best_params=global_params,
+                    best_score=0.0,  # Score not tracked here
+                    completed_phases=completed_phases.copy(),
+                )
+            except Exception:
+                pass
 
         for st in states:
             sub = train_df[lbl_train == st]
@@ -296,6 +336,23 @@ def run_phase_wfa(
                 if atr_sweep:
                     p = _sweep_atr_local(sub, timeframe, p, loss_mult, atr_sweep_span, atr_sweep_step, mdd_max)
                 params_by_state[st] = p
+
+            completed_phases.append(str(st))
+
+            # Checkpoint after each phase optimization
+            if checkpoint_callback is not None:
+                try:
+                    checkpoint_callback(
+                        fold=y,
+                        phase=str(st),
+                        trial=n_trials,
+                        total_trials=n_trials,
+                        best_params=params_by_state.get(st, global_params),
+                        best_score=0.0,
+                        completed_phases=completed_phases.copy(),
+                    )
+                except Exception:
+                    pass
 
         # Evaluate on test by contiguous segments
         segs = _segments_from_labels(test_df.index, lbl_test)
@@ -387,7 +444,22 @@ def run_phase_wfa(
     return folds, overall
 
 
+def _shutdown_handler(signum, frame):
+    """Handle graceful shutdown on SIGINT/SIGTERM."""
+    global _global_runner
+    print(f"\n[CHECKPOINT] Signal {signum} received, saving checkpoint...")
+    if _global_runner is not None:
+        try:
+            _global_runner.shutdown()
+            print("[CHECKPOINT] Checkpoint saved. Safe to restart.")
+        except Exception as e:
+            print(f"[CHECKPOINT] Warning: {e}")
+    raise SystemExit(1)
+
+
 def main() -> int:
+    global _global_runner
+
     ap = argparse.ArgumentParser(description="BTC-only phase-aware WFA (annual) on fused 2h")
     ap.add_argument("--labels-csv", required=True, help="Path to labels CSV with columns: timestamp,label")
     ap.add_argument("--granularity", choices=["annual"], default="annual")
@@ -401,6 +473,8 @@ def main() -> int:
     ap.add_argument("--mdd-max", type=float, default=None)
     ap.add_argument("--use-fused", action="store_true")
     ap.add_argument("--out-dir", default="outputs/wfa_phase")
+    ap.add_argument("--checkpoint-interval", type=int, default=10, help="Checkpoint interval in minutes")
+    ap.add_argument("--no-checkpoint", action="store_true", help="Disable checkpoint system")
     # Accept unknown args to be robust against wrapper scripts that append extra flags
     args, _unknown = ap.parse_known_args()
 
@@ -409,6 +483,48 @@ def main() -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize checkpoint system
+    use_checkpoint = RobustRunner is not None and not args.no_checkpoint
+    runner: Optional[RobustRunner] = None
+
+    if use_checkpoint:
+        runner = RobustRunner(
+            out_dir,
+            checkpoint_interval_minutes=args.checkpoint_interval,
+            min_free_gb=10.0,
+        )
+        _global_runner = runner
+
+        # Register signal handlers for graceful shutdown
+        try:
+            signal.signal(signal.SIGINT, _shutdown_handler)
+            signal.signal(signal.SIGTERM, _shutdown_handler)
+        except Exception:
+            pass  # Windows may not support all signals
+
+        # Register atexit handler
+        def _atexit_save():
+            global _global_runner
+            if _global_runner is not None:
+                try:
+                    _global_runner.shutdown()
+                except Exception:
+                    pass
+        atexit.register(_atexit_save)
+
+        # Check for resume state
+        resume_state = runner.get_resume_state()
+        if resume_state:
+            print(f"[CHECKPOINT] Resuming from: fold={resume_state.get('fold')}, "
+                  f"phase={resume_state.get('phase')}, trial={resume_state.get('trial')}")
+        else:
+            print(f"[CHECKPOINT] Starting fresh run with checkpoints every {args.checkpoint_interval} min")
+    else:
+        if args.no_checkpoint:
+            print("[CHECKPOINT] Disabled by --no-checkpoint flag")
+        else:
+            print("[CHECKPOINT] Not available (checkpoint_manager not found)")
 
     # Single-instance lock to avoid duplicate runs on same out_dir
     lock_path = out_dir / ".lock"
@@ -452,6 +568,7 @@ def main() -> int:
             "trials_total": int(args.trials),
             "percent": 0.0,
             "phase": "init",
+            "checkpoint_enabled": use_checkpoint,
         }
         tmp = str(progress_path) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
@@ -475,6 +592,22 @@ def main() -> int:
     except Exception:
         jsonl_path = None
 
+    # Create checkpoint callback for run_phase_wfa
+    def checkpoint_callback(fold: int, phase: str, trial: int, total_trials: int,
+                           best_params: Dict[str, Any], best_score: float,
+                           completed_phases: List[str]) -> None:
+        if runner is not None:
+            runner.save_progress(
+                seed=args.seed,
+                fold=fold,
+                phase=phase,
+                trial=trial,
+                total_trials=total_trials,
+                best_params=best_params,
+                best_score=best_score,
+                completed_phases=completed_phases,
+            )
+
     folds, overall = run_phase_wfa(
         df,
         labels,
@@ -490,6 +623,7 @@ def main() -> int:
         progress_path=progress_path,
         trial_log_path=jsonl_path,
         k_hint=k_hint,
+        checkpoint_callback=checkpoint_callback if use_checkpoint else None,
     )
 
     ts = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%d_%H%M%S")
@@ -549,6 +683,13 @@ def main() -> int:
         os.replace(tmp, progress_path)
     except Exception:
         pass
+
+    # Mark seed complete and cleanup
+    if runner is not None:
+        runner.complete_seed(args.seed, overall)
+        runner.shutdown()
+        _global_runner = None
+
     try:
         # remove lock at the end
         if lock_path.exists():
