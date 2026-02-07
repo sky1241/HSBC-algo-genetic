@@ -10,7 +10,7 @@ if (-not $ROOT -or $ROOT -eq "") {
 
 # Configuration
 $TRIALS = 300
-$LABELS_CSV = Join-Path $ROOT "outputs\fourier\labels_frozen\BTC_FUSED_2h\K5.csv"
+$LABELS_CSV = Join-Path $ROOT "outputs\fourier\labels_frozen\BTC_FUSED_2h\K5_1d_stable.csv"
 $OUT_BASE = Join-Path $ROOT "outputs\wfa_phase_k5"
 $MAX_PARALLEL = 6  # Nombre max de jobs paralleles
 
@@ -71,12 +71,13 @@ foreach ($seed in $SEEDS) {
         $startTime = Get-Date
         Write-Output "=== Seed $seed - Debut: $startTime ===" | Out-File $logFile
 
-        & python scripts/run_scheduler_wfa_phase.py `
+        & py scripts/run_scheduler_wfa_phase.py `
             --labels-csv $labels `
             --trials $trials `
             --seed $seed `
             --use-fused `
-            --out-dir $outDir 2>&1 | Tee-Object -FilePath $logFile -Append
+            --out-dir $outDir `
+            --checkpoint-interval 5 2>&1 | Tee-Object -FilePath $logFile -Append
 
         $endTime = Get-Date
         $duration = $endTime - $startTime
