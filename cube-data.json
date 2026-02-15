@@ -1,0 +1,26 @@
+{
+  "box": {
+    "width": 3.8,
+    "height": 3.8,
+    "depth": 3.8,
+    "color": "Lime",
+    "lineWidth": 3
+  },
+  "motion": {
+    "yawSpeed": 0.00502655,
+    "tiltX": 0.17575
+  },
+  "base": {
+    "visible": false,
+    "width": 13.0,
+    "depth": 5.4,
+    "color": "DarkSlateGray",
+    "lineWidth": 2,
+    "followCubeYaw": true
+  },
+  "render": {
+    "camera": 7.0,
+    "scale": 907.2,
+    "perspective": 0.18
+  }
+}
