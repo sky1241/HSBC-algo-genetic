@@ -1,0 +1,49 @@
+# ACOR Optimizer Configuration
+# =============================
+# Socha & Dorigo (2008) - Ant Colony Optimization for Continuous Domains
+
+# --- Core ACOR hyperparameters ---
+n_ants: 20           # Solutions generated per iteration
+archive_size: 50     # k: solutions maintained in the archive
+q: 0.5               # Exploration parameter (small=exploit, large=explore)
+                     # Conservative: 0.1-0.3 | Balanced: 0.5 | Exploratory: 1.0+
+xi: 1.0              # Deviation ratio — scales Gaussian kernel width
+                     # Literature: 1.0-2.0 recommended for noisy landscapes
+                     # Low noise: 0.85 | Default: 1.0 | High noise: 2.0
+max_iter: 50         # Max iterations (total evals = archive_size + n_ants * max_iter)
+seed: 42             # Random seed for reproducibility
+stagnation_limit: 10 # Iters w/o improvement -> exploration boost
+
+# --- Parallelism ---
+n_workers: 1         # Parallel backtest workers (1 = sequential, safe)
+
+# --- Parameter space (Ichimoku ratio-encoded) ---
+# Default: ICHIMOKU_PARAMS from aco_optimizer.py
+# Uncomment to customize:
+# param_defs:
+#   - name: tenkan
+#     low: 5
+#     high: 30
+#     dtype: int
+#   - name: r_kijun
+#     low: 1
+#     high: 5
+#     dtype: int
+#   - name: r_senkou
+#     low: 1
+#     high: 9
+#     dtype: int
+#   - name: shift
+#     low: 20
+#     high: 30
+#     dtype: int
+#   - name: atr_mult
+#     low: 0.5
+#     high: 6.0
+#     dtype: float
+#     step: 0.1
+
+# --- Presets ---
+# Quick smoke test:   n_ants=5,  archive_size=15, max_iter=10  (~75 evals)
+# Standard run:       n_ants=20, archive_size=50, max_iter=50  (~1050 evals)
+# Deep exploration:   n_ants=30, archive_size=80, max_iter=100 (~3080 evals)

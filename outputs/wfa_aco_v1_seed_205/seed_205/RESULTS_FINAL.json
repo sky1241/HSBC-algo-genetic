@@ -1,0 +1,10 @@
+{
+  "equity_mult": 1.3999031925221963,
+  "max_drawdown": 0.08307503656320547,
+  "trades": 609,
+  "sharpe_proxy_mean": 0.22129018035776735,
+  "folds": 14,
+  "optimizer": "ACOR",
+  "completion_time": "2026-02-14T04:51:58.262547+00:00",
+  "status": "completed"
+}

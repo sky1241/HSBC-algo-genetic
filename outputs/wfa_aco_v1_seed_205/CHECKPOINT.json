@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-02-14T04:51:58.264688+00:00",
+  "seed": 205,
+  "fold": 2025,
+  "phase": "1",
+  "trial": 30,
+  "total_trials": 30,
+  "best_params": {
+    "tenkan": 8,
+    "kijun": 24,
+    "senkou_b": 32,
+    "shift": 29,
+    "atr_mult": 5.4,
+    "tp_mult": null
+  },
+  "best_score": 0.0,
+  "completed_phases": [
+    "GLOBAL",
+    "-1",
+    "0",
+    "1"
+  ],
+  "elapsed_seconds": 37934.31869506836
+}

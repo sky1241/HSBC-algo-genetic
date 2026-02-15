@@ -40,3 +40,4 @@ outputs/trial_logs/**/*.jsonl
 Thumbs.db
 outputs/TESTNET_ENV.txt
 
+nul

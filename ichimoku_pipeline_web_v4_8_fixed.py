@@ -574,15 +574,18 @@ def calculate_ichimoku(df, tenkan, kijun, senkou_b, shift):
     
     return df
 
-def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h", tp_mult=None):
+def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h", tp_mult=None, confidence_series=None):
     """Backtest avec stratégie long + short + take profit adaptatif
-    
+
     Args:
         tp_mult: Multiplicateur ATR pour take profit (None = pas de TP, float = TP actif)
                  TP indépendant du SL, optimisé par Optuna séparément
+        confidence_series: Optional pd.Series indexed by timestamp with P(bull) values (0-1).
+                          When provided, position size scales from 1% (P(bull)<=0.5) to 2% (P(bull)=1.0).
+                          Leverage stays fixed at 10x.
     """
     data = calculate_ichimoku(df.copy(), tenkan, kijun, senkou_b, shift)
-    
+
     # Positions long et short (jusqu'à 3 par côté, jamais les deux en même temps sur un symbole)
     # Chaque position: {"entry": float, "trailing": float, "tp_price": float, "position_value": float}
     positions_long = []
@@ -593,7 +596,17 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     trades_short = []
     wins_long = 0
     wins_short = 0
-    
+
+    # Confidence-based sizing setup
+    _use_confidence = confidence_series is not None and len(confidence_series) > 0
+    _confidence_config = None
+    if _use_confidence:
+        try:
+            from src.confidence_sizing import ConfidenceSizingConfig, compute_effective_size as _compute_eff_size
+            _confidence_config = ConfidenceSizingConfig()
+        except ImportError:
+            _use_confidence = False
+
     # Configuration des paramètres de trading (overrides via env: POSITION_SIZE, LEVERAGE)
     initial_capital = 1000  # Capital initial en euros
     try:
@@ -603,8 +616,9 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         _env_pos = None; _env_lev = None
     position_size = float(_env_pos) if _env_pos else 0.01  # part du capital par trade
     leverage = float(_env_lev) if _env_lev else 10  # levier par défaut = 10
-    # Cap dur sécurité demandé: 1% et x10 max
-    position_size = min(max(0.0, position_size), 0.01)
+    # Cap dur sécurité: 2% max avec confidence, 1% sinon. Levier x10 max.
+    _max_pos = 0.02 if _use_confidence else 0.01
+    position_size = min(max(0.0, position_size), _max_pos)
     leverage = min(max(1.0, leverage), 10.0)
     
     # Gestion du risque (AUGMENTÉE POUR PLUS DE SIGNALS !)
@@ -949,7 +963,16 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         # Entrée LONG: seulement si pas de SHORT ouverts (jamais long et short en même temps sur un symbole)
         if len(positions_short) == 0 and row["signal_long"] and daily_loss < daily_threshold:
             current_capital = equity * 1000
-            position_size_euros = current_capital * position_size  # 1% du capital seulement
+            # Confidence-based sizing: scale 1% -> 2% based on P(bull)
+            _eff_size = position_size
+            if _use_confidence and _confidence_config is not None:
+                try:
+                    _p = confidence_series.asof(ts)
+                    if not np.isnan(_p):
+                        _eff_size = _compute_eff_size(float(_p), _confidence_config)
+                except Exception:
+                    pass
+            position_size_euros = current_capital * _eff_size
 
             if len(positions_long) >= 3:
                 # Cap de 3 positions atteint
@@ -1008,7 +1031,18 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         # Entrée SHORT: seulement si pas de LONG ouverts
         if len(positions_long) == 0 and row["signal_short"] and daily_loss < daily_threshold:
             current_capital = equity * 1000
-            position_size_euros = current_capital * position_size  # 1% du capital seulement
+            # Confidence-based sizing: scale 1% -> 2% based on P(bull)
+            # For SHORT: inverse confidence - high P(bull) = less short, low P(bull) = more short
+            _eff_size = position_size
+            if _use_confidence and _confidence_config is not None:
+                try:
+                    _p = confidence_series.asof(ts)
+                    if not np.isnan(_p):
+                        # Invert: low P(bull) = high confidence in short
+                        _eff_size = _compute_eff_size(1.0 - float(_p), _confidence_config)
+                except Exception:
+                    pass
+            position_size_euros = current_capital * _eff_size
             if len(positions_short) >= 3:
                 pass
             else:

@@ -1,0 +1,9 @@
+{
+  "equity_mult": 1.1036112219824987,
+  "max_drawdown": 0.17050812625757417,
+  "trades": 598,
+  "sharpe_proxy_mean": -0.47540886794042925,
+  "folds": 14,
+  "completion_time": "2026-02-11T18:26:23.401074+00:00",
+  "status": "completed"
+}
