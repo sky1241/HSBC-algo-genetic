@@ -41,6 +41,21 @@ Le code reste dans la structure originale du repo pour ne pas casser les imports
 - 206/206 tests verts
 - **Verdict** : aucun edge confirmé sur K3 (Sharpe backtest -1.91). Ne PAS scaler mainnet sans Sharpe OOS > 1.5
 
+## ⚠ Baseline de reporting — 2026-04-27T12:00 UTC
+
+**TOUS les trades exécutés sur le compte Binance testnet AVANT ce timestamp sont des opérations de SETUP** (wallet bleed $4998→$103 + tests round-trip de validation BTC/ETH/SOL LONG+SHORT). Ils ne font PAS partie de la stratégie K3.
+
+**Référence** : `binance_bot/data/report_baseline.json` + entry `seq=17` dans `binance_bot/data/trades_audit.jsonl` (immutable, hash chain SHA256).
+
+**Helper code** : `binance_bot/bot/report_filter.py`
+```python
+from bot.report_filter import load_baseline, filter_after_baseline
+baseline = load_baseline()
+trades_clean = filter_after_baseline(ex.fetch_my_trades('BTC/USDT'), baseline)
+```
+
+Tout futur P&L report, audit perf, ou tracking error live vs backtest doit utiliser ce filtre pour exclure les trades de setup.
+
 ## Prochaines étapes recommandées
 
 Voir `RECOMMANDATIONS_TOP5_2026-04-27.md` pour le détail. Top 5 :

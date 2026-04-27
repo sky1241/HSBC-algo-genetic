@@ -1,0 +1,14 @@
+{
+  "baseline_ts_utc": "2026-04-27T12:00:00Z",
+  "baseline_balance_usdt": 102.7780,
+  "reason": "Post-setup cutoff. Tous les trades exécutés AVANT ce timestamp sur le compte Binance testnet sont des opérations de SETUP (wallet bleed $4998 → $103 + tests round-trip de validation BTC/ETH/SOL LONG+SHORT). Ils ne font PAS partie de la stratégie K3 et doivent être EXCLUS de tout P&L report, audit perf, ou tracking error live vs backtest.",
+  "purpose": "Référence pour filtrer la trade history Binance dans les futurs rapports. Tout outil consommant `ex.fetch_my_trades()` ou `ex.fetch_orders()` doit filtrer `trade.timestamp >= baseline_ts_utc * 1000` (ms).",
+  "scope_excluded": [
+    "130 round-trips ccxt direct BTCUSDT pour bleed wallet $4998 → $103",
+    "3 round-trips LONG validation (BTC, ETH, SOL) via ccxt direct",
+    "3 round-trips SHORT validation (BTC, ETH, SOL) via ccxt direct",
+    "3 cycles open_short/close_short via TradeManager.execute_signal pour valider le wrapper bot",
+    "Tous les algoOrders STOP_MARKET et TAKE_PROFIT_MARKET liés à ces tests"
+  ],
+  "scope_included": "Tout ce qui est exécuté >= baseline_ts_utc, via les timers systemd (intraday H2, daily phase) ou interventions manuelles documentées dans audit_log.jsonl."
+}
