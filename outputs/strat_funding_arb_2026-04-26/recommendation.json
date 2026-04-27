@@ -1,0 +1,10 @@
+{
+  "decision": "NE_PAS_DEPLOYER",
+  "confidence": "HAUTE",
+  "reason": "Sharpe chained OOS -0.32 <= 0, edge inexistant apr\u00e8s frais.",
+  "best_threshold_bps": 3.0,
+  "best_chain_sharpe": -0.31690179812964975,
+  "best_chain_dsr": 0.0026307399460777964,
+  "spa_p_consistent": 1.0,
+  "hodl_spot_sharpe": 0.7978755129714081
+}

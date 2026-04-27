@@ -35,18 +35,25 @@ class RiskManager:
         """
         return current_equity_usdt <= self.stop_global_threshold
     
-    def calculate_position_size(self, current_equity_usdt: float, price: float) -> float:
-        """
-        Calcule taille position en BTC.
-        
+    def calculate_position_size(
+        self,
+        current_equity_usdt: float,
+        price: float,
+        leverage: float = 1.0,
+    ) -> float:
+        """Calcule taille position en BTC, en tenant compte du levier (BUG-005).
+
         Args:
             current_equity_usdt: equity actuelle en USDT
             price: prix BTC actuel
-        
+            leverage: levier appliqué (1.0 = pas de levier)
+
         Returns:
             qty BTC (ex: 0.01 BTC)
         """
-        position_value = current_equity_usdt * self.position_size_pct
+        # On valide le levier (clamp 1..max_leverage)
+        eff_leverage = self.validate_leverage(leverage)
+        position_value = current_equity_usdt * self.position_size_pct * eff_leverage
         qty = position_value / price
         return round(qty, 3)  # Arrondi Binance (3 décimales pour BTC/USDT)
     

@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC bot daily phase job (computes today's regime + parameters)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.daily_phase_job
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/daily.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/daily.log
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

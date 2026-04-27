@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HSBC Ichimoku K3 — Live dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1c232c;
+      --border: #2a313c;
+      --text: #d6dbe1;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    header .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-family: var(--mono);
+      border: 1px solid var(--border);
+      display: inline-block;
+    }
+    .pill.green { background: rgba(63,185,80,.12); border-color: var(--green); color: var(--green); }
+    .pill.red   { background: rgba(248,81,73,.12); border-color: var(--red);   color: var(--red); }
+    .pill.yellow{ background: rgba(210,153,34,.12);border-color: var(--yellow);color: var(--yellow); }
+
+    main {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      grid-column: span 12;
+    }
+    @media (min-width: 900px) {
+      .card.half  { grid-column: span 6; }
+      .card.third { grid-column: span 4; }
+      .card.two-thirds { grid-column: span 8; }
+    }
+    .card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-family: var(--mono); font-size: 13px; }
+    .kv .k { color: var(--muted); }
+    .kv .v { color: var(--text); }
+    .big {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 600;
+      margin: 4px 0 0 0;
+    }
+    .sub { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+    .green { color: var(--green); }
+    .red   { color: var(--red); }
+    .yellow{ color: var(--yellow); }
+
+    table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+    tbody tr:hover { background: var(--panel-2); }
+    .empty { color: var(--muted); font-style: italic; padding: 8px 0; }
+
+    pre.log {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      overflow: auto;
+      max-height: 220px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      white-space: pre-wrap;
+      margin: 0 0 8px 0;
+    }
+    button {
+      background: var(--accent);
+      border: 0;
+      color: #0d1117;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .err {
+      color: var(--red);
+      background: rgba(248,81,73,.08);
+      border-left: 3px solid var(--red);
+      padding: 6px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      margin: 4px 0;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 16px;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>HSBC Ichimoku K3 — testnet dashboard</h1>
+      <div class="meta" id="meta">loading...</div>
+    </div>
+    <div class="row">
+      <span id="status-pill" class="pill yellow">loading</span>
+      <span id="mode-pill" class="pill">mode: ?</span>
+      <span id="net-pill" class="pill">network: ?</span>
+      <button id="run-btn" type="button">Force intraday run</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card third">
+      <h2>USDT balance</h2>
+      <div class="big" id="balance-total">--</div>
+      <div class="sub">free <span id="balance-free">--</span> · used <span id="balance-used">--</span></div>
+    </section>
+
+    <section class="card third">
+      <h2>BTC/USDT last price</h2>
+      <div class="big" id="last-price">--</div>
+      <div class="sub" id="symbol-line">--</div>
+    </section>
+
+    <section class="card third">
+      <h2>P&amp;L vs start (5000 USDT)</h2>
+      <div class="big" id="pnl-abs">--</div>
+      <div class="sub" id="pnl-pct">--</div>
+    </section>
+
+    <section class="card half">
+      <h2>State of the bot</h2>
+      <div class="kv" id="state-kv"></div>
+    </section>
+
+    <section class="card half">
+      <h2>Today&apos;s Ichimoku params</h2>
+      <div class="kv" id="params-kv"></div>
+    </section>
+
+    <section class="card two-thirds">
+      <h2>Open positions</h2>
+      <div id="positions-wrap"></div>
+    </section>
+
+    <section class="card third">
+      <h2>Risk &amp; settings</h2>
+      <div class="kv" id="settings-kv"></div>
+    </section>
+
+    <section class="card">
+      <h2>Open algo orders (SL/TP)</h2>
+      <div id="algo-wrap"></div>
+    </section>
+
+    <section class="card half">
+      <h2>Last intraday runs</h2>
+      <div id="logs-intraday"></div>
+    </section>
+
+    <section class="card half">
+      <h2>Last daily phase update</h2>
+      <div id="logs-daily"></div>
+    </section>
+
+    <section class="card" id="errors-card" style="display:none">
+      <h2>Binance API errors</h2>
+      <div id="errors-wrap"></div>
+    </section>
+  </main>
+
+  <footer>auto-refresh every 30s · server-side only Binance calls · port 8080</footer>
+
+  <script>
+    const fmtNum = (v, dec = 2) => (v === null || v === undefined || Number.isNaN(v))
+      ? "--" : Number(v).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+    const fmtSigned = (v, dec = 2) => {
+      if (v === null || v === undefined || Number.isNaN(v)) return "--";
+      const sign = v >= 0 ? "+" : "";
+      return sign + fmtNum(v, dec);
+    };
+
+    const colorClass = (v) => v === null || v === undefined ? "" : (v >= 0 ? "green" : "red");
+
+    function renderKV(target, entries) {
+      target.innerHTML = "";
+      for (const [k, v] of entries) {
+        const dk = document.createElement("div"); dk.className = "k"; dk.textContent = k;
+        const dv = document.createElement("div"); dv.className = "v"; dv.textContent = (v === null || v === undefined || v === "") ? "--" : v;
+        target.appendChild(dk); target.appendChild(dv);
+      }
+    }
+
+    function renderPositions(positions) {
+      const wrap = document.getElementById("positions-wrap");
+      if (!positions || positions.length === 0) {
+        wrap.innerHTML = '<div class="empty">No open positions.</div>';
+        return;
+      }
+      let html = '<table><thead><tr>'
+        + '<th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Mark</th>'
+        + '<th>Unrealized</th><th>Lev</th><th>Liq</th>'
+        + '</tr></thead><tbody>';
+      for (const p of positions) {
+        const pnlClass = colorClass(p.unrealized);
+        html += `<tr>
+          <td>${p.symbol ?? "--"}</td>
+          <td class="${p.side === 'long' ? 'green' : 'red'}">${(p.side ?? "--").toUpperCase()}</td>
+          <td>${fmtNum(p.contracts, 4)}</td>
+          <td>${fmtNum(p.entry, 2)}</td>
+          <td>${fmtNum(p.mark, 2)}</td>
+          <td class="${pnlClass}">${fmtSigned(p.unrealized, 2)}</td>
+          <td>${fmtNum(p.leverage, 0)}x</td>
+          <td>${p.liquidation ? fmtNum(p.liquidation, 2) : "--"}</td>
+        </tr>`;
+      }
+      html += "</tbody></table>";
+      wrap.innerHTML = html;
+    }
+
+    function renderAlgo(orders) {
+      const wrap = document.getElementById("algo-wrap");
+      if (!orders || orders.length === 0) {
+        wrap.innerHTML = '<div class="empty">No open algo orders (SL/TP).</div>';
+        return;
+      }
+      let html = '<table><thead><tr>'
+        + '<th>Algo ID</th><th>Symbol</th><th>Type</th><th>Side</th>'
+        + '<th>Pos side</th><th>Qty</th><th>Trigger</th><th>Status</th>'
+        + '</tr></thead><tbody>';
+      for (const o of orders) {
+        html += `<tr>
+          <td>${o.algo_id ?? "--"}</td>
+          <td>${o.symbol ?? "--"}</td>
+          <td>${o.type ?? "--"}</td>
+          <td>${o.side ?? "--"}</td>
+          <td>${o.position_side ?? "--"}</td>
+          <td>${o.quantity ?? "--"}</td>
+          <td>${o.trigger_price ?? "--"}</td>
+          <td>${o.status ?? "--"}</td>
+        </tr>`;
+      }
+      html += "</tbody></table>";
+      wrap.innerHTML = html;
+    }
+
+    function renderLogs(blocks, target) {
+      const el = document.getElementById(target);
+      if (!blocks || blocks.length === 0) {
+        el.innerHTML = '<div class="empty">No log entries yet.</div>';
+        return;
+      }
+      el.innerHTML = blocks.map(b => `<pre class="log">${b.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>`).join("");
+    }
+
+    async function refresh() {
+      try {
+        const resp = await fetch("/api/status", { cache: "no-store" });
+        const d = await resp.json();
+        const meta = `now: ${d.now} · last state update: ${d.state.last_update ?? "--"}`;
+        document.getElementById("meta").textContent = meta;
+
+        // Pills
+        const killPill = document.getElementById("status-pill");
+        if (d.kill && d.kill.killed) {
+          killPill.className = "pill red";
+          killPill.textContent = "KILLED";
+          killPill.title = d.kill.reason || "";
+        } else {
+          killPill.className = "pill green";
+          killPill.textContent = "Running";
+          killPill.title = "";
+        }
+        const modePill = document.getElementById("mode-pill");
+        modePill.textContent = `mode: ${d.trade_mode}`;
+        modePill.className = "pill " + (d.trade_mode === "live" ? "yellow" : "");
+        const netPill = document.getElementById("net-pill");
+        netPill.textContent = "network: " + (d.testnet ? "testnet" : "mainnet");
+        netPill.className = "pill " + (d.testnet ? "" : "red");
+
+        // Balance
+        const bal = (d.binance && d.binance.balance) || null;
+        document.getElementById("balance-total").textContent = bal ? fmtNum(bal.total, 2) + " USDT" : "--";
+        document.getElementById("balance-free").textContent = bal ? fmtNum(bal.free, 2) : "--";
+        document.getElementById("balance-used").textContent = bal ? fmtNum(bal.used, 2) : "--";
+
+        // Last price
+        const lp = d.binance && d.binance.last_price;
+        document.getElementById("last-price").textContent = lp ? fmtNum(lp, 2) + " USDT" : "--";
+        document.getElementById("symbol-line").textContent = (d.symbol ?? "BTC/USDT") + " (" + (d.testnet ? "testnet" : "mainnet") + ")";
+
+        // PnL
+        const pnl = d.pnl || {};
+        const pnlEl = document.getElementById("pnl-abs");
+        if (pnl.pnl_vs_start === null || pnl.pnl_vs_start === undefined) {
+          pnlEl.textContent = "--"; pnlEl.className = "big";
+        } else {
+          pnlEl.textContent = fmtSigned(pnl.pnl_vs_start, 2) + " USDT";
+          pnlEl.className = "big " + colorClass(pnl.pnl_vs_start);
+        }
+        const pctEl = document.getElementById("pnl-pct");
+        pctEl.textContent = (pnl.pnl_pct_vs_start === null || pnl.pnl_pct_vs_start === undefined)
+          ? "--" : fmtSigned(pnl.pnl_pct_vs_start, 2) + " %";
+
+        // State KV
+        const s = d.state || {};
+        renderKV(document.getElementById("state-kv"), [
+          ["date", s.date],
+          ["phase today", s.phase_today],
+          ["equity (state)", s.equity],
+          ["initial capital", s.initial_capital_usdt + " USDT"],
+          ["max drawdown", s.max_drawdown],
+          ["daily loss", s.daily_loss],
+          ["total trades", s.total_trades],
+          ["leverage (cfg)", d.leverage + "x"],
+          ["kill flag", d.kill && d.kill.killed ? d.kill.reason.split("\n")[0] : "no"],
+        ]);
+
+        // Params today
+        const p = s.params_today || {};
+        renderKV(document.getElementById("params-kv"), [
+          ["tenkan", p.tenkan],
+          ["kijun", p.kijun],
+          ["senkou_b", p.senkou_b],
+          ["shift", p.shift],
+          ["atr_mult", p.atr_mult],
+          ["tp_mult", p.tp_mult],
+        ]);
+
+        // Settings
+        const cfg = d.settings || {};
+        renderKV(document.getElementById("settings-kv"), [
+          ["position size", (cfg.position_size_pct ? (cfg.position_size_pct*100).toFixed(2) + " %" : "--")],
+          ["max pos / side", cfg.max_positions_per_side],
+          ["stop global eq.", cfg.stop_global_equity],
+          ["ATR period", cfg.atr_period],
+          ["ATR trail mult", cfg.atr_trailing_multiplier],
+        ]);
+
+        // Positions, algo, logs
+        renderPositions((d.binance || {}).positions);
+        renderAlgo((d.binance || {}).algo_orders);
+        renderLogs((d.logs || {}).intraday, "logs-intraday");
+        renderLogs((d.logs || {}).daily, "logs-daily");
+
+        // Errors
+        const errs = (d.binance && d.binance.errors) || [];
+        const eCard = document.getElementById("errors-card");
+        const eWrap = document.getElementById("errors-wrap");
+        if (errs.length > 0) {
+          eCard.style.display = "block";
+          eWrap.innerHTML = errs.map(e => `<div class="err">${e.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</div>`).join("");
+        } else {
+          eCard.style.display = "none";
+          eWrap.innerHTML = "";
+        }
+      } catch (e) {
+        document.getElementById("meta").textContent = "API unreachable: " + e.message;
+        const killPill = document.getElementById("status-pill");
+        killPill.className = "pill red";
+        killPill.textContent = "API DOWN";
+      }
+    }
+
+    document.getElementById("run-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("run-btn");
+      btn.disabled = true; btn.textContent = "Running...";
+      try {
+        const r = await fetch("/api/run-intraday", { method: "POST" });
+        const j = await r.json();
+        if (j.ok) {
+          btn.textContent = "Started — refresh in 5s";
+          setTimeout(() => refresh(), 5000);
+        } else {
+          btn.textContent = "Failed (see console)";
+          console.error("run-intraday failed", j);
+        }
+      } catch (e) {
+        btn.textContent = "Error";
+        console.error(e);
+      } finally {
+        setTimeout(() => { btn.disabled = false; btn.textContent = "Force intraday run"; }, 8000);
+      }
+    });
+
+    refresh();
+    setInterval(refresh, 30000);
+  </script>
+</body>
+</html>

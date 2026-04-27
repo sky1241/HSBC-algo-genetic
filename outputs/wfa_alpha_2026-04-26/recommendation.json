@@ -1,0 +1,15 @@
+{
+  "deploy": "none",
+  "reason": "Sharpe uplift -0.198 <= 0; DSR(V2)=0.035 ≤ DSR(V1)=0.040; Hansen SPA p-consistent=0.530 > 0.05",
+  "config": {
+    "strategy": null,
+    "ichimoku_k3": {
+      "tenkan": 21,
+      "kijun": 35,
+      "senkou_b": 90,
+      "shift": 44
+    },
+    "filters_used": []
+  },
+  "expected_sharpe_uplift": -0.19778785172276891
+}

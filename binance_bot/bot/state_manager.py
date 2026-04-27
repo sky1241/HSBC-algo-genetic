@@ -21,29 +21,46 @@ class StateManager:
         self.state = self._load_or_initialize()
     
     def _load_or_initialize(self) -> Dict[str, Any]:
-        """Charge state.json ou initialise si inexistant."""
+        """Charge state.json ou initialise si inexistant. Migre auto vers structure multi-symbole."""
         if self.state_file.exists():
             try:
                 with open(self.state_file, 'r', encoding='utf-8') as f:
                     state = json.load(f)
+                # Migration mono→multi: si pas de section "symbols" mais positions globales,
+                # on les déplace sous BTC/USDT (symbole historique mono)
+                if "symbols" not in state:
+                    legacy_long = state.pop("positions_long", [])
+                    legacy_short = state.pop("positions_short", [])
+                    state["symbols"] = {
+                        "BTC/USDT": {
+                            "positions_long": legacy_long,
+                            "positions_short": legacy_short,
+                        }
+                    }
                 return state
             except Exception as e:
                 print(f"⚠️ Erreur lecture state.json: {e}. Initialisation nouveau state.")
-        
-        # État initial
+
+        # État initial multi-symbole
         return {
             "date": datetime.now().date().isoformat(),
             "phase_today": None,
             "params_today": None,
-            "positions_long": [],
-            "positions_short": [],
+            "symbols": {},
             "equity": 1.0,
-            "initial_capital_usdt": 1000.0,
+            "initial_capital_usdt": 100.0,
             "max_drawdown": 0.0,
             "daily_loss": 0.0,
             "total_trades": 0,
             "last_update": datetime.now().isoformat()
         }
+
+    def ensure_symbol(self, symbol: str):
+        """Garantit que la section pour `symbol` existe dans state['symbols']."""
+        if "symbols" not in self.state:
+            self.state["symbols"] = {}
+        if symbol not in self.state["symbols"]:
+            self.state["symbols"][symbol] = {"positions_long": [], "positions_short": []}
     
     def save(self):
         """Sauvegarde atomic du state (tmp + rename)."""
@@ -69,8 +86,8 @@ class StateManager:
         self.state["daily_loss"] = 0.0  # Reset daily loss
         self.save()
     
-    def add_position(self, side: str, entry: float, stop: float, tp: float, size: float):
-        """Ajoute une position (long ou short)."""
+    def add_position(self, side: str, entry: float, stop: float, tp: float, size: float, symbol: Optional[str] = None):
+        """Ajoute une position (long ou short). Si symbol fourni, scoped au symbole."""
         pos = {
             "id": f"{side}_{datetime.now().timestamp()}",
             "entry": float(entry),
@@ -79,27 +96,34 @@ class StateManager:
             "size": float(size),
             "opened_at": datetime.now().isoformat()
         }
-        if side == "long":
-            self.state["positions_long"].append(pos)
-        elif side == "short":
-            self.state["positions_short"].append(pos)
+        if symbol is not None:
+            self.ensure_symbol(symbol)
+            key = "positions_long" if side == "long" else "positions_short"
+            self.state["symbols"][symbol][key].append(pos)
+        else:
+            # Backward compat: positions globales (pour anciens tests)
+            key = "positions_long" if side == "long" else "positions_short"
+            self.state.setdefault(key, []).append(pos)
         self.save()
-    
-    def remove_position(self, side: str, pos_id: str):
-        """Supprime une position fermée."""
-        if side == "long":
-            self.state["positions_long"] = [p for p in self.state["positions_long"] if p["id"] != pos_id]
-        elif side == "short":
-            self.state["positions_short"] = [p for p in self.state["positions_short"] if p["id"] != pos_id]
+
+    def remove_position(self, side: str, pos_id: str, symbol: Optional[str] = None):
+        """Supprime une position fermée. Si symbol fourni, scoped au symbole."""
+        key = "positions_long" if side == "long" else "positions_short"
+        if symbol is not None:
+            self.ensure_symbol(symbol)
+            self.state["symbols"][symbol][key] = [p for p in self.state["symbols"][symbol][key] if p["id"] != pos_id]
+        else:
+            if key in self.state:
+                self.state[key] = [p for p in self.state[key] if p["id"] != pos_id]
         self.save()
-    
-    def get_positions(self, side: str) -> List[Dict]:
-        """Retourne positions ouvertes (long ou short)."""
-        if side == "long":
-            return self.state.get("positions_long", [])
-        elif side == "short":
-            return self.state.get("positions_short", [])
-        return []
+
+    def get_positions(self, side: str, symbol: Optional[str] = None) -> List[Dict]:
+        """Retourne positions ouvertes (long ou short). Si symbol fourni, scoped au symbole."""
+        key = "positions_long" if side == "long" else "positions_short"
+        if symbol is not None:
+            self.ensure_symbol(symbol)
+            return self.state["symbols"][symbol].get(key, [])
+        return self.state.get(key, [])
     
     def update_equity(self, new_equity: float):
         """Met à jour equity et max drawdown."""

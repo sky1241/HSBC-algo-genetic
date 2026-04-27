@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger HSBC backup every 6h
+
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=6h
+Unit=hsbc-backup.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

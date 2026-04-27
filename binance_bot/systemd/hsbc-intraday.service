@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC bot intraday runner (executes Ichimoku signals every 2h)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.intraday_runner
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/intraday.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/intraday.log
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

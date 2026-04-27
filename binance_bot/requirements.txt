@@ -1,4 +1,4 @@
-ccxt>=4.0.0
+ccxt>=4.0.0,<4.4  # 4.4+ casse set_sandbox_mode pour binanceusdm (BUG-BONUS)
 binance-connector>=3.0.0
 pandas>=2.0.0
 numpy>=1.24.0

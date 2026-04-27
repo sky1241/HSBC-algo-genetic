@@ -1,8 +1,17 @@
-# Paramètres opérationnels du bot Binance
-symbol: "BTC/USDT"
+# Paramètres opérationnels du bot Binance — multi-symbole 2026-04-27
+# Règle dimensionnement: notional = initial_capital × position_size_pct × leverage_du_symbole
+# Règle positions: par symbole, max 3 LONG OU 3 SHORT (jamais mixte). Worst-case 9 positions sur 3 cryptos.
+symbols:
+  - { pair: "BTC/USDT", leverage: 125 }   # max testnet
+  - { pair: "ETH/USDT", leverage: 100 }   # max testnet pour ce compte
+  - { pair: "SOL/USDT", leverage: 50 }    # max testnet
 timeframe: "2h"
-position_size_pct: 0.01   # 1% du capital par trade
-max_leverage: 10
+position_size_pct: 0.01   # 1% du capital par trade ($1 marge sur $100)
+max_positions_per_symbol: 3   # 3 LONG XOR 3 SHORT par symbole (pas mixé)
+
+# Compat ascendant (utilisé seulement si settings.symbols absent)
+symbol: "BTC/USDT"
+max_leverage: 125
 max_positions_per_side: 3
 stop_global_equity: 0.50   # equity minimale (50% du capital initial)
 slippage_bps: 5            # slippage par défaut (0.05%)
@@ -10,3 +19,21 @@ atr_period: 14
 atr_trailing_multiplier: 2.0
 log_file: "logs/bot.log"
 state_file: "data/state.json"
+
+# Régime filter ER+ADX (ALPHA-1, recommandation P1 audit quant 2026-04-26).
+# Désactivé par défaut — activer après validation empirique par WFA + Hansen SPA.
+# Quand enabled, les entrées Ichimoku sont bloquées si ER<min_er OU ADX<min_adx
+# (i.e. marché en range). Les sorties (TP/SL/trailing) restent actives.
+regime_filter:
+  enabled: false
+  min_er: 0.30
+  min_adx: 22.0
+  er_period: 30
+  adx_period: 14
+
+# trade_mode: "simulation" (no-op) ou "live" (place réellement sur l'exchange).
+# DEFAULT = simulation (safety). Override via env var TRADE_MODE=live ou
+# en éditant cette ligne explicitement avant un run live.
+# IMPORTANT: avec BINANCE_TESTNET=true dans .env, "live" trade sur testnet
+# (capital fictif). Avec BINANCE_TESTNET=false, ça part sur mainnet → vrai capital.
+trade_mode: "simulation"

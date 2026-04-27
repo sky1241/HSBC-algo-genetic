@@ -1,0 +1,34 @@
+{
+  "gross": {
+    "sharpe_phaseaware": 0.9337944448735646,
+    "sharpe_baseline": 0.3032459517295253,
+    "cagr_phaseaware": 0.23183412232544587,
+    "cagr_baseline": 0.04598690121019233,
+    "mdd_phaseaware": -0.2392563606271526,
+    "mdd_baseline": -0.2522652369403984,
+    "n_folds": 9
+  },
+  "net": {
+    "sharpe_phaseaware": 0.4944056582758001,
+    "sharpe_baseline": -0.1974589128887805,
+    "cagr_phaseaware": 0.09559162957034184,
+    "cagr_baseline": -0.0807630410388297,
+    "mdd_phaseaware": -0.26245455561078535,
+    "mdd_baseline": -0.324982909296199,
+    "n_folds": 9
+  },
+  "delta": {
+    "delta_sharpe_phaseaware": -0.4393887865977645,
+    "delta_sharpe_baseline": -0.5007048646183058,
+    "delta_cagr_phaseaware": -0.13624249275510403,
+    "delta_cagr_baseline": -0.12674994224902203,
+    "delta_mdd_phaseaware": -0.023198194983632736
+  },
+  "config": {
+    "n_seeds": 3,
+    "n_states": 2,
+    "n_trials": 10,
+    "period": "2020-01 to 2024-12",
+    "data": "BTC/USDT 1D"
+  }
+}

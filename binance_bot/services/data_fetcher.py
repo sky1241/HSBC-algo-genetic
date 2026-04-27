@@ -21,37 +21,52 @@ class DataFetcher:
         """
         self.symbol = symbol
         self.timeframe = timeframe
-        
-        # Configuration Binance
+
+        # Configuration Binance USDM (futures linéaires)
         api_key = os.getenv("BINANCE_API_KEY")
         api_secret = os.getenv("BINANCE_API_SECRET")
         testnet = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
-        
-        config = {
+
+        # Note: ccxt.binanceusdm + set_sandbox_mode est la voie propre pour testnet
+        # futures. ccxt.binance avec urls custom ne route pas sapi correctement.
+        self.exchange = ccxt.binanceusdm({
             'apiKey': api_key,
             'secret': api_secret,
             'enableRateLimit': True,
-            'options': {'defaultType': 'future'}  # Futures (si tu veux du levier)
-        }
-        
+            'options': {'defaultType': 'future'},
+        })
         if testnet:
-            config['urls'] = {
-                'api': {
-                    'public': 'https://testnet.binancefuture.com',
-                    'private': 'https://testnet.binancefuture.com',
-                }
-            }
-        
-        self.exchange = ccxt.binance(config)
+            self.exchange.set_sandbox_mode(True)
     
+    @staticmethod
+    def _filter_unclosed_last_candle(
+        df: pd.DataFrame,
+        timeframe: str,
+        now_utc: Optional[pd.Timestamp] = None,
+    ) -> pd.DataFrame:
+        """Drop la dernière bougie si elle n'est pas encore clôturée.
+
+        Une bougie ouverte au timestamp T en timeframe TF est clôturée à T+TF.
+        Si T+TF > now → on la retire (signal Ichimoku basé sur bougie complète seulement).
+        """
+        if df.empty:
+            return df
+        if now_utc is None:
+            now_utc = pd.Timestamp.now(tz='UTC')
+        tf_delta = pd.Timedelta(timeframe)
+        last_ts = df.iloc[-1]['timestamp']
+        if last_ts + tf_delta > now_utc:
+            return df.iloc[:-1].reset_index(drop=True)
+        return df
+
     def get_ohlcv(self, limit: int = 500, since: Optional[int] = None) -> pd.DataFrame:
         """
-        Récupère bougies OHLCV.
-        
+        Récupère bougies OHLCV (sans la bougie en cours de formation).
+
         Args:
             limit: nombre de bougies à récupérer
             since: timestamp ms (optionnel)
-        
+
         Returns:
             DataFrame avec colonnes: timestamp, open, high, low, close, volume
         """
@@ -61,16 +76,18 @@ class DataFetcher:
             limit=limit,
             since=since
         )
-        
+
         df = pd.DataFrame(
             candles,
             columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
         )
-        
-        # Convertir timestamp ms -> datetime
+
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
         df = df.sort_values('timestamp').reset_index(drop=True)
-        
+
+        # BUG-004: ne jamais signaler sur une bougie non-clôturée
+        df = self._filter_unclosed_last_candle(df, self.timeframe)
+
         return df
     
     def get_current_price(self) -> float:

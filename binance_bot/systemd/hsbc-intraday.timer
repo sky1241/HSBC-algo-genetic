@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger HSBC intraday runner every 2h (1min after H2 candle close, UTC)
+
+[Timer]
+# H2 Binance: clôture à 00:00, 02:00, 04:00... UTC. On déclenche 1min après.
+OnCalendar=*-*-* 00/2:01:00 UTC
+Persistent=true
+Unit=hsbc-intraday.service
+
+[Install]
+WantedBy=timers.target

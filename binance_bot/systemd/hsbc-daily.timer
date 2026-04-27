@@ -1,0 +1,10 @@
+[Unit]
+Description=Trigger HSBC daily phase job at 23:55 UTC (avant l'intraday 00:01 UTC du lendemain)
+
+[Timer]
+OnCalendar=*-*-* 23:55:00 UTC
+Persistent=true
+Unit=hsbc-daily.service
+
+[Install]
+WantedBy=timers.target

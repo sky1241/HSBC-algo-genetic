@@ -1,0 +1,14 @@
+[Unit]
+Description=HSBC bot backup — tarball + B2 upload optional
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh backup_runner
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/backup.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/backup.log
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

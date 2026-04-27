@@ -13,17 +13,42 @@ class SignalEngine:
     État interne maintenu: positions_long, positions_short (max 3 chacun).
     """
     
-    def __init__(self, max_positions: int = 3, daily_loss_threshold: float = 0.10):
+    def __init__(
+        self,
+        max_positions: int = 3,
+        daily_loss_threshold: float = 0.10,
+        atr_trailing_mult: float = 2.0,
+    ):
         """
         Args:
             max_positions: nombre max de positions par côté (3 dans backtest)
             daily_loss_threshold: seuil perte journalière (10% dans backtest)
+            atr_trailing_mult: multiplicateur ATR pour le trailing stop (cliquet)
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
+        self.atr_trailing_mult = float(atr_trailing_mult)
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
         self.daily_loss = 0.0
+
+    def _ratchet_trailing_stops(self, current_price: float, atr: float):
+        """Met à jour les stops des positions ouvertes (cliquet — jamais desserré).
+
+        LONG : stop = max(stop_actuel, prix - atr * mult)
+        SHORT: stop = min(stop_actuel, prix + atr * mult)
+        """
+        if atr <= 0:
+            return
+        offset = atr * self.atr_trailing_mult
+        for pos in self.positions_long:
+            new_stop = current_price - offset
+            if new_stop > pos.get("stop", float("-inf")):
+                pos["stop"] = new_stop
+        for pos in self.positions_short:
+            new_stop = current_price + offset
+            if new_stop < pos.get("stop", float("inf")):
+                pos["stop"] = new_stop
     
     def load_state(self, positions_long: List[Dict], positions_short: List[Dict], daily_loss: float):
         """Charge positions depuis state_manager."""
@@ -62,7 +87,10 @@ class SignalEngine:
         # Vérifier si daily_loss dépasse seuil (stop trading pour aujourd'hui)
         if self.daily_loss >= self.daily_loss_threshold:
             return signals
-        
+
+        # Mettre à jour les trailing stops AVANT de tester les sorties
+        self._ratchet_trailing_stops(current_price, atr)
+
         # === SORTIES (TP ou Trailing Stop) ===
         
         # Sorties LONG

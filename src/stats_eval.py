@@ -9,9 +9,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import wilcoxon
+from scipy.stats import norm, wilcoxon
 
-METRIC_COLUMNS = ["sharpe", "calmar", "cagr", "mdd", "per_month"]
+METRIC_COLUMNS = [
+    "sharpe", "calmar", "cagr", "mdd", "per_month",
+    "sortino", "ulcer", "dd_duration",
+]
+
+# Constante d'Euler-Mascheroni — utilisée par expected_max_sharpe_under_h0.
+EULER_MASCHERONI = 0.5772156649015329
 
 
 @dataclass(slots=True)
@@ -24,7 +30,7 @@ class EvaluationResult:
 
 
 def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, float]:
-    """Compute Sharpe, Calmar, CAGR, MDD and mean monthly return."""
+    """Compute Sharpe, Sortino, Calmar, CAGR, MDD, ulcer index, DD duration, mean monthly return."""
 
     if returns is None or len(returns) == 0:
         return {metric: float("nan") for metric in METRIC_COLUMNS}
@@ -34,6 +40,13 @@ def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, floa
     mean = returns.mean()
     std = returns.std(ddof=0)
     sharpe = float(np.sqrt(periods_per_year) * mean / std) if std > 0 else float("nan")
+    # Sortino: only downside std (Bailey/Estrada). Numérateur = mean - target (target=0 ici).
+    downside = returns[returns < 0]
+    if len(downside) > 1:
+        downside_std = float(np.sqrt(np.mean(downside ** 2)))
+        sortino = float(np.sqrt(periods_per_year) * mean / downside_std) if downside_std > 0 else float("nan")
+    else:
+        sortino = float("inf") if mean > 0 else float("nan")
     equity = (1.0 + returns).cumprod()
     final = equity.iloc[-1]
     periods = len(returns)
@@ -46,6 +59,22 @@ def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, floa
     drawdown = equity / peak - 1.0
     mdd = float(drawdown.min()) if not drawdown.empty else float("nan")
     calmar = float(cagr / abs(mdd)) if mdd < 0 and np.isfinite(cagr) else float("nan")
+    # Ulcer index = sqrt(mean(drawdown^2)) — pénalise drawdowns longs (Martin 1989).
+    ulcer = float(np.sqrt(np.mean(drawdown ** 2))) if not drawdown.empty else float("nan")
+    # Drawdown duration max (en périodes): plus longue série consécutive sous le peak.
+    if not drawdown.empty:
+        in_dd = (drawdown < 0).to_numpy()
+        max_run, run = 0, 0
+        for d in in_dd:
+            if d:
+                run += 1
+                if run > max_run:
+                    max_run = run
+            else:
+                run = 0
+        dd_duration = float(max_run)
+    else:
+        dd_duration = float("nan")
     if isinstance(returns.index, pd.DatetimeIndex):
         monthly = (1.0 + returns).resample("ME").prod() - 1.0
         if not monthly.empty:
@@ -59,7 +88,100 @@ def compute_metrics(returns: pd.Series, periods_per_year: int) -> dict[str, floa
         "cagr": cagr,
         "mdd": mdd,
         "per_month": per_month,
+        "sortino": sortino,
+        "ulcer": ulcer,
+        "dd_duration": dd_duration,
     }
+
+
+def probabilistic_sharpe_ratio(
+    sharpe_observed: float,
+    n_obs: int,
+    skew: float = 0.0,
+    kurt: float = 3.0,
+    sharpe_benchmark: float = 0.0,
+) -> float:
+    """PSR — Probabilistic Sharpe Ratio (Bailey & López de Prado 2012).
+
+    Probabilité que le VRAI SR (population) soit > sharpe_benchmark, sachant le SR
+    observé sur un échantillon de n_obs points avec skew/kurt non-normaux.
+
+    Tous les SR doivent être dans la même unité (typiquement par-période, pas annualisés —
+    l'unité doit cancel dans le ratio diff / sqrt(var_sr) tant que les inputs sont cohérents).
+
+    Args:
+        sharpe_observed: SR estimé.
+        n_obs: T, taille d'échantillon.
+        skew: γ_3 des returns (default 0 = normal).
+        kurt: γ_4 non-excess (default 3 = normal).
+        sharpe_benchmark: SR* seuil. Default 0.
+
+    Returns: probabilité ∈ [0, 1]. > 0.95 = significatif.
+    """
+    if n_obs <= 1:
+        return float("nan")
+    diff = sharpe_observed - sharpe_benchmark
+    var_sr = (
+        1.0
+        - skew * sharpe_observed
+        + (kurt - 1.0) / 4.0 * sharpe_observed ** 2
+    ) / (n_obs - 1)
+    if var_sr <= 0:
+        return float("nan")
+    z = diff / np.sqrt(var_sr)
+    return float(norm.cdf(z))
+
+
+def expected_max_sharpe_under_h0(n_trials: int, var_sr_iid: float = 1.0) -> float:
+    """Sharpe attendu MAX sous H0 (true SR=0) pour N essais i.i.d.
+
+    Bailey & López de Prado 2014, eq. (5):
+        E[max{SR_n}] ≈ √V · ((1−γ_em)·Φ⁻¹(1−1/N) + γ_em·Φ⁻¹(1−1/(N·e)))
+
+    Args:
+        n_trials: N essais (e.g. nombre de trials Optuna / combinaisons de params testés).
+        var_sr_iid: variance des SR sous H0. Si tu n'as pas mieux, 1.0.
+    """
+    if n_trials <= 1:
+        return 0.0
+    sigma = float(np.sqrt(var_sr_iid))
+    term1 = (1.0 - EULER_MASCHERONI) * norm.ppf(1.0 - 1.0 / n_trials)
+    term2 = EULER_MASCHERONI * norm.ppf(1.0 - 1.0 / (n_trials * np.e))
+    return float(sigma * (term1 + term2))
+
+
+def deflated_sharpe_ratio(
+    sharpe_observed: float,
+    n_obs: int,
+    n_trials: int,
+    var_sr_trials: float = 1.0,
+    skew: float = 0.0,
+    kurt: float = 3.0,
+) -> float:
+    """Deflated Sharpe Ratio (Bailey & López de Prado 2014).
+
+    Probabilité que le vrai SR > 0 APRÈS correction pour data snooping
+    (n_trials configurations testées). Avec trials massifs (Optuna ≫ 100), le Sharpe
+    rapporté est biaisé vers le haut — DSR donne une significativité honnête.
+
+    Args:
+        sharpe_observed: SR du modèle GAGNANT.
+        n_obs: longueur série de returns du gagnant.
+        n_trials: nombre de configurations testées au total (Optuna trials, grid search, etc.).
+        var_sr_trials: variance des SR observés à travers les N trials.
+            Si non-disponible, 1.0 reste raisonnable mais conservateur.
+        skew, kurt: moments du modèle gagnant.
+
+    Returns: probabilité ∈ [0, 1]. > 0.95 = on rejette l'hypothèse "edge dû au hasard".
+    """
+    sr_thr = expected_max_sharpe_under_h0(n_trials, var_sr_trials)
+    return probabilistic_sharpe_ratio(
+        sharpe_observed=sharpe_observed,
+        n_obs=n_obs,
+        skew=skew,
+        kurt=kurt,
+        sharpe_benchmark=sr_thr,
+    )
 
 
 def compute_monthly_returns(returns: pd.Series) -> pd.Series:
@@ -232,4 +354,7 @@ __all__ = [
     "aggregate_metrics",
     "compare_strategies",
     "evaluate_results",
+    "probabilistic_sharpe_ratio",
+    "expected_max_sharpe_under_h0",
+    "deflated_sharpe_ratio",
 ]

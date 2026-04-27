@@ -1,0 +1,18 @@
+[Unit]
+Description=HSBC Ichimoku K3 — local dashboard (http://localhost:8080)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ludov/HSBC-algo-genetic
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/dashboard/run.sh
+Restart=on-failure
+RestartSec=5
+Environment=HSBC_DASHBOARD_HOST=127.0.0.1
+Environment=HSBC_DASHBOARD_PORT=8080
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/dashboard.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/dashboard.log
+
+[Install]
+WantedBy=default.target

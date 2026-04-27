@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC bot watchdog — health checks every 5min
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh watchdog_runner
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/watchdog.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/watchdog.log
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,45 @@
+{
+  "deploy": "no",
+  "reason": "Sharpe OOS -6.58 < 0.5; DSR 0.00 < 0.7; Hansen SPA p=0.496 > 0.05",
+  "expected_sharpe": -6.582505458268908,
+  "median_fold_sharpe": -7.565793261694381,
+  "metrics_lgbm": {
+    "sharpe": -6.582505458268908,
+    "calmar": -0.9536794549971198,
+    "cagr": -0.9536794549964898,
+    "mdd": -0.9999999999993393,
+    "per_month": -0.3748980962194319,
+    "sortino": -6.141331175358474,
+    "ulcer": 0.9898142813369161,
+    "dd_duration": 19972.0
+  },
+  "metrics_v1": {
+    "sharpe": -1.2298994422821916,
+    "calmar": -0.37826943021552834,
+    "cagr": -0.3732682662794725,
+    "mdd": -0.986778831339328,
+    "per_month": -0.06292208024817184,
+    "sortino": -0.9605840590261999,
+    "ulcer": 0.9109102796781934,
+    "dd_duration": 19975.0
+  },
+  "metrics_hodl": {
+    "sharpe": 0.4848015988894205,
+    "calmar": 0.15937967410973797,
+    "cagr": 0.12303869641243148,
+    "mdd": -0.7719848663243936,
+    "per_month": 0.034215910813724056,
+    "sortino": 0.48385064689270696,
+    "ulcer": 0.42561468711954387,
+    "dd_duration": 10188.0
+  },
+  "dsr_lgbm": 0.0,
+  "auc_roc": 0.532281579924086,
+  "brier_score": 0.25782476091034,
+  "hansen_spa_p_consistent": 0.496,
+  "hansen_spa_p_lower": 1.0,
+  "hansen_spa_p_upper": 0.496,
+  "n_folds": 28,
+  "n_oos_bars": 19985,
+  "warning_paper": "MDPI 2025 reports CI95 [0.53, 1.84] => edge fragile."
+}
