@@ -21,6 +21,11 @@ import pytest
 from src import alpha_strategies as A
 
 
+# BUG-PRE-001 (BUGS.md): tests d'intégration ALPHA-2 chargent ~3 ans BTC H2,
+# >30s par défaut forge. Override module-level à 300s pour tout le fichier.
+pytestmark = pytest.mark.timeout(300)
+
+
 REPO = Path(__file__).resolve().parents[1]
 DATA_PATH = REPO / "data" / "BTC_USDT_2h.csv"
 

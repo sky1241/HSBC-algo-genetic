@@ -25,6 +25,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
+
+# BUG-PRE-001 (BUGS.md): tests ACO chargent le pipeline et tournent
+# l'optimizer sur des données réelles, >30s par défaut forge.
+pytestmark = pytest.mark.timeout(300)
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

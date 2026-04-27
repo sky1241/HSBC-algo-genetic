@@ -7,6 +7,9 @@ import pytest
 
 from src import regime_lgbm as rlg
 
+# BUG-PRE-001 (BUGS.md): tests LightGBM regime fit/predict >30s
+pytestmark = pytest.mark.timeout(300)
+
 
 # ---------------------------------------------------------------------------
 # Synthetic data fixture

@@ -13,6 +13,15 @@
 - **Regression**: did the fix break anything else?
 -->
 
+## BUG-PRE-001: test_aco_basic.py::test_acor_smoke timeout pré-existant
+- **Status**: OPEN (détecté pendant P0bis 2026-04-27, hors scope P0bis)
+- **Symptom**: `test_acor_smoke` dépasse le timeout pytest (30s en run forge, 60s en run pytest direct → 2 fails). Le test `test_constraint_satisfaction` du même fichier timeout aussi en pytest 60s.
+- **Root cause**: ACO (Ant Colony Optimization) `acor` smoke test probablement boucle sur trop d'itérations pour un test rapide. À investiguer.
+- **Vérification pré-existant**: confirmé via `git stash` + run du test seul AVANT modifs P0bis → 2 fails timeout identiques. Donc PAS introduit par P0bis.
+- **Impact P0bis**: forge.py rapporte FAIL à cause de ce timeout. Bloque le pipeline de validation Forge VERT.
+- **Fix**: à investiguer dans un chunk dédié (hors P0bis-P12 du roadmap). Soit augmenter timeout, soit réduire iters dans le smoke test, soit marker `pytest.mark.slow`.
+- **Test**: `tests/test_aco_basic.py::test_acor_smoke` + `test_constraint_satisfaction`
+
 ## QUANT-002: White's Reality Check + Hansen SPA test
 - **Status**: FIXED (2026-04-26, 14/14 tests passent — `tests/test_reality_check.py`)
 - **Symptom**: aucune significativité statistique multi-stratégie. Avec K configurations testées en parallèle, le best Sharpe peut être aléatoire.

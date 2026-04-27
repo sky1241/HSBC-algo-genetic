@@ -24,6 +24,33 @@ except Exception:
 # Allow importing modules from the local `src` directory
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from ichimoku.risk import daily_loss_threshold
+from cost_model import BinanceFutureFees, compute_trade_cost  # P0bis
+
+
+def _round_trip_fee_cost_usdt(notional_usdt: float,
+                              fees: BinanceFutureFees,
+                              maker_fill_ratio: float = 0.0) -> float:
+    """Coût round-trip (entry + exit) en USDT POSITIF, panaché taker/maker.
+
+    P0bis : remplace l'ancien `commission_rate = 0.001 (spot)` par les vrais
+    frais Binance USDM Futures VIP0 (taker 4 bps, maker 2 bps).
+
+    Args:
+        notional_usdt: notional de la position en USDT (>= 0).
+        fees: instance BinanceFutureFees (cost_model.py, source unique de vérité).
+        maker_fill_ratio: proportion de fills maker (0.0 = 100% taker, 1.0 = 100% maker).
+
+    Returns:
+        Coût total entry+exit en USDT positif.
+    """
+    if notional_usdt <= 0:
+        return 0.0
+    ratio = max(0.0, min(1.0, float(maker_fill_ratio)))
+    taker_leg = abs(compute_trade_cost(notional_usdt, is_taker=True, fees=fees))
+    maker_leg = abs(compute_trade_cost(notional_usdt, is_taker=False, fees=fees))
+    leg_cost = (1.0 - ratio) * taker_leg + ratio * maker_leg
+    return 2.0 * leg_cost  # entry + exit
+
 
 def log(msg):
     """Log avec timestamp UTC (ASCII-only pour compatibilité Windows)
@@ -574,7 +601,7 @@ def calculate_ichimoku(df, tenkan, kijun, senkou_b, shift):
     
     return df
 
-def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h", tp_mult=None, confidence_series=None):
+def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=3.0, symbol=None, timeframe="2h", tp_mult=None, confidence_series=None, maker_fill_ratio: float = 0.0):
     """Backtest avec stratégie long + short + take profit adaptatif
 
     Args:
@@ -659,8 +686,8 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
     max_consecutive_errors = 5  # Maximum 5 erreurs consécutives
     data_validation_interval = 50  # Validation toutes les 50 bougies
     
-    # Frais Binance (ULTRA-RÉALISTES !)
-    commission_rate = 0.001  # 0.1% par trade (spot)
+    # Frais Binance USDM Futures VIP0 (P0bis: corrigé spot→futures, branché cost_model)
+    _fees = BinanceFutureFees()  # taker 4 bps, maker 2 bps (BinanceFutureFees defaults)
     funding_rate = 0.0001   # 0.01% toutes les 8h (futures)
     funding_interval = 8    # Heures entre paiements de financement
     
@@ -837,7 +864,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 for pos in positions_long:
                     exit_price = close
                     ret = ((exit_price / pos["entry"]) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -857,7 +884,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 for pos in positions_short:
                     exit_price = close
                     ret = ((pos["entry"] / exit_price) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -887,7 +914,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             if len(positions_long) > 0:
                 for pos in positions_long:
                     ret = ((close / pos["entry"]) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -905,7 +932,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             if len(positions_short) > 0:
                 for pos in positions_short:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -944,7 +971,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             positions_short = []
             for pos in to_close:
                 ret = ((pos["entry"] / close) - 1.0) * leverage
-                commission_cost = pos["position_value"] * commission_rate * 2
+                commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                 ret -= commission_cost / pos["position_value"]
                 if ret < 0:
                     daily_loss += -ret
@@ -1012,7 +1039,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
             positions_long = []
             for pos in to_close:
                 ret = ((close / pos["entry"]) - 1.0) * leverage
-                commission_cost = pos["position_value"] * commission_rate * 2
+                commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                 ret -= commission_cost / pos["position_value"]
                 if ret < 0:
                     daily_loss += -ret
@@ -1081,7 +1108,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 for pos in positions_long:
                     exit_price = close
                     ret = ((exit_price / pos["entry"]) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     exit_latency = simulate_execution_latency()
                     total_execution_latency += exit_latency
@@ -1114,7 +1141,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 
                 if tp_hit or trailing_hit:
                     ret = ((close / pos["entry"]) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     if ret < 0:
                         daily_loss += -ret
@@ -1144,7 +1171,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 # Stop global touché, fermer toutes les positions et arrêter le run
                 for pos in positions_short:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     if ret < 0:
                         daily_loss += -ret
@@ -1172,7 +1199,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
                 
                 if tp_hit or trailing_hit:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     if ret < 0:
                         daily_loss += -ret
@@ -1199,7 +1226,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         close = data["close"].iloc[-1]
         for pos in positions_long:
             ret = ((close / pos["entry"]) - 1.0) * leverage
-            commission_cost = pos["position_value"] * commission_rate * 2
+            commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
             ret -= commission_cost / pos["position_value"]
             if ret < 0:
                 daily_loss += -ret
@@ -1224,7 +1251,7 @@ def backtest_long_short(df, tenkan, kijun, senkou_b, shift, atr_mult, loss_mult=
         close = data["close"].iloc[-1]
         for pos in positions_short:
             ret = ((pos["entry"] / close) - 1.0) * leverage
-            commission_cost = pos["position_value"] * commission_rate * 2
+            commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
             ret -= commission_cost / pos["position_value"]
             if ret < 0:
                 daily_loss += -ret
@@ -1534,7 +1561,7 @@ def _load_local_csv_if_configured(symbol: str, timeframe: str) -> pd.DataFrame |
     except Exception:
         return None
 
-def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_symbol: dict[str, dict], timeframe: str = "2h", record_curve: bool = False) -> dict:
+def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_symbol: dict[str, dict], timeframe: str = "2h", record_curve: bool = False, maker_fill_ratio: float = 0.0) -> dict:
     """Backtest multi-paires en parallèle avec capital commun et contrainte de fonds disponibles.
 
     - Chaque entrée consomme 1% du capital courant (equity * 1000 * 1%).
@@ -1558,7 +1585,8 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
         max_positions_per_side_cap = int(_env_maxpos) if _env_maxpos else 3
     except Exception:
         max_positions_per_side_cap = 3
-    commission_rate = 0.001
+    # P0bis: frais corrigés spot→futures, source unique cost_model.py
+    _fees = BinanceFutureFees()  # taker 4 bps, maker 2 bps (Binance USDM Futures VIP0)
     funding_rate = 0.0001
     funding_interval = 8
     rollover_cost = 0.0005
@@ -1674,7 +1702,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_long[sym]:
                     for pos in positions_long[sym]:
                         ret = ((close / pos["entry"]) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1687,7 +1715,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_short[sym]:
                     for pos in positions_short[sym]:
                         ret = ((pos["entry"] / close) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1735,7 +1763,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_long[sym]:
                     for pos in positions_long[sym]:
                         ret = ((close / pos["entry"]) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1748,7 +1776,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_short[sym]:
                     for pos in positions_short[sym]:
                         ret = ((pos["entry"] / close) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1771,7 +1799,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_long[sym]:
                     for pos in positions_long[sym]:
                         ret = ((close / pos["entry"]) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1783,7 +1811,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if positions_short[sym]:
                     for pos in positions_short[sym]:
                         ret = ((pos["entry"] / close) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         weight = pos["position_value"] / current_capital
@@ -1830,7 +1858,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                     # Stop global du portefeuille -> fermer
                     for pos in positions_long[sym]:
                         ret = ((close / pos["entry"]) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -1841,7 +1869,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                     for pos in positions_long[sym]:
                         if (not np.isnan(pos["trailing"])) and (close <= pos["trailing"]):
                             ret = ((close / pos["entry"]) - 1.0) * leverage
-                            commission_cost = pos["position_value"] * commission_rate * 2
+                            commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                             ret -= commission_cost / pos["position_value"]
                             current_capital = max(1e-12, equity * 1000.0)
                             weight = pos["position_value"] / current_capital
@@ -1860,7 +1888,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 if current_capital <= stop_global_eur:
                     for pos in positions_short[sym]:
                         ret = ((pos["entry"] / close) - 1.0) * leverage
-                        commission_cost = pos["position_value"] * commission_rate * 2
+                        commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                         ret -= commission_cost / pos["position_value"]
                         current_capital = max(1e-12, equity * 1000.0)
                         equity *= (1.0 + ret * (pos["position_value"] / current_capital))
@@ -1871,7 +1899,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                     for pos in positions_short[sym]:
                         if (not np.isnan(pos["trailing"])) and (close >= pos["trailing"]):
                             ret = ((pos["entry"] / close) - 1.0) * leverage
-                            commission_cost = pos["position_value"] * commission_rate * 2
+                            commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                             ret -= commission_cost / pos["position_value"]
                             current_capital = max(1e-12, equity * 1000.0)
                             weight = pos["position_value"] / current_capital
@@ -1888,7 +1916,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 to_close = positions_short[sym]; positions_short[sym] = []
                 for pos in to_close:
                     ret = ((pos["entry"] / close) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     weight = pos["position_value"] / current_capital
@@ -1901,7 +1929,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
                 to_close = positions_long[sym]; positions_long[sym] = []
                 for pos in to_close:
                     ret = ((close / pos["entry"]) - 1.0) * leverage
-                    commission_cost = pos["position_value"] * commission_rate * 2
+                    commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                     ret -= commission_cost / pos["position_value"]
                     current_capital = max(1e-12, equity * 1000.0)
                     weight = pos["position_value"] / current_capital
@@ -1973,7 +2001,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
         if positions_long[sym]:
             for pos in positions_long[sym]:
                 ret = ((close / pos["entry"]) - 1.0) * leverage
-                commission_cost = pos["position_value"] * commission_rate * 2
+                commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                 ret -= commission_cost / pos["position_value"]
                 current_capital = max(1e-12, equity * 1000.0)
                 weight = pos["position_value"] / current_capital
@@ -1984,7 +2012,7 @@ def backtest_shared_portfolio(market_data: dict[str, pd.DataFrame], params_by_sy
         if positions_short[sym]:
             for pos in positions_short[sym]:
                 ret = ((pos["entry"] / close) - 1.0) * leverage
-                commission_cost = pos["position_value"] * commission_rate * 2
+                commission_cost = _round_trip_fee_cost_usdt(pos["position_value"], _fees, maker_fill_ratio)
                 ret -= commission_cost / pos["position_value"]
                 current_capital = max(1e-12, equity * 1000.0)
                 weight = pos["position_value"] / current_capital
