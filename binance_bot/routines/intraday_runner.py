@@ -206,6 +206,121 @@ def _make_regime_gate_fn(returns_1h_series):
     return _gate
 
 
+def _build_features_snapshot_at_open(
+    *,
+    symbol: str,
+    df_ichimoku,
+    returns_1h_series,
+    regime_gate_fn,
+    composite_log_fn,
+    vpin_data_fn,
+) -> dict:
+    """R7-bis — Snapshot des features quant disponibles au moment de l'OPEN.
+
+    Toutes les valeurs SONT optionnelles. Si une source n'est pas
+    disponible, retourne None pour la clé. Le snapshot est ensuite
+    persisté dans pos["features_snapshot"] et lu au CLOSE par
+    `_build_meta_context(entry_features=...)`.
+
+    Sources :
+      - atr_at_entry          : df_ichimoku.iloc[-1]['ATR']
+      - regime_har            : regime_gate_fn() (HAR-RV P4)
+      - composite_signal      : signal_engine.composite_log_fn() (P6.5)
+      - vpin_at_entry         : signal_engine.vpin_data_fn() (P7-bis)
+      - obi_at_entry          : idem (tuple [1])
+      - rv_predicted_har      : src.har_rv.predict_rv si returns dispo
+      - cloud_breakout_size_atr_units : (close - kijun) / atr derivé
+      - funding_rate_at_entry_bps : flow_oi dernier record (NA si pas tracké)
+      - volume_relative_30d   : (NA si pas calculable)
+      - btc_dominance         : (NA, pas de source live)
+    """
+    snap: dict = {}
+
+    # ATR
+    try:
+        last = df_ichimoku.iloc[-1]
+        atr = float(last.get("ATR", 0.0))
+        snap["atr_at_entry"] = atr if atr > 0 else None
+    except Exception:
+        snap["atr_at_entry"] = None
+
+    # Regime HAR-RV
+    try:
+        snap["regime_har"] = regime_gate_fn() if regime_gate_fn else None
+    except Exception:
+        snap["regime_har"] = None
+
+    # Composite signal score
+    try:
+        if composite_log_fn:
+            comp = composite_log_fn() or {}
+            snap["composite_signal"] = float(comp.get("score", 0.0))
+        else:
+            snap["composite_signal"] = None
+    except Exception:
+        snap["composite_signal"] = None
+
+    # VPIN + OBI
+    try:
+        if vpin_data_fn:
+            data = vpin_data_fn()
+            if data is not None and len(data) >= 2:
+                snap["vpin_at_entry"] = float(data[0])
+                snap["obi_at_entry"] = float(data[1])
+            else:
+                snap["vpin_at_entry"] = None
+                snap["obi_at_entry"] = None
+        else:
+            snap["vpin_at_entry"] = None
+            snap["obi_at_entry"] = None
+    except Exception:
+        snap["vpin_at_entry"] = None
+        snap["obi_at_entry"] = None
+
+    # rv_predicted_har via src.har_rv si returns dispo (>=200 bars)
+    try:
+        if returns_1h_series is not None and len(returns_1h_series) >= 200:
+            from src.har_rv import (fit_har_rv, predict_rv,  # type: ignore
+                                     realized_volatility)
+            params = fit_har_rv(returns_1h_series)
+            rv_h = float(realized_volatility(returns_1h_series, window=1).iloc[-1])
+            rv_d = float(realized_volatility(returns_1h_series, window=5).iloc[-1])
+            rv_w = float(realized_volatility(returns_1h_series, window=22).iloc[-1])
+            snap["rv_predicted_har"] = float(predict_rv(params, rv_h, rv_d, rv_w))
+        else:
+            snap["rv_predicted_har"] = None
+    except Exception:
+        snap["rv_predicted_har"] = None
+
+    # cloud_breakout_size_atr_units : (close - max(senkou_a, senkou_b)) / atr
+    try:
+        last = df_ichimoku.iloc[-1]
+        atr = float(last.get("ATR", 0.0))
+        if atr > 0:
+            close_p = float(last.get("close", 0.0))
+            sa = float(last.get("senkou_a", close_p))
+            sb = float(last.get("senkou_b", close_p))
+            cloud_top = max(sa, sb)
+            cloud_bot = min(sa, sb)
+            if close_p > cloud_top:
+                snap["cloud_breakout_size_atr_units"] = (close_p - cloud_top) / atr
+            elif close_p < cloud_bot:
+                snap["cloud_breakout_size_atr_units"] = (cloud_bot - close_p) / atr
+            else:
+                snap["cloud_breakout_size_atr_units"] = 0.0  # dans le nuage
+        else:
+            snap["cloud_breakout_size_atr_units"] = None
+    except Exception:
+        snap["cloud_breakout_size_atr_units"] = None
+
+    # Champs non encore implémentés (à brancher par chunks dédiés)
+    snap["funding_rate_at_entry_bps"] = None
+    snap["volume_relative_30d"] = None
+    snap["btc_dominance"] = None
+
+    return snap
+
+
 def _build_meta_context(
     *,
     signal_id: str,
@@ -216,6 +331,7 @@ def _build_meta_context(
     atr_at_entry: Optional[float],
     regime_har: Optional[str],
     composite_score: Optional[float],
+    entry_features: Optional[dict] = None,
 ) -> dict:
     """R7 / P9 — Construit le meta_context (LdP 2018 schema enrichi).
 
@@ -223,11 +339,20 @@ def _build_meta_context(
     la validation `build_meta_label` per spec
     `test_meta_label_handles_missing_optional_features`.
 
-    À enrichir progressivement quand les sources sont câblées :
-      - vpin_at_entry         : P7-bis (collecteur VPIN live)
-      - btc_dominance         : à brancher (CoinGecko ou Binance)
-      - rv_predicted_har      : déjà calculable, à capturer à open
-      - funding_rate_at_entry : déjà fetchable via flow_open_interest
+    R7-bis (2026-04-28 mission autonome) : nouveau param
+    `entry_features` (dict optionnel) qui contient les features
+    capturées AU MOMENT DE L'OPEN (cf state_manager.add_position
+    features_snapshot). Si fourni, ses valeurs prennent priorité
+    sur les valeurs computed-at-close (atr, regime_har,
+    composite_score sont arguments compute-at-close, override
+    par entry_features.<key> si présents).
+
+    Clés possibles dans entry_features (toutes optionnelles) :
+      atr_at_entry, rv_predicted_har, regime_har, vpin_at_entry,
+      obi_at_entry, composite_signal, cloud_breakout_size_atr_units,
+      volume_relative_30d, funding_rate_at_entry_bps.
+
+    Backward-compat : entry_features=None → comportement R7 inchangé.
     """
     from datetime import datetime as _dt, timezone as _tz
     BTC_HALVING_2024 = _dt(2024, 4, 19, tzinfo=_tz.utc)
@@ -257,6 +382,12 @@ def _build_meta_context(
     elif reason not in valid_reasons:
         reason = "manual"
 
+    # R7-bis : merge entry_features (priorité) avec args compute-at-close (fallback)
+    ef = dict(entry_features) if entry_features else {}
+    def _pick(key, fallback):
+        v = ef.get(key, None)
+        return v if v is not None else fallback
+
     return {
         "trade_id": signal_id,
         "timestamp_open": timestamp_open_ms,
@@ -268,18 +399,25 @@ def _build_meta_context(
             "days_since_halving": days_since_halving,
             "day_of_week": now.weekday(),
             "hour_of_day": now.hour,
-            "btc_dominance": None,  # TODO P9-bis : fetch via CoinGecko ou skip
+            "btc_dominance": ef.get("btc_dominance"),
         },
-        # pre_trade block
+        # pre_trade block (R7-bis : entry_features override fallback compute-at-close)
         "pre_trade": {
-            "atr_at_entry": float(atr_at_entry) if atr_at_entry is not None else None,
-            "rv_predicted_har": None,  # TODO : capturer à open
-            "regime_har": regime_har,  # disponible via regime_gate_fn() au close
-            "vpin_at_entry": None,     # cf L-001 (P7-bis collecteur live)
-            "composite_signal": float(composite_score) if composite_score is not None else None,
-            "cloud_breakout_size_atr_units": None,  # TODO : derivé Ichimoku à open
-            "volume_relative_30d": None,            # TODO : avg volume historique
-            "funding_rate_at_entry_bps": None,      # TODO : flow_open_interest @ open
+            "atr_at_entry": _pick(
+                "atr_at_entry",
+                float(atr_at_entry) if atr_at_entry is not None else None,
+            ),
+            "rv_predicted_har": ef.get("rv_predicted_har"),
+            "regime_har": _pick("regime_har", regime_har),
+            "vpin_at_entry": ef.get("vpin_at_entry"),
+            "obi_at_entry": ef.get("obi_at_entry"),  # NEW R7-bis
+            "composite_signal": _pick(
+                "composite_signal",
+                float(composite_score) if composite_score is not None else None,
+            ),
+            "cloud_breakout_size_atr_units": ef.get("cloud_breakout_size_atr_units"),
+            "volume_relative_30d": ef.get("volume_relative_30d"),
+            "funding_rate_at_entry_bps": ef.get("funding_rate_at_entry_bps"),
         },
         # execution block
         "execution": {
@@ -912,15 +1050,34 @@ def main():
                           "symbol": symbol, "order_id": order_id, "action": sig['action']})
 
             if sig['action'] == 'open_long' and order_id:
+                # R7-bis : capture features quant DISPONIBLES à l'open
+                _features_snapshot = _build_features_snapshot_at_open(
+                    symbol=symbol,
+                    df_ichimoku=df_ichimoku,
+                    returns_1h_series=returns_1h_series,
+                    regime_gate_fn=regime_gate_fn,
+                    composite_log_fn=signal_engine.composite_log_fn,
+                    vpin_data_fn=signal_engine.vpin_data_fn,
+                )
                 state_mgr.add_position('long', sig['entry'], sig['stop'], sig['tp'],
-                                       sig.get('size', 0.01), symbol=symbol)
+                                       sig.get('size', 0.01), symbol=symbol,
+                                       features_snapshot=_features_snapshot)
                 qty = capital_usdt * sig.get('size', 0.01) * trade_mgr.leverage / sig['entry']
                 paper.log_open('open_long', qty=qty, price=sig['entry'],
                                live_order_id=order_id, signal_id=signal_id)
                 notifier.info(f"[{symbol}] open_long {qty:.4f} @ {sig['entry']:.4f}")
             elif sig['action'] == 'open_short' and order_id:
+                _features_snapshot = _build_features_snapshot_at_open(
+                    symbol=symbol,
+                    df_ichimoku=df_ichimoku,
+                    returns_1h_series=returns_1h_series,
+                    regime_gate_fn=regime_gate_fn,
+                    composite_log_fn=signal_engine.composite_log_fn,
+                    vpin_data_fn=signal_engine.vpin_data_fn,
+                )
                 state_mgr.add_position('short', sig['entry'], sig['stop'], sig['tp'],
-                                       sig.get('size', 0.01), symbol=symbol)
+                                       sig.get('size', 0.01), symbol=symbol,
+                                       features_snapshot=_features_snapshot)
                 qty = capital_usdt * sig.get('size', 0.01) * trade_mgr.leverage / sig['entry']
                 paper.log_open('open_short', qty=qty, price=sig['entry'],
                                live_order_id=order_id, signal_id=signal_id)
@@ -962,6 +1119,13 @@ def main():
                         )
                     except Exception:
                         pass
+                    # R7-bis : lit features_snapshot capturé à l'OPEN
+                    # (priorité sur les valeurs computed-at-close)
+                    _entry_features = (
+                        existing.get("features_snapshot")
+                        if existing and isinstance(existing, dict)
+                        else None
+                    )
                     _meta_ctx = _build_meta_context(
                         signal_id=signal_id, symbol=symbol, sig=sig,
                         opened_at_iso=opened_at_str,
@@ -969,6 +1133,7 @@ def main():
                         atr_at_entry=_atr_for_meta,
                         regime_har=(regime_gate_fn() if regime_gate_fn is not None else None),
                         composite_score=_composite_score_for_meta,
+                        entry_features=_entry_features,
                     )
                     paper.log_close(
                         sig['action'], qty=qty_native, exit_price=exit_p, entry_price=entry_price,

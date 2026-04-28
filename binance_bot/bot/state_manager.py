@@ -86,8 +86,18 @@ class StateManager:
         self.state["daily_loss"] = 0.0  # Reset daily loss
         self.save()
     
-    def add_position(self, side: str, entry: float, stop: float, tp: float, size: float, symbol: Optional[str] = None):
-        """Ajoute une position (long ou short). Si symbol fourni, scoped au symbole."""
+    def add_position(self, side: str, entry: float, stop: float, tp: float, size: float,
+                     symbol: Optional[str] = None,
+                     features_snapshot: Optional[dict] = None):
+        """Ajoute une position (long ou short). Si symbol fourni, scoped au symbole.
+
+        R7-bis : `features_snapshot` (optionnel) capture les features
+        quant disponibles au moment de l'OPEN du trade (atr, regime_har,
+        composite, vpin, obi, funding, etc.). Lu au CLOSE par
+        `_build_meta_context` pour enrichir le meta_label P9.
+        Backward-compat : si non fourni, comportement inchangé
+        (pas de clé features_snapshot dans la position).
+        """
         pos = {
             "id": f"{side}_{datetime.now().timestamp()}",
             "entry": float(entry),
@@ -96,6 +106,11 @@ class StateManager:
             "size": float(size),
             "opened_at": datetime.now().isoformat()
         }
+        if features_snapshot is not None:
+            try:
+                pos["features_snapshot"] = dict(features_snapshot)
+            except (TypeError, ValueError):
+                pass  # safe fallback : pas de snapshot
         if symbol is not None:
             self.ensure_symbol(symbol)
             key = "positions_long" if side == "long" else "positions_short"
