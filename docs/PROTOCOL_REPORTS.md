@@ -698,6 +698,78 @@ Le pipeline fonctionne, le verdict est honnête.
 
 ---
 
+## R9 — P11 funding-close timer enabled + live wire client
+
+### Étape 1 — Code
+- **Décision**: rewrite `funding_close_runner.py` avec wiring live + enable
+  systemd timer.
+- **Justification**: P11 module + timer fichiers existaient depuis R5,
+  mais (a) timer n'était pas enabled (systemctl could not find unit), et
+  (b) aucun client live n'était branché — le runner DRY-RUN par défaut
+  ne touchait pas TradeManager.
+- **Fichiers** :
+  - `binance_bot/routines/funding_close_runner.py` (rewrite) — ajout
+    `_build_trade_manager(symbol, settings, trade_mode)` + `_execute_close(...)`
+    + audit_log calls + double safety guard (env + trade_mode).
+  - `binance_bot/tests/test_r9_funding_close_runner.py` (NEW) — 7 tests.
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ Spec P11 implémentée. DRY-RUN par défaut. Mode LIVE actif
+  ssi `HSBC_FUNDING_CLOSE_LIVE=1` ET `bot_settings.yaml::trade_mode=live`.
+  Audit_log à chaque décision.
+- **Q2**: hors fenêtre → skip immédiat (pas de fetch). Pas de positions
+  → return 0 sans crash. funding_rate fetch fail → log warning + skip
+  symbol. TradeManager build fail → log warning + skip.
+- **Q3**: ✅ noms précis (`_build_trade_manager`, `_execute_close`).
+- **Q4**: ✅ pas d'imports morts.
+- **Q5**: ✅ default thresholds depuis bot_settings.yaml.
+- **Q6**: ✅
+- **Q7**: ✅ pas de mutation modules.
+- **Q8**: try/except précis sur fetch + execute + import.
+
+### Étape 3 — Tests
+- 7 tests R9 :
+  - hors fenêtre → skip
+  - pas de positions → skip
+  - DRY-RUN ne call pas execute
+  - LIVE env=1 + trade_mode=simulation → toujours pas d'exec
+  - LIVE env=1 + trade_mode=live → execute appelé
+  - flatten_positions long+short multi-symbole
+  - flatten_positions empty state
+
+### Étape 4 — Forge
+- ✅ "not slow" run : **641 tests / 73s**.
+
+### Étape 5 — Branchement vérifié EN PROD LIVE
+- Systemd : timer ENABLED + ACTIF :
+  ```
+  $ systemctl --user list-timers | grep funding
+  Tue 2026-04-28 18:55:00 CEST 7h left   hsbc-funding-close.timer
+  ```
+  Prochain fire à 16:55 UTC (= 18:55 CEST). Fires HH:55-HH:59
+  pour HH ∈ {0, 8, 16} chaque jour.
+- Smoke test manuel :
+  ```
+  $ systemctl --user start hsbc-funding-close.service
+  $ tail logs/funding_close.log
+  [INFO] [skip] 2026-04-28T09:03:14 hors fenêtre settlement
+  ```
+  Skip cohérent (UTC 09:03 hors fenêtre HH:55-HH:59).
+- Service unit + runner.sh + venv path → exécution OK via
+  `/home/ludov/HSBC-algo-genetic/.venv/bin/python -m routines.funding_close_runner`.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+### Safety guards
+- DRY-RUN par défaut ; activation live exige **2 conditions cumulatives** :
+  1. `HSBC_FUNDING_CLOSE_LIVE=1` env var
+  2. `bot_settings.yaml::trade_mode=live`
+- Audit_log entry à chaque décision (event=`funding_close_decision`)
+  + entry à chaque exec live (event=`funding_close_executed`).
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |
