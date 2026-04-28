@@ -49,6 +49,8 @@ class SignalEngine:
         drawdown_scale_fn: Optional[Callable[[], float]] = None,
         var_gate_fn: Optional[Callable[[str, float], Tuple[bool, str]]] = None,
         regime_gate_fn: Optional[Callable[[], str]] = None,
+        low_vol_combinator_fn: Optional[Callable[[], float]] = None,
+        low_vol_combinator_threshold: float = 0.6,
     ):
         """
         Args:
@@ -77,6 +79,12 @@ class SignalEngine:
             regime_gate_fn: P4 — callable sans args qui retourne "low"|"mid"|"high"
                 via HAR-RV (Corsi 2009). Si "low", on bloque les nouvelles entrées
                 (Ichimoku perd en range/low-vol). Sorties TP/SL toujours actives.
+            low_vol_combinator_fn: P10 — callable sans args qui retourne
+                P(low_vol_next_hour) ∈ [0, 1] via lgbm_combinator. Le gate dur
+                additionnel ne déclenche que si HAR-RV ET combinator confirment
+                tous deux low vol (regime=="low" ET proba > threshold).
+            low_vol_combinator_threshold: P10 — seuil P(low_vol) au-dessus duquel
+                le combinator confirme low vol (default 0.6).
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -94,6 +102,9 @@ class SignalEngine:
         self.var_gate_fn = var_gate_fn
         # P4 régime de volatilité HAR-RV
         self.regime_gate_fn = regime_gate_fn
+        # P10 — combinator P(low_vol) (LightGBM, gate dur si confirme HAR-RV)
+        self.low_vol_combinator_fn = low_vol_combinator_fn
+        self.low_vol_combinator_threshold = float(low_vol_combinator_threshold)
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -254,6 +265,37 @@ class SignalEngine:
         except Exception:
             return False  # safe fallback
 
+    def _low_vol_combinator_blocks(self) -> bool:
+        """P10 — gate dur si HAR-RV ET combinator confirment tous deux low vol.
+
+        Le combinator seul ne bloque pas. La règle est conservatrice : bloquer
+        seulement quand les deux modèles indépendants (HAR-RV moyenne mobile
+        Corsi vs LGBM combinator) s'accordent sur "low vol".
+
+        Sécurisation: exception → False (autoriser, ne jamais bloquer le bot
+        par erreur du module ML).
+        """
+        if self.low_vol_combinator_fn is None or self.regime_gate_fn is None:
+            return False
+        try:
+            proba = float(self.low_vol_combinator_fn())
+            if not (0.0 <= proba <= 1.0):
+                return False
+            if proba <= self.low_vol_combinator_threshold:
+                return False
+            regime = self.regime_gate_fn()
+            blocks = (regime == "low")
+            if blocks and self.notifier is not None:
+                try:
+                    self.notifier.info(
+                        f"P10 combinator gate blocked: HAR=low + P(low_vol)={proba:.2f} > {self.low_vol_combinator_threshold}"
+                    )
+                except Exception:
+                    pass
+            return blocks
+        except Exception:
+            return False  # safe fallback
+
     def _var_gate_blocks(self, side: str, notional_pct: float) -> bool:
         """P3 — True si var_gate_fn refuse l'entrée. False si pas de gate ou autorisé.
 
@@ -407,13 +449,19 @@ class SignalEngine:
         # P4 — HAR-RV regime gate : bloque toutes les entrées si regime=="low"
         # (Ichimoku perd en range/low-vol). Évalué une fois par run.
         regime_blocks_entries = self._regime_gate_blocks()
+        # P10 — combinator gate dur (HAR + LGBM concordants sur low vol)
+        combinator_blocks_entries = self._low_vol_combinator_blocks()
 
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
             if len(self.positions_long) < self.max_positions:
                 # P3 — VaR95 gate : bloque l'émission si VaR projetée > seuil
                 # P4 — Regime gate : bloque si regime=="low"
-                if regime_blocks_entries or self._var_gate_blocks("long", sized):
+                if (
+                    regime_blocks_entries
+                    or combinator_blocks_entries
+                    or self._var_gate_blocks("long", sized)
+                ):
                     pass  # signal d'entrée filtré par les gates, pas d'émission
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
@@ -432,8 +480,12 @@ class SignalEngine:
         # Signal SHORT: bear_cross + close < nuage + pas de LONG ouverts
         if last.get('signal_short', False) and len(self.positions_long) == 0:
             if len(self.positions_short) < self.max_positions:
-                if regime_blocks_entries or self._var_gate_blocks("short", sized):
-                    pass  # filtré par les gates (regime ou var)
+                if (
+                    regime_blocks_entries
+                    or combinator_blocks_entries
+                    or self._var_gate_blocks("short", sized)
+                ):
+                    pass  # filtré par les gates (regime / combinator / var)
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                     tp_mult = params.get('tp_mult', 20.0)
