@@ -21,6 +21,16 @@ daily_loss_hard_cap_pct: 0.10   # -10% : kill switch + freeze
 max_portfolio_risk: 0.06        # P0 : budget sigma_pf agrégé multi-symbole
 portfolio_var_threshold: 0.08   # P3 : VaR95 24h seuil — bloque entrées au-dessus
 
+# P7 / R5 — VPIN gate (Easley-LdP-O'Hara 2012) — Option A reset-wins state machine.
+# Mode log_only par défaut : aucun blocage, juste collecte baseline 30j dans
+# data/vpin_events.jsonl. Après baseline + validation Sky, passer mode="gate".
+vpin_mode: "log_only"            # "log_only" | "gate"
+vpin_block_threshold: 0.70       # block new entries au-dessus de ce VPIN
+vpin_kill_threshold: 0.85        # kill (flat all) si VPIN > ET OBI < kill_obi
+vpin_kill_obi_threshold: 0.30    # OBI seuil sous lequel cascade imminente
+vpin_reset_threshold: 0.50       # hystérésis : block lifted dès que VPIN passe sous
+vpin_block_duration_minutes: 15  # plafond safety du block (failsafe, reset gagne)
+
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
 max_leverage: 125

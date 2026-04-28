@@ -383,6 +383,117 @@ NON LANCÉ (cf P0bis).
 
 ---
 
+## R5 — P7 VPIN gate (Option B callback indépendant) — Sky décide A reset-wins
+
+### Décision de design actée par Sky le 2026-04-28
+
+> **Option A (reset wins)** : `reset_threshold` est l'exit normal du block,
+> `block_duration_minutes` agit uniquement comme plafond safety failsafe
+> en cas de lecture VPIN corrompue.
+
+Rationale : VPIN reflète l'état réel du flow d'order book. Si le flow
+redevient sain (VPIN bas), bloquer plus longtemps n'apporte rien. Le
+timer existe uniquement comme garde-fou contre une lecture VPIN
+corrompue ou un bug qui maintiendrait artificiellement VPIN haut.
+
+### Étape 1 — Code
+
+- **Décision**: nouveau module **pur** `src/vpin_gate.py` (state machine
+  testable sans dépendance bot) + branchement via `SignalEngine` callback
+  + factory dans `intraday_runner`. Per spec Option B, gate INDÉPENDANT
+  de `flow_composite_signal` (orthogonalité micro/macro).
+- **Justification**: pattern callback déjà établi (P0/P3/P4/P10/P6.5).
+  Module pur dans `src/` aligne avec `cost_model`, `vpin`, `har_rv`,
+  `portfolio_risk_gate`, etc.
+- **Fichiers** :
+  - `src/vpin_gate.py` (NEW) — `VPINState`, `VPINGateConfig`, `vpin_gate_check()`
+  - `binance_bot/services/signal_engine.py` — params `vpin_data_fn`,
+    `vpin_gate_config`, `vpin_state_dict`, `vpin_event_log_path` ;
+    methodes `_evaluate_vpin_gate()`, `get_vpin_state_dict()` ; hook
+    detect_signals (kill_and_block prioritaire AVANT P1 hard cap, et
+    `vpin_blocks_entries` injecté dans gate composite long/short)
+  - `binance_bot/routines/intraday_runner.py` — factories
+    `_make_vpin_gate_config(settings)` + `_make_vpin_data_fn(symbol)`
+    (placeholder None tant que collecteur live aggTrade+bookTicker pas
+    branché) + persistance `vpin_state` per-symbol dans `state.json`
+  - `binance_bot/configs/bot_settings.yaml` — 6 nouvelles clés
+    `vpin_mode`/`vpin_block_threshold`/etc. (mode=log_only par défaut)
+
+### Étape 2 — Auto-review Q1-Q8
+
+- **Q1**: ✅ Spec Option B + design Option A (reset wins) implémentés à la
+  lettre. Pseudocode du state machine (réf message Sky) reproduit
+  ligne par ligne dans `vpin_gate_check`.
+- **Q2**: cas limites — `data_fn=None` → vpin_disabled. `data_fn()=None`
+  → vpin_data_unavailable. callback raise → vpin_data_fn_error. data
+  malformed (non-tuple/tuple<2) → vpin_data_malformed. VPIN ou OBI hors
+  [0,1] → vpin_data_out_of_range. mode invalide → fallback log_only.
+  block_duration_minutes ≤ 0 → clamp à 1.
+- **Q3**: ✅ noms précis — `vpin_gate_check` (pas `gate_check`), tags
+  raison machine-readable (`vpin_reset_below_threshold`, `timer_expiry`,
+  `vpin_cascade_imminent`, `vpin_toxic_flow`).
+- **Q4**: ✅ pas d'imports morts.
+- **Q5**: ✅ thresholds config-driven (pas hardcodés) ; `60_000` ms→min
+  documenté inline.
+- **Q6**: ✅ pep8, type hints, dataclasses, docstrings.
+- **Q7**: ✅ état persisté via `vpin_state_dict` round-trip dict ↔
+  `VPINState.from_dict/to_dict`. Pas de mutation d'objet partagé.
+- **Q8**: ✅ try/except précis sur `data_fn`, ImportError, IO write.
+  Fail-OPEN systématique (sécurité : ne jamais bloquer le bot par
+  erreur du module VPIN).
+
+### Étape 3 — Tests
+
+- `tests/test_p7_vpin_gate.py` — **19 tests** purs sur la state machine :
+  - log_only never blocks + does not persist blocked state
+  - thresholds primaires (below block / above block / above kill+low OBI / above kill+high OBI)
+  - hystérésis no flapping
+  - reset unblocks before timer
+  - duration acts as safety ceiling
+  - stays blocked when above reset within/after duration
+  - post-timer can immediately re-block (pas de limbo state)
+  - reset threshold only when blocked
+  - VPINState dataclass roundtrip + from None/partial
+  - VPINGateConfig clamps thresholds, fallback log_only, min duration
+
+- `binance_bot/tests/test_r5_vpin_signal_engine.py` — **10 tests
+  d'intégration** :
+  - log_only ne bloque pas l'entrée
+  - gate bloque long entry / short entry
+  - kill flat positions ouvertes (long + short)
+  - kill envoie notifier.warn
+  - data_fn None → safe allow
+  - data_fn raise → fail-open
+  - vpin_disabled si pas de data_fn
+  - data hors range → safe allow
+  - state persiste cross-cycle via vpin_state_dict roundtrip
+
+- `binance_bot/tests/test_r5_vpin_runner_factories.py` — **3 tests** :
+  - config from settings.yaml
+  - config defaults (log_only safe)
+  - data_fn placeholder retourne None
+
+### Étape 4 — Forge
+NON LANCÉ (cf P0bis, BUG-PRE-001).
+
+### Étape 5 — Branchement vérifié
+- Grep `vpin_data_fn|vpin_gate_config|_evaluate_vpin_gate|vpin_blocks_entries`
+  → **20+ hits** dans `signal_engine.py` + `intraday_runner.py`.
+- VPIN gate appelé AU DÉBUT de `detect_signals` pour priorité
+  `kill_and_block`. `block_new_entries` injecté dans gate composite
+  entrée long + short (parallèle aux gates regime/combinator/var).
+- `vpin_event_log_path = data/vpin_events.jsonl` per cycle log JSONL
+  pour collecte baseline 30j en mode log_only.
+- ⚠️ Limitation : `_make_vpin_data_fn` retourne None placeholder. Le gate
+  est donc **opérationnellement disabled** tant que les collecteurs live
+  aggTrade WS + bookTicker ne sont pas câblés. Mode log_only par défaut
+  rend cette limitation cosmétique pour aujourd'hui.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |

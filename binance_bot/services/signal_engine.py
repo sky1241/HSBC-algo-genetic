@@ -55,6 +55,10 @@ class SignalEngine:
         low_vol_combinator_threshold: float = 0.6,
         composite_log_fn: Optional[Callable[[], dict]] = None,
         composite_log_path: Optional[Path] = None,
+        vpin_data_fn: Optional[Callable[[], Optional[Tuple[float, float]]]] = None,
+        vpin_gate_config: Optional[Any] = None,
+        vpin_state_dict: Optional[Mapping[str, Any]] = None,
+        vpin_event_log_path: Optional[Path] = None,
     ):
         """
         Args:
@@ -98,6 +102,18 @@ class SignalEngine:
             composite_log_path: P6.5 — Path d'un JSONL append-only où persister
                 le score et les composants à chaque cycle. None = log via notifier
                 seulement (perd les données entre runs).
+            vpin_data_fn: P7 / R5 — callable sans args qui retourne (vpin, obi) ∈
+                ([0,1], [0,1]) ou None si la donnée n'est pas dispo. Si None
+                (default) ou retourne None, le gate VPIN est totalement skippé
+                (équivalent désactivé).
+            vpin_gate_config: P7 / R5 — instance VPINGateConfig (depuis
+                src.vpin_gate). Config mode + seuils. None → gate désactivé.
+            vpin_state_dict: P7 / R5 — dict d'état VPIN du cycle précédent
+                (chargé depuis state.json par symbole, format VPINState.to_dict).
+                None → état initial (currently_blocked=False).
+            vpin_event_log_path: P7 / R5 — JSONL où on logge chaque évaluation
+                (vpin, obi, action, reason, ts_ms) pour collecte baseline 30j en
+                mode log_only. None → notifier.info seulement.
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -121,6 +137,23 @@ class SignalEngine:
         # P6.5 — composite signal log-only (mode baseline 30j, AUCUN blocage)
         self.composite_log_fn = composite_log_fn
         self.composite_log_path = composite_log_path
+        # P7 / R5 — VPIN gate (Option A reset-wins state machine)
+        self.vpin_data_fn = vpin_data_fn
+        self.vpin_gate_config = vpin_gate_config
+        self.vpin_event_log_path = vpin_event_log_path
+        # State VPIN : reconstruit depuis dict si fourni
+        try:
+            from src.vpin_gate import VPINState  # type: ignore
+        except ImportError:
+            try:
+                from vpin_gate import VPINState  # type: ignore
+            except ImportError:
+                VPINState = None  # type: ignore
+        if VPINState is not None:
+            self.vpin_state = VPINState.from_dict(dict(vpin_state_dict)
+                                                  if vpin_state_dict else None)
+        else:
+            self.vpin_state = None
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -327,6 +360,83 @@ class SignalEngine:
             except Exception:
                 pass
 
+    def _evaluate_vpin_gate(self) -> tuple[str, str]:
+        """P7 / R5 — Évalue le VPIN gate. Retourne (action, reason).
+
+        action ∈ {"allow", "block_new_entries", "kill_and_block"}.
+        Si vpin_data_fn ou vpin_gate_config absent / data invalide → ("allow", "vpin_disabled").
+        Mode log_only = action toujours "allow" (just log).
+
+        Persist self.vpin_state à chaque appel (à serializer après detect_signals
+        via get_vpin_state_dict() pour state.json).
+
+        Append événement dans vpin_event_log_path si défini, et notifier.info
+        si action ≠ allow.
+        """
+        if self.vpin_data_fn is None or self.vpin_gate_config is None or self.vpin_state is None:
+            return "allow", "vpin_disabled"
+        try:
+            data = self.vpin_data_fn()
+        except Exception:
+            return "allow", "vpin_data_fn_error"
+        if data is None:
+            return "allow", "vpin_data_unavailable"
+        try:
+            vpin, obi = float(data[0]), float(data[1])
+        except (TypeError, ValueError, IndexError):
+            return "allow", "vpin_data_malformed"
+        if not (0.0 <= vpin <= 1.0) or not (0.0 <= obi <= 1.0):
+            return "allow", "vpin_data_out_of_range"
+
+        try:
+            from src.vpin_gate import vpin_gate_check  # type: ignore
+        except ImportError:
+            try:
+                from vpin_gate import vpin_gate_check  # type: ignore
+            except ImportError:
+                return "allow", "vpin_module_missing"
+
+        now_ms = int(time.time() * 1000)
+        action, reason, new_state = vpin_gate_check(
+            current_vpin=vpin, current_obi=obi,
+            state=self.vpin_state, config=self.vpin_gate_config, now_ms=now_ms,
+        )
+        self.vpin_state = new_state
+
+        # Log événement (baseline 30j en log_only)
+        event = {
+            "ts_ms": now_ms,
+            "vpin": vpin,
+            "obi": obi,
+            "action": action,
+            "reason": reason,
+            "mode": getattr(self.vpin_gate_config, "mode", "unknown"),
+            "currently_blocked": new_state.currently_blocked,
+        }
+        if self.vpin_event_log_path is not None:
+            try:
+                p = Path(self.vpin_event_log_path)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                with open(p, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(event, default=str) + "\n")
+            except Exception:
+                pass
+        if action != "allow" and self.notifier is not None:
+            try:
+                self.notifier.warn(
+                    f"P7 VPIN gate {action}: vpin={vpin:.3f} obi={obi:.3f} "
+                    f"reason={reason}"
+                )
+            except Exception:
+                pass
+        return action, reason
+
+    def get_vpin_state_dict(self) -> Optional[dict]:
+        """Sérialise self.vpin_state pour persistance state.json. None si désactivé."""
+        if self.vpin_state is None:
+            return None
+        return self.vpin_state.to_dict()
+
     def _low_vol_combinator_blocks(self) -> bool:
         """P10 — gate dur si HAR-RV ET combinator confirment tous deux low vol.
 
@@ -422,9 +532,19 @@ class SignalEngine:
         # P6.5 — log-only snapshot du composite signal (AUCUN blocage)
         self._log_composite_signal()
 
+        # P7 / R5 — VPIN gate (Option A reset wins). Évalué AVANT P1 hard cap
+        # pour que kill_and_block ait priorité (cascade imminente détectée).
+        vpin_action, vpin_reason = self._evaluate_vpin_gate()
+
         signals = []
         last = df_ichimoku.iloc[-1]
         atr = float(last['ATR']) if pd.notna(last['ATR']) else 0.0
+
+        # P7 — kill_and_block : flat positions internes + bloque entrées
+        if vpin_action == "kill_and_block":
+            return self._flat_all_internal_positions(
+                current_price, reason=f"vpin_cascade:{vpin_reason}",
+            )
 
         # P1 — HARD CAP en premier (priorité absolue, kill switch + freeze)
         if self._hard_cap_triggered():
@@ -516,6 +636,8 @@ class SignalEngine:
         regime_blocks_entries = self._regime_gate_blocks()
         # P10 — combinator gate dur (HAR + LGBM concordants sur low vol)
         combinator_blocks_entries = self._low_vol_combinator_blocks()
+        # P7 — VPIN gate : block_new_entries (kill déjà traité tout en haut)
+        vpin_blocks_entries = (vpin_action == "block_new_entries")
 
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
@@ -525,6 +647,7 @@ class SignalEngine:
                 if (
                     regime_blocks_entries
                     or combinator_blocks_entries
+                    or vpin_blocks_entries
                     or self._var_gate_blocks("long", sized)
                 ):
                     pass  # signal d'entrée filtré par les gates, pas d'émission
@@ -548,9 +671,10 @@ class SignalEngine:
                 if (
                     regime_blocks_entries
                     or combinator_blocks_entries
+                    or vpin_blocks_entries
                     or self._var_gate_blocks("short", sized)
                 ):
-                    pass  # filtré par les gates (regime / combinator / var)
+                    pass  # filtré par les gates (regime / combinator / vpin / var)
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                     tp_mult = params.get('tp_mult', 20.0)

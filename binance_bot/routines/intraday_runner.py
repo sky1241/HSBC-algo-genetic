@@ -203,6 +203,47 @@ def _make_regime_gate_fn(returns_1h_series):
     return _gate
 
 
+def _make_vpin_gate_config(settings: dict):
+    """R5 — Construit VPINGateConfig depuis bot_settings.yaml.
+
+    Lit clés vpin_mode, vpin_block_threshold, vpin_kill_threshold,
+    vpin_kill_obi_threshold, vpin_reset_threshold, vpin_block_duration_minutes.
+    None si module src.vpin_gate indisponible.
+    """
+    try:
+        try:
+            from src.vpin_gate import VPINGateConfig  # type: ignore
+        except ImportError:
+            from vpin_gate import VPINGateConfig  # type: ignore
+    except ImportError:
+        return None
+    return VPINGateConfig(
+        mode=str(settings.get("vpin_mode", "log_only")),
+        block_threshold=float(settings.get("vpin_block_threshold", 0.70)),
+        kill_threshold=float(settings.get("vpin_kill_threshold", 0.85)),
+        kill_obi_threshold=float(settings.get("vpin_kill_obi_threshold", 0.30)),
+        reset_threshold=float(settings.get("vpin_reset_threshold", 0.50)),
+        block_duration_minutes=int(settings.get("vpin_block_duration_minutes", 15)),
+    )
+
+
+def _make_vpin_data_fn(symbol: str):
+    """R5 — Placeholder pour fournir (VPIN, OBI) live au signal_engine.
+
+    Pour l'instant : retourne None (data unavailable). Le gate est donc skippé.
+    L'implémentation réelle nécessitera :
+      - WS aggTrade collector pour calculer VPIN sur volume buckets temps réel
+      - bookTicker / depth5 pour calculer OBI = (bid_qty - ask_qty)/(bid+ask)
+    Ces collecteurs sont OUT OF SCOPE de R5 (chunk dédié futur).
+
+    En mode log_only (default), le gate retourne action=allow sans
+    bloquer rien, donc le placeholder None ne change pas le comportement.
+    """
+    def _fn():
+        return None
+    return _fn
+
+
 def _make_composite_log_fn(symbol: str, data_dir):
     """R4 / P6.5 — Factory du callback composite_log_fn.
 
@@ -605,6 +646,15 @@ def main():
             # P6.5 / R4 — composite signal log-only (baseline 30j, AUCUN blocage)
             composite_log_fn=_make_composite_log_fn(symbol, ROOT / "data"),
             composite_log_path=(ROOT / "data" / "flow_composite_log.jsonl"),
+            # P7 / R5 — VPIN gate (Option A reset-wins). data_fn placeholder (None
+            # tant que collecteurs aggTrade + bookTicker ne sont pas branchés).
+            # Mode log_only par défaut → aucun blocage live même si data
+            # disponible plus tard.
+            vpin_data_fn=_make_vpin_data_fn(symbol),
+            vpin_gate_config=_make_vpin_gate_config(settings),
+            vpin_state_dict=(state_mgr.state.get("symbols", {})
+                             .get(symbol, {}).get("vpin_state")),
+            vpin_event_log_path=(ROOT / "data" / "vpin_events.jsonl"),
         )
         # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
         daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))
@@ -616,6 +666,12 @@ def main():
         )
 
         signals = signal_engine.detect_signals(df_ichimoku, params, current_price)
+
+        # P7 / R5 — persist VPIN state per symbole (peu importe si signals émis)
+        vpin_state_dict = signal_engine.get_vpin_state_dict()
+        if vpin_state_dict is not None:
+            state_mgr.ensure_symbol(symbol)
+            state_mgr.state['symbols'][symbol]['vpin_state'] = vpin_state_dict
 
         if not signals:
             print(f"   ✅ Aucun signal ({len(positions_long)}L / {len(positions_short)}S)")
