@@ -160,6 +160,49 @@ def _make_portfolio_scale_fn(state_mgr,
     return _scale_fn
 
 
+def _make_regime_gate_fn(returns_1h_series):
+    """P4 — Factory du callback regime_gate_fn() -> "low"/"mid"/"high".
+
+    Fit HAR-RV à chaque appel (lazy). Si returns_1h_series None ou trop court,
+    retourne "mid" (no block). Caching basique : on ne re-fit pas si appelé
+    plusieurs fois — la closure capture le résultat.
+    """
+    cached_regime = {"value": None}
+
+    def _gate():
+        if cached_regime["value"] is not None:
+            return cached_regime["value"]
+        if returns_1h_series is None or len(returns_1h_series) < 200:
+            cached_regime["value"] = "mid"
+            return "mid"
+        try:
+            try:
+                from src.har_rv import (  # type: ignore
+                    fit_har_rv, predict_rv, classify_regime, realized_volatility,
+                )
+            except ImportError:
+                from har_rv import (  # type: ignore
+                    fit_har_rv, predict_rv, classify_regime, realized_volatility,
+                )
+        except ImportError:
+            cached_regime["value"] = "mid"
+            return "mid"
+        try:
+            params = fit_har_rv(returns_1h_series)
+            rv_h = float(realized_volatility(returns_1h_series, window=1).iloc[-1])
+            rv_d = float(realized_volatility(returns_1h_series, window=5).iloc[-1])
+            rv_w = float(realized_volatility(returns_1h_series, window=22).iloc[-1])
+            rv_pred = predict_rv(params, rv_h, rv_d, rv_w)
+            historical_rv_h = realized_volatility(returns_1h_series, window=1).dropna()
+            label = classify_regime(rv_pred, historical_rv_h)
+            cached_regime["value"] = label
+            return label
+        except Exception:
+            cached_regime["value"] = "mid"
+            return "mid"
+    return _gate
+
+
 def _make_var_gate_fn(state_mgr, current_symbol, corr_df, vol_dict, threshold):
     """P3 — Factory du callback var_gate_fn(side, notional_pct) -> (allowed, reason).
 
@@ -474,6 +517,26 @@ def main():
             threshold=float(settings.get('portfolio_var_threshold', 0.08)),
         )
 
+        # P4 — Construire regime_gate_fn() -> "low"/"mid"/"high" via HAR-RV.
+        # On récupère 720 bars 1h = 30 jours via ccxt fetch_ohlcv direct (timeframe
+        # override car DataFetcher est lié au timeframe H2 du bot).
+        # Si fail (rate limit, etc.), regime="mid" (no block).
+        returns_1h_series = None
+        try:
+            candles_1h = data_fetcher.exchange.fetch_ohlcv(
+                symbol, timeframe="1h", limit=720
+            )
+            if candles_1h:
+                import pandas as _pd
+                _df = _pd.DataFrame(
+                    candles_1h, columns=['ts', 'open', 'high', 'low', 'close', 'volume']
+                )
+                returns_1h_series = _df['close'].astype(float).pct_change().dropna()
+        except Exception as _e:
+            print(f"   ⚠️ HAR-RV fetch 1h returns failed for {symbol}: {_e}")
+            returns_1h_series = None
+        regime_gate_fn = _make_regime_gate_fn(returns_1h_series)
+
         # Une instance SignalEngine par symbole (state isolé)
         signal_engine = SignalEngine(
             max_positions=max_pos_per_symbol,
@@ -490,6 +553,8 @@ def main():
             drawdown_scale_fn=drawdown_scale_fn,
             # P3 — VaR95 gate (bloque les entrées au-dessus du seuil)
             var_gate_fn=var_gate_fn,
+            # P4 — HAR-RV regime gate (bloque entrées en regime=low)
+            regime_gate_fn=regime_gate_fn,
         )
         # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
         daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))

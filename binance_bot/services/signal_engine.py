@@ -48,6 +48,7 @@ class SignalEngine:
         notifier: Optional[Any] = None,
         drawdown_scale_fn: Optional[Callable[[], float]] = None,
         var_gate_fn: Optional[Callable[[str, float], Tuple[bool, str]]] = None,
+        regime_gate_fn: Optional[Callable[[], str]] = None,
     ):
         """
         Args:
@@ -73,6 +74,9 @@ class SignalEngine:
                 qui BLOQUE l'émission d'un signal d'entrée si la VaR95 projetée
                 du portefeuille dépasse le seuil. Distinct de portfolio_scale_fn
                 qui module la taille — ici on bloque carrément.
+            regime_gate_fn: P4 — callable sans args qui retourne "low"|"mid"|"high"
+                via HAR-RV (Corsi 2009). Si "low", on bloque les nouvelles entrées
+                (Ichimoku perd en range/low-vol). Sorties TP/SL toujours actives.
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -88,6 +92,8 @@ class SignalEngine:
         self.drawdown_scale_fn = drawdown_scale_fn
         # P3 portfolio risk gate VaR95
         self.var_gate_fn = var_gate_fn
+        # P4 régime de volatilité HAR-RV
+        self.regime_gate_fn = regime_gate_fn
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -224,6 +230,29 @@ class SignalEngine:
             except Exception:
                 pass
         return signals
+
+    def _regime_gate_blocks(self) -> bool:
+        """P4 — True si regime == "low" (HAR-RV indique vol basse, Ichimoku
+        sous-performe en range). False si pas de gate ou regime favorable.
+
+        Sécurisation: exception → False (autoriser, ne jamais bloquer le bot
+        par erreur du module HAR-RV).
+        """
+        if self.regime_gate_fn is None:
+            return False
+        try:
+            regime = self.regime_gate_fn()
+            blocks = (regime == "low")
+            if blocks and self.notifier is not None:
+                try:
+                    self.notifier.info(
+                        f"HAR-RV regime gate blocked: regime=low (Ichimoku perd en range)"
+                    )
+                except Exception:
+                    pass
+            return blocks
+        except Exception:
+            return False  # safe fallback
 
     def _var_gate_blocks(self, side: str, notional_pct: float) -> bool:
         """P3 — True si var_gate_fn refuse l'entrée. False si pas de gate ou autorisé.
@@ -375,12 +404,17 @@ class SignalEngine:
 
         sized = 0.01 * portfolio_scale * dd_scale  # 1% × scale composite
 
+        # P4 — HAR-RV regime gate : bloque toutes les entrées si regime=="low"
+        # (Ichimoku perd en range/low-vol). Évalué une fois par run.
+        regime_blocks_entries = self._regime_gate_blocks()
+
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
             if len(self.positions_long) < self.max_positions:
                 # P3 — VaR95 gate : bloque l'émission si VaR projetée > seuil
-                if self._var_gate_blocks("long", sized):
-                    pass  # signal d'entrée filtré par le gate, pas d'émission
+                # P4 — Regime gate : bloque si regime=="low"
+                if regime_blocks_entries or self._var_gate_blocks("long", sized):
+                    pass  # signal d'entrée filtré par les gates, pas d'émission
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                     tp_mult = params.get('tp_mult', 20.0)
@@ -398,8 +432,8 @@ class SignalEngine:
         # Signal SHORT: bear_cross + close < nuage + pas de LONG ouverts
         if last.get('signal_short', False) and len(self.positions_long) == 0:
             if len(self.positions_short) < self.max_positions:
-                if self._var_gate_blocks("short", sized):
-                    pass  # filtré par le gate
+                if regime_blocks_entries or self._var_gate_blocks("short", sized):
+                    pass  # filtré par les gates (regime ou var)
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                     tp_mult = params.get('tp_mult', 20.0)
