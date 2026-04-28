@@ -282,3 +282,97 @@ def test_collector_flush_skips_when_not_enough_trades(tmp_path):
         }))
     coll._flush_symbol("BTCUSDT")
     assert not (tmp_path / "vpin.jsonl").exists()
+
+
+# ---------------------------------------------------------------------------
+# intraday_runner._make_vpin_data_fn (branchement L-001 résolution)
+# ---------------------------------------------------------------------------
+
+
+def test_intraday_runner_vpin_data_fn_returns_none_if_missing(tmp_path, monkeypatch):
+    """vpin_live.jsonl absent → fn() returns None (gate skip cohérent)."""
+    from routines import intraday_runner
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    fn = intraday_runner._make_vpin_data_fn("BTCUSDT")
+    assert fn() is None
+
+
+def test_intraday_runner_vpin_data_fn_reads_last_record_for_symbol(tmp_path, monkeypatch):
+    """Avec record récent vpin=0.85 obi=0.20 → fn() returns (0.85, 0.20)."""
+    from routines import intraday_runner
+    import time as _time
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    now_ms = int(_time.time() * 1000)
+    # Mix de records BTC + ETH, prend le dernier BTC
+    lines = [
+        {"ts_ms": now_ms - 60000, "symbol": "BTCUSDT", "vpin": 0.4, "obi": 0.8},
+        {"ts_ms": now_ms - 30000, "symbol": "ETHUSDT", "vpin": 0.5, "obi": 0.7},
+        {"ts_ms": now_ms - 10000, "symbol": "BTCUSDT", "vpin": 0.85, "obi": 0.20},
+    ]
+    (data_dir / "vpin_live.jsonl").write_text(
+        "\n".join(json.dumps(l) for l in lines), encoding="utf-8"
+    )
+    fn = intraday_runner._make_vpin_data_fn("BTCUSDT")
+    result = fn()
+    assert result is not None
+    assert result[0] == pytest.approx(0.85)
+    assert result[1] == pytest.approx(0.20)
+
+
+def test_intraday_runner_vpin_data_fn_returns_none_if_stale(tmp_path, monkeypatch):
+    """Record > 10min stale → return None (gate skip safe)."""
+    from routines import intraday_runner
+    import time as _time
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    # ts 15 minutes dans le passé
+    old_ts = int(_time.time() * 1000) - (15 * 60 * 1000)
+    rec = {"ts_ms": old_ts, "symbol": "BTCUSDT", "vpin": 0.95, "obi": 0.10}
+    (data_dir / "vpin_live.jsonl").write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    fn = intraday_runner._make_vpin_data_fn("BTCUSDT")
+    assert fn() is None
+
+
+def test_intraday_runner_vpin_data_fn_handles_slash_symbol(tmp_path, monkeypatch):
+    """Symbol BTC/USDT normalisé en BTCUSDT pour matching."""
+    from routines import intraday_runner
+    import time as _time
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    now_ms = int(_time.time() * 1000)
+    rec = {"ts_ms": now_ms, "symbol": "BTCUSDT", "vpin": 0.6, "obi": 0.5}
+    (data_dir / "vpin_live.jsonl").write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    fn = intraday_runner._make_vpin_data_fn("BTC/USDT")
+    assert fn() == (pytest.approx(0.6), pytest.approx(0.5))
+
+
+def test_intraday_runner_vpin_data_fn_returns_none_if_no_record_for_symbol(tmp_path, monkeypatch):
+    """jsonl contient ETH only → fn(BTC) returns None."""
+    from routines import intraday_runner
+    import time as _time
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    now_ms = int(_time.time() * 1000)
+    rec = {"ts_ms": now_ms, "symbol": "ETHUSDT", "vpin": 0.6, "obi": 0.5}
+    (data_dir / "vpin_live.jsonl").write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    fn = intraday_runner._make_vpin_data_fn("BTCUSDT")
+    assert fn() is None
+
+
+def test_intraday_runner_vpin_data_fn_out_of_range_returns_none(tmp_path, monkeypatch):
+    """vpin > 1 ou obi < 0 → invalide → return None."""
+    from routines import intraday_runner
+    import time as _time
+    monkeypatch.setattr(intraday_runner, "ROOT", tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    now_ms = int(_time.time() * 1000)
+    rec = {"ts_ms": now_ms, "symbol": "BTCUSDT", "vpin": 1.5, "obi": 0.5}
+    (data_dir / "vpin_live.jsonl").write_text(json.dumps(rec) + "\n", encoding="utf-8")
+    fn = intraday_runner._make_vpin_data_fn("BTCUSDT")
+    assert fn() is None

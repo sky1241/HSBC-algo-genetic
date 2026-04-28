@@ -373,19 +373,60 @@ def _make_vpin_gate_config(settings: dict):
 
 
 def _make_vpin_data_fn(symbol: str):
-    """R5 — Placeholder pour fournir (VPIN, OBI) live au signal_engine.
+    """P7-bis — Lit la dernière ligne de data/vpin_live.jsonl filtrée par symbol.
 
-    Pour l'instant : retourne None (data unavailable). Le gate est donc skippé.
-    L'implémentation réelle nécessitera :
-      - WS aggTrade collector pour calculer VPIN sur volume buckets temps réel
-      - bookTicker / depth5 pour calculer OBI = (bid_qty - ask_qty)/(bid+ask)
-    Ces collecteurs sont OUT OF SCOPE de R5 (chunk dédié futur).
+    Source : daemon vpin_live_runner.py qui écrit toutes les ~30s :
+        {ts_ms, symbol, vpin, obi, n_buckets, n_trades}
 
-    En mode log_only (default), le gate retourne action=allow sans
-    bloquer rien, donc le placeholder None ne change pas le comportement.
+    Returns:
+        callable () -> Optional[Tuple[float, float]] (vpin, obi).
+        None si :
+          - fichier absent (daemon non actif)
+          - dernier record > 10min stale
+          - aucune ligne pour ce symbol
+          - parsing fail
+
+    Convention OBI imposée par src/vpin_gate.py : OBI ∈ [0, 1] où
+    1 = balanced, 0 = imbalance maximal.
     """
+    sym_clean = str(symbol).replace("/", "").upper()
+    jsonl_path = ROOT / "data" / "vpin_live.jsonl"
+    STALE_THRESHOLD_MS = 10 * 60 * 1000  # 10min
+
     def _fn():
-        return None
+        try:
+            if not jsonl_path.exists():
+                return None
+            import json as _json
+            import time as _time
+            now_ms = int(_time.time() * 1000)
+            # Read last lines reverse for performance (n peut être grand
+            # sur 30j). Lecture entière acceptable pour MVP, optimisation
+            # tail si nécessaire.
+            last_for_sym = None
+            with open(jsonl_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = _json.loads(line)
+                    except (_json.JSONDecodeError, ValueError):
+                        continue
+                    if str(rec.get("symbol", "")).upper() == sym_clean:
+                        last_for_sym = rec
+            if last_for_sym is None:
+                return None
+            ts_ms = int(last_for_sym.get("ts_ms", 0))
+            if now_ms - ts_ms > STALE_THRESHOLD_MS:
+                return None  # stale, pas de data récente
+            vpin = float(last_for_sym.get("vpin", 0.0))
+            obi = float(last_for_sym.get("obi", 0.5))
+            if not (0.0 <= vpin <= 1.0) or not (0.0 <= obi <= 1.0):
+                return None
+            return (vpin, obi)
+        except Exception:
+            return None
     return _fn
 
 
