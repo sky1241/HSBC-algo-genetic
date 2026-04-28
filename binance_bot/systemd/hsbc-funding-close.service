@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC bot funding-aware close (P11) — flat positions before unfavourable funding settlement
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.funding_close_runner
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/funding_close.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/funding_close.log
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

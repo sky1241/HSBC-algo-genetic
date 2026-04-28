@@ -1,0 +1,13 @@
+[Unit]
+Description=Trigger HSBC funding-aware close 5 min before each settlement (00/08/16 UTC)
+
+[Timer]
+# P11 — Binance Futures funding settlement à 00, 08, 16 UTC.
+# On déclenche toutes les minutes entre HH:55 et HH:59 pour HH ∈ {0, 8, 16}
+# afin que la fenêtre [HH:55, HH:60) soit couverte par >= 1 fire.
+OnCalendar=*-*-* 00,08,16:55..59:00 UTC
+Persistent=true
+Unit=hsbc-funding-close.service
+
+[Install]
+WantedBy=timers.target
