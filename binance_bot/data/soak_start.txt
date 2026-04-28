@@ -1,0 +1,7 @@
+2026-04-28T12:13:35Z
+Soak démarrage testnet — stack P0bis-P12 + R1-R10 + F-001/3/tests/4
+HEAD au démarrage : 8d7335d19a723cc2bf5c537a6d9777a06166d18a
+
+Compteurs J+N basés sur ce timestamp UTC :
+  J+10 → activation HSBC_FUNDING_CLOSE_LIVE=1 (NEXT_STEPS_30D)
+  J+30 → revue manuelle (calibration composite + retrain LGBM + bilan PSR)

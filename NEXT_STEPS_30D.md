@@ -89,13 +89,109 @@ Si PSR médian 30j > 0.5 :
   → Maintenir P5 daily PSR check
 ```
 
+## ⛔ Critères de kill prématuré (avant J+30)
+
+Si **l'un** de ces critères est observé pendant le soak, **arrêt système
++ audit complet** :
+
+1. **Drawdown > 15%** depuis equity_high — déclenché par P2
+   `drawdown_size_multiplier=0.0` (kill par design). Vérifier
+   `binance_bot/data/balance_history.jsonl` pour `equity_max_observed`
+   et `equity_min_observed`.
+2. **PSR live médian sur 7j rolling < 0.1** — alpha decay sévère.
+   Calculer via `binance_bot/data/psr_history.jsonl` :
+   ```
+   $ python -c "
+   import json, numpy as np
+   psr_vals = [json.loads(l).get('psr') or 0.5
+               for l in open('binance_bot/data/psr_history.jsonl')]
+   rolling_7d = np.median(psr_vals[-7:])
+   print(f'PSR median 7j rolling = {rolling_7d:.3f}')
+   "
+   ```
+3. **Plus de 3 hard daily caps déclenchés en 30j** — discipline du bot
+   trop souvent dépassée par marché. Compter dans
+   `binance_bot/data/trades_audit.jsonl` les events
+   `event=hard_cap_triggered` ou `kill_switch`.
+
+**Action en cas de kill prématuré** :
+- `touch binance_bot/data/.killed` (déclenche kill_switch immédiat)
+- Lancer `MISSION_REWFA.md` (BUG-C/D/E re-evaluation pipeline historique)
+- Pas de bascule mainnet avant remédiation complète
+
+## ⏰ J+10 — Activation `HSBC_FUNDING_CLOSE_LIVE=1`
+
+**Date cible** : timestamp `data/soak_start.txt` + 10 jours.
+
+**Procédure d'activation** :
+```bash
+# 1. Vérifier que P11 a accumulé au moins 10 fires DRY-RUN dans
+#    binance_bot/logs/funding_close.log (3 fires/jour × 10 jours = 30 fires).
+grep -c "DRY-RUN" binance_bot/logs/funding_close.log
+
+# 2. Calculer baseline funding paid sur les 10 jours :
+#    On veut savoir combien de fees funding ont été payés pendant
+#    cette période (sera la référence "sans P11").
+python -c "
+import json
+total = 0.0
+for line in open('binance_bot/data/balance_history.jsonl'):
+    rec = json.loads(line)
+    total += rec.get('funding_paid_usdt', 0.0)
+print(f'Total funding paid (10j baseline) = \${total:.2f}')
+"
+
+# 3. Modifier l'unité systemd pour ajouter HSBC_FUNDING_CLOSE_LIVE=1 :
+sudo systemctl --user edit hsbc-funding-close.service
+# Dans le drop-in, ajouter :
+#   [Service]
+#   Environment="HSBC_FUNDING_CLOSE_LIVE=1"
+
+# 4. Recharger + restart :
+systemctl --user daemon-reload
+systemctl --user restart hsbc-funding-close.timer
+
+# 5. Vérifier au prochain fire (HH:55-59) que les logs contiennent
+#    "mode=LIVE" au lieu de "mode=DRY-RUN" :
+tail -50 binance_bot/logs/funding_close.log | grep "mode="
+```
+
+**Mesure attendue après J+20 (10j post-activation)** :
+- Comparer funding_paid_usdt 10j avant LIVE vs 10j après LIVE
+- Si delta > 0 (économie) → P11 fait son job
+- Si delta ~ 0 → P11 ne sauve rien (funding rates faibles sur la période)
+- Si delta < 0 → P11 close trop tôt et coûte plus → désactiver
+
 ## Notifications à mettre en place avant J+30
 
-- ☐ Telegram alert quotidien si PSR < 0.3 (déjà branché P5)
-- ☐ Telegram alert si `funding_close` exécute un close (R9 + R7
-  audit_log entry)
-- ☐ Telegram alert si `vpin_gate` passe en `kill_and_block` (déjà
-  branché P7 R5, mais data_fn = None aujourd'hui — actif post-P7-bis)
+⚠️ **BLOCKER pre-flight** : `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`
+sont **ABSENTS** de `binance_bot/.env`. Le `TelegramNotifier` fall-back
+en log-only par défaut → aucune alerte ne sortira du serveur.
+
+**À ajouter avant le soak réel** :
+```
+$ vi binance_bot/.env
+# Ajouter :
+TELEGRAM_BOT_TOKEN=<ton_token_BotFather>
+TELEGRAM_CHAT_ID=<ton_chat_id>
+```
+
+Une fois configuré, tester avec :
+```
+$ python -c "
+from binance_bot.bot.notifier import TelegramNotifier
+n = TelegramNotifier()
+print('enabled:', n.is_enabled())
+n.info('TEST routing P5/P11/P7 — soak start')
+"
+```
+
+Une fois Telegram ON, les alertes suivantes seront déclenchées :
+- ☐ Daily PSR < 0.3 (déjà branché P5 via `scripts/production/psr_live_daily.py`)
+- ☐ funding_close kill executed (R9, audit_log + notifier.warn dans runner)
+- ☐ VPIN gate kill_and_block (P7 R5, mais inactif tant que P7-bis pas fait)
+- ☐ Hard cap daily loss déclenché (P1)
+- ☐ Drawdown > 15% (P2 kill)
 
 ## Logs à conserver pour le bilan
 
