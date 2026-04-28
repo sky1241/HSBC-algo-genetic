@@ -162,11 +162,39 @@ tail -50 binance_bot/logs/funding_close.log | grep "mode="
 - Si delta ~ 0 → P11 ne sauve rien (funding rates faibles sur la période)
 - Si delta < 0 → P11 close trop tôt et coûte plus → désactiver
 
-## Notifications à mettre en place avant J+30
+## Notifications
 
-⚠️ **BLOCKER pre-flight** : `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`
-sont **ABSENTS** de `binance_bot/.env`. Le `TelegramNotifier` fall-back
-en log-only par défaut → aucune alerte ne sortira du serveur.
+**Décision Sky 2026-04-28** : Telegram **skip volontaire** (mode démo
+testnet, pas de capital réel à risque). Toutes les alertes restent en
+log-only dans `binance_bot/logs/*.log`. Sky vérifie manuellement par SSH
+ou directement sur la machine quand il le souhaite.
+
+Commandes utiles pour monitoring manuel (à lancer périodiquement) :
+```bash
+# État du bot intraday (dernier cycle)
+tail -50 /home/ludov/HSBC-algo-genetic/binance_bot/logs/intraday.log
+
+# PSR live history (alerte si dernier psr < 0.3)
+tail -5 /home/ludov/HSBC-algo-genetic/binance_bot/data/psr_history.jsonl
+
+# Dernières décisions funding-close
+tail -20 /home/ludov/HSBC-algo-genetic/binance_bot/logs/funding_close.log
+
+# Composite signal accumulation (target ~30j de baseline)
+wc -l /home/ludov/HSBC-algo-genetic/binance_bot/data/flow_composite_log.jsonl
+
+# Audit log central (events kill / disagreement / etc.)
+tail -30 /home/ludov/HSBC-algo-genetic/binance_bot/data/trades_audit.jsonl
+
+# Vérifier qu'aucun kill_switch ne s'est déclenché
+ls /home/ludov/HSBC-algo-genetic/binance_bot/data/.killed 2>/dev/null \
+  && echo "KILL SWITCH ACTIF — investiguer" \
+  || echo "OK — pas de kill"
+```
+
+Si plus tard Sky veut activer Telegram, il suffit d'ajouter
+`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` dans `binance_bot/.env`. Le
+`TelegramNotifier` détecte automatiquement et bascule en push live.
 
 **À ajouter avant le soak réel** :
 ```
