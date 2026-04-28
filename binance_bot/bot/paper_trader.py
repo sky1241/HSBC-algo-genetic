@@ -25,6 +25,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# P9 — meta-labeling LdP (optional, branched at log_close).
+try:
+    from .trade_meta import MetaLabelLogger
+except ImportError:  # tolère import en standalone hors package
+    MetaLabelLogger = None  # type: ignore
+
 
 CSV_HEADERS = [
     "timestamp_iso",
@@ -73,12 +79,14 @@ class PaperTrader:
         taker_bps: float = DEFAULT_TAKER_BPS,
         slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
         funding_per_8h: float = DEFAULT_FUNDING_PER_8H,
+        meta_logger: Optional["MetaLabelLogger"] = None,
     ):
         self.log_path = Path(log_path)
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.taker_bps = float(taker_bps)
         self.slippage_bps = float(slippage_bps)
         self.funding_per_8h = float(funding_per_8h)
+        self.meta_logger = meta_logger  # P9 — optional, None = pas de meta-log
         if not self.log_path.exists():
             self._write_headers()
 
@@ -155,19 +163,24 @@ class PaperTrader:
         signal_id: str,
         held_seconds: float = 0.0,
         notes: str = "",
+        meta_context: Optional[dict] = None,
     ):
-        """Enregistre la fermeture d'une position et calcule le P&L."""
+        """Enregistre la fermeture d'une position et calcule le P&L.
+
+        Si self.meta_logger est défini ET meta_context fourni avec les clés
+        attendues (trade_id, timestamp_open, symbol, context, pre_trade,
+        execution, exit), un meta-label P9 est aussi appendé sur la chaîne
+        de hash trades_meta.jsonl.
+        """
         side = "long" if "long" in action else "short"
         fees, slippage = self.compute_trade_cost(qty, exit_price)
         funding = self.compute_funding_cost(qty, entry_price, side, held_seconds)
-        # P&L brut (sans coûts) = sim
         if side == "long":
             sim_pnl = (exit_price - entry_price) * qty
         else:
             sim_pnl = (entry_price - exit_price) * qty
-        # P&L réel = sim - fees - slippage - funding (estimés)
         live_pnl = sim_pnl - fees - slippage - funding
-        shortfall = sim_pnl - live_pnl  # = fees + slippage + funding
+        shortfall = sim_pnl - live_pnl
         row = {
             "timestamp_iso": datetime.utcnow().isoformat() + "Z",
             "action": action,
@@ -185,6 +198,28 @@ class PaperTrader:
             "notes": notes,
         }
         self._append_row(row)
+
+        # P9 — meta-label si logger + context fournis
+        if self.meta_logger is not None and meta_context is not None:
+            now_ms = int(datetime.utcnow().timestamp() * 1000)
+            self.meta_logger.write_meta_label(
+                trade_id=meta_context.get("trade_id", signal_id),
+                timestamp_open=int(meta_context["timestamp_open"]),
+                timestamp_close=int(meta_context.get("timestamp_close", now_ms)),
+                symbol=meta_context["symbol"],
+                side=side.upper(),
+                entry_price=float(entry_price),
+                exit_price=float(exit_price),
+                qty=float(qty),
+                pnl_gross_usd=float(sim_pnl),
+                fees_paid_usd=float(fees),
+                funding_paid_usd=float(funding),
+                pnl_net_usd=float(live_pnl),
+                context=meta_context["context"],
+                pre_trade=meta_context["pre_trade"],
+                execution=meta_context["execution"],
+                exit_info=meta_context["exit"],
+            )
 
     def _append_row(self, row: dict):
         with open(self.log_path, "a", newline="", encoding="utf-8") as f:
