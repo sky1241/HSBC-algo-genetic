@@ -11,17 +11,37 @@
 
 ---
 
-## L-001 — VPIN data_fn placeholder retourne None
+## L-001 — VPIN data_fn placeholder retourne None — **RÉSOLUE conditionnellement**
 
+- **Status**: ✅ RÉSOLUE conditionnellement (P7-bis mergé `f5f22d7` 2026-04-28).
+  Code prêt, activation requiert intervention Sky.
 - **Origine**: R5 / P7 — `binance_bot/routines/intraday_runner.py` fonction
-  `_make_vpin_data_fn(symbol)` (lignes ~225-235 du fichier).
-- **Description**: La fonction retourne toujours `None`. Le gate VPIN
-  ne reçoit donc jamais de (vpin, obi) live et la branche
-  `_evaluate_vpin_gate` retourne `("allow", "vpin_data_unavailable")`.
-- **Cause**: les collecteurs live aggTrade WS (pour VPIN volume buckets)
-  + bookTicker / depth5 (pour OBI = order book imbalance) ne sont pas
-  câblés dans le bot.
-- **Chunk de résolution**: **P7-bis** — collecteur VPIN live (task #69).
+  `_make_vpin_data_fn(symbol)`.
+- **Description**: La fonction retournait toujours `None` jusqu'à P7-bis.
+  Maintenant lit `data/vpin_live.jsonl` (filtré par symbol, stale 10min,
+  validation [0,1] strict). Source : daemon `hsbc-vpin-live.service`
+  (P7-bis) qui collecte via WS Binance `<sym>@trade` + `<sym>@bookTicker`.
+  WS-001 mitigation : utilise `@trade` au lieu de `@aggTrade` (sémantiquement
+  équivalent BVC).
+- **Activation requise par Sky** :
+  ```bash
+  # 1. Flip le yaml
+  sed -i 's/vpin_collector_enabled: false/vpin_collector_enabled: true/' \
+    binance_bot/configs/bot_settings.yaml
+  # 2. Lien systemd
+  systemctl --user link \
+    /home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-vpin-live.service
+  systemctl --user daemon-reload
+  systemctl --user enable --now hsbc-vpin-live.service
+  # 3. Vérification 5 min après
+  tail -5 binance_bot/data/vpin_live.jsonl  # devrait avoir des records
+  scripts/bot_status.sh | grep vpin_live   # ligne count > 0
+  ```
+- **Tant que non activé** : data_fn retourne `None` → gate VPIN reste
+  désactivé silencieusement (`("allow", "vpin_data_unavailable")`).
+  Comportement identique au pré-P7-bis. Aucun risk side-effect.
+- **Chunk de résolution**: **P7-bis CLOSED** (commits `97ef129`, `0ace487`,
+  `64c8580`, `dfb195d`, mergé `f5f22d7`).
 - **Impact si non résolue**:
   - **Cosmétique** en mode `vpin_mode: "log_only"` (default actuel) : le gate
     n'aurait rien fait de toute façon en log_only, donc l'absence de data
@@ -36,38 +56,58 @@
 
 ---
 
-## L-002 — Meta-label features pre_trade partiellement None
+## L-002 — Meta-label features pre_trade partiellement None — **RÉSOLUE 7/10**
 
+- **Status**: ✅ RÉSOLUE 7/10 (R7-bis mergé `f5f22d7` 2026-04-28).
+  Mécanisme `features_snapshot` capture 7 features à l'OPEN ; 3 champs
+  restent None faute de source (à traiter par chunks dédiés).
 - **Origine**: R7 / P9 — `binance_bot/routines/intraday_runner.py` fonction
   `_build_meta_context` (champs `pre_trade.{rv_predicted_har, vpin_at_entry,
-  cloud_breakout_size_atr_units, volume_relative_30d, funding_rate_at_entry_bps}` +
-  `context.btc_dominance`).
-- **Description**: Ces 6 champs sont mis à `None` parce qu'aucune source live
-  ne les capture au moment de l'OPEN du trade (feature computation cycle-time
-  vs trade-time mismatch). `regime_har`, `atr_at_entry`, `composite_signal`
-  sont disponibles au close-time (recompute) → ces 3 sont remplis.
-- **Cause**:
-  - `vpin_at_entry` : cf L-001 (collecteur VPIN live pas encore branché).
-  - `btc_dominance` : pas d'API client (CoinGecko etc.) configuré.
-  - `rv_predicted_har` : calculable via P4 mais pas persisté à open.
-  - `cloud_breakout_size_atr_units` : Ichimoku breakout taille pas calculée.
-  - `volume_relative_30d` : avg volume 30j pas tracké.
-  - `funding_rate_at_entry_bps` : flow_open_interest a la donnée mais
-    pas requêtée à open.
-- **Chunk de résolution**: **R7-bis (futur)** — capture features à open
-  dans state_manager.add_position et lecture au close. Ou : runner cron
-  qui pré-calcule + persiste le snapshot features chaque 5min.
-- **Impact si non résolue**:
+  cloud_breakout_size_atr_units, volume_relative_30d, funding_rate_at_entry_bps,
+  obi_at_entry}` + `context.btc_dominance`).
+- **Description**: Avant R7-bis ces champs étaient à `None` parce
+  qu'aucune source ne les capturait au moment de l'OPEN (cycle-time vs
+  trade-time mismatch). R7-bis introduit
+  `_build_features_snapshot_at_open` (intraday_runner.py:209) qui est
+  appelé à chaque OPEN et persisté dans `pos["features_snapshot"]` via
+  `state_manager.add_position(features_snapshot=...)`. Au CLOSE, le
+  snapshot est relu et passé à `_build_meta_context(entry_features=...)`
+  pour enrichir le meta_label P9.
+- **Features désormais capturées à l'OPEN (7/10)** :
+  - `atr_at_entry` ✓ — depuis df_ichimoku.iloc[-1]['ATR']
+  - `regime_har` ✓ — via regime_gate_fn() (P4 HAR-RV)
+  - `composite_signal` ✓ — via composite_log_fn() (P6.5)
+  - `vpin_at_entry` ✓ — via vpin_data_fn() (subordonné à L-001 :
+    valeur reste None tant que collecteur VPIN live pas activé)
+  - `obi_at_entry` ✓ — idem (tuple[1] du vpin_data_fn)
+  - `rv_predicted_har` ✓ — via src.har_rv.predict_rv (≥200 bars)
+  - `cloud_breakout_size_atr_units` ✓ — derivé Ichimoku
+    (close - cloud_top) / ATR
+- **Features restant None (3/10)** — chunks dédiés futurs :
+  - `funding_rate_at_entry_bps` : flow_oi a la donnée mais reader pas
+    branché. Chunk : R10-bis (lecteur flow_oi.jsonl tail au open).
+  - `volume_relative_30d` : avg volume 30j pas tracké. Chunk :
+    R10-bis (collecteur klines daily 30j rolling).
+  - `btc_dominance` : pas d'API CoinGecko/CMC configurée. Chunk : R11
+    (client + cache 5min).
+- **Chunk de résolution**: **R7-bis CLOSED** (commits `dfb195d`,
+  mergé `f5f22d7`). Les 3 features restantes : R10-bis / R11 (futurs).
+- **Impact si non résolue (résiduel sur 3/10)**:
   - **Cosmétique aujourd'hui** : `build_meta_label` accepte None (test
     `test_meta_label_handles_missing_optional_features`). Munin reçoit
-    juste un schema partiel mais valide. Hash chain OK.
-  - **Bloquant** pour clustering Munin si on veut featurer/labeliser sur
-    ces variables — l'analyse posteriori serait truquée si la majorité
-    des trades a `vpin_at_entry=None`.
+    schema partiel mais valide. Hash chain OK.
+  - **Bloquant partiel** pour clustering Munin sur funding/volume/btcdom :
+    si Munin veut cluster sur "funding adverse + cap entrée" la dim
+    sera dégradée tant que funding pas branché.
 - **Garde-fou**: avant d'utiliser `trades_meta.jsonl` pour entraîner
   Munin/un classifier sur features pre_trade, vérifier la fraction de
-  None par champ (devrait être <10% pour features critiques type
-  vpin/regime/composite).
+  None par champ via :
+  ```bash
+  jq -r '.pre_trade | to_entries[] | "\(.key)\t\(.value)"' \
+    binance_bot/data/trades_meta.jsonl | \
+    awk -F'\t' '$2=="null"{n[$1]++} END{for(k in n) print k, n[k]}'
+  ```
+  Devrait être <10% pour les 7 features capturées par R7-bis.
 
 ## L-003 — VPIN data_fn placeholder (rappel L-001 sous nouveau angle)
 

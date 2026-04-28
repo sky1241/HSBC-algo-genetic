@@ -35,9 +35,15 @@
 
 ### Tâche 2 — Retrain LightGBM P10 avec features pre_trade enrichies
 
-- Pré-requis : R7-bis doit avoir été fait (capture features à open dans
-  `state_manager.add_position`). Sinon, `trades_meta.jsonl` reste avec
-  les `pre_trade.{vpin, rv, ...}` à None.
+- Pré-requis : ✅ R7-bis CLOSED `f5f22d7` 2026-04-28. Capture features
+  à open opérationnelle via `_build_features_snapshot_at_open` →
+  `state_manager.add_position(features_snapshot=...)`. 7 features
+  capturées au moment de l'OPEN (atr, regime_har, composite, vpin,
+  obi, rv_predicted_har, cloud_breakout). 3 restent None : funding,
+  volume_30d, btc_dominance (cf L-002).
+- ⚠️ La capture VPIN/OBI à l'open n'est utile que si le collecteur
+  VPIN live (P7-bis) est ACTIVÉ — sinon `vpin_at_entry=None` dans
+  les meta_labels. Voir L-001 pour la procédure d'activation.
 - Lancer le training :
   ```
   $ python scripts/training/train_lgbm_combinator.py --no-quick \
@@ -80,7 +86,8 @@ Si PSR médian 30j ∈ [0.3, 0.5] :
   → Garder en testnet 30j supplémentaires
   → Recalibrer composite si nécessaire
   → Considérer activer mode `vpin_mode: "gate"` SEULEMENT si P7-bis
-    (collecteur VPIN live) a été closed entretemps
+    a été activé (✅ code mergé `f5f22d7`, activation systemctl
+    requise — voir L-001 pour procédure)
 
 Si PSR médian 30j > 0.5 :
   → Edge cohérent backtest
