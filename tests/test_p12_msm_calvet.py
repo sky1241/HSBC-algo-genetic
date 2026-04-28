@@ -68,9 +68,19 @@ def test_msm_handles_short_series():
 
 
 def test_msm_fit_returns_valid_params_on_synthetic_series():
-    """Fit sur série simulée → params dans bornes valides."""
+    """Fit sur série simulée → recovery quantitatif (F-tests R-INSTR-4).
+
+    Renforce le test précédent qui ne vérifiait que les bornes (1<m0<2).
+    Ici on assert que les params estimés sont PROCHES des true params :
+      - m0       : tolerance |fit - true| < 0.15 (Sky F-tests)
+      - sigma_bar: tolerance relative < 20% (proxy stable)
+      - gamma_k  : tolerance large (gamma_k connu dur à recover en MLE
+                   court, on garde juste le check de convergence ici)
+    """
+    true_m0, true_sigma_bar, true_gamma_k = 1.4, 0.02, 0.4
     returns, _ = simulate_msm(
-        n=800, m0=1.4, sigma_bar=0.02, gamma_k=0.4, k_bar=4, seed=42,
+        n=800, m0=true_m0, sigma_bar=true_sigma_bar, gamma_k=true_gamma_k,
+        k_bar=4, seed=42,
     )
     fit = fit_msm(returns, k_bar=4)
     assert fit.converged is True or fit.log_likelihood != 0.0
@@ -82,6 +92,13 @@ def test_msm_fit_returns_valid_params_on_synthetic_series():
     # pi_filtered = distribution sur 2^k_bar
     assert fit.pi_filtered.shape == (16,)
     assert fit.pi_filtered.sum() == pytest.approx(1.0, rel=1e-6)
+    # Recovery quantitatif (F-tests INSTR-4)
+    assert abs(fit.m0 - true_m0) < 0.15, (
+        f"m0 recovery faible : true={true_m0}, fit={fit.m0:.3f}"
+    )
+    assert abs(fit.sigma_bar - true_sigma_bar) / true_sigma_bar < 0.20, (
+        f"sigma_bar recovery faible : true={true_sigma_bar}, fit={fit.sigma_bar:.4f}"
+    )
 
 
 def test_msm_fit_handles_nan_dropping():

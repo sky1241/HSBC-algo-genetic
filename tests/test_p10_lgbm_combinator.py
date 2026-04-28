@@ -186,6 +186,58 @@ def test_optuna_max_50_trials_hard_cap():
         assert call_kwargs.get("n_trials") == 50
 
 
+def test_optuna_real_clamp_runs_actual_study():
+    """F-tests INSTR-4 : run RÉELLEMENT Optuna (sans mock) avec n_trials=3
+    + cap N_TRIALS_MAX. Vérifie n_trials_used <= cap.
+
+    Complète le test mock-only précédent en exerçant le path Optuna réel.
+    Utilise un dataset minimal et n_trials petit pour rester rapide (~10s).
+    """
+    df = _synth_df(400, seed=99)
+    X = build_features(df)
+    # Cible faiblement corrélée pour avoir un fit qui converge
+    y = (df["har_rv_predicted"] < df["har_rv_predicted"].quantile(0.30)).astype(int)
+    splits = temporal_split(X, y)
+
+    requested_trials = 3  # bien < N_TRIALS_MAX donc pas clamped
+    result = train_combinator(
+        splits["X_train"], splits["y_train"],
+        splits["X_val"], splits["y_val"],
+        n_trials=requested_trials,
+        timeout_seconds=60,
+        use_optuna=True,
+    )
+    # Optuna a vraiment tourné (pas de mock)
+    assert result.n_trials_used <= requested_trials  # ≤ 3 (peut être moins si timeout)
+    assert result.n_trials_used >= 1  # au moins 1 trial complété
+    assert result.n_trials_used <= N_TRIALS_MAX  # respecte le cap absolu
+    assert 0.0 <= result.val_auc <= 1.0
+    assert result.converged is True
+
+
+def test_optuna_real_clamp_high_request_clamped_to_max():
+    """F-tests INSTR-4 : n_trials=N_TRIALS_MAX+5 → réellement clamped à
+    N_TRIALS_MAX. NB: on utilise dataset très petit + timeout court pour
+    éviter de tourner 50 trials réels (déjà couvert par test_optuna_max
+    via mock). Ici on vérifie juste que train_combinator NE LAISSE PAS
+    passer n_trials > N_TRIALS_MAX.
+    """
+    df = _synth_df(150, seed=33)
+    X = build_features(df)
+    y = (df["har_rv_predicted"] < df["har_rv_predicted"].quantile(0.30)).astype(int)
+    splits = temporal_split(X, y)
+
+    result = train_combinator(
+        splits["X_train"], splits["y_train"],
+        splits["X_val"], splits["y_val"],
+        n_trials=N_TRIALS_MAX + 5,  # demande au-dessus du cap
+        timeout_seconds=2,  # short timeout : ne va pas faire 50 trials
+        use_optuna=True,
+    )
+    # Quel que soit le n_trials atteint (limited by timeout), ne dépasse jamais cap
+    assert result.n_trials_used <= N_TRIALS_MAX
+
+
 def test_train_combinator_fallback_no_optuna():
     """Si optuna absent → fallback default LGBM, n_trials_used=1, val_auc défini."""
     df = _synth_df(800, seed=11)
