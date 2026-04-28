@@ -1,0 +1,32 @@
+{
+  "ran_at": "2026-04-28T08:56:41.874893+00:00",
+  "years_back": 2,
+  "quick_mode": true,
+  "n_trials_requested": 20,
+  "n_trials_used": 20,
+  "n_obs_train": 11914,
+  "n_obs_val": 2553,
+  "n_obs_test": 2554,
+  "val_auc": 0.6266863904493197,
+  "dsr_p": 5.062571341884754e-126,
+  "should_deploy": false,
+  "reason": "dsr_p 0.000 < 0.95 (snooping)",
+  "best_params": {
+    "objective": "binary",
+    "metric": "auc",
+    "learning_rate": 0.00120570008792075,
+    "num_leaves": 57,
+    "feature_fraction": 0.7044375310702153,
+    "bagging_fraction": 0.8639775820384112,
+    "bagging_freq": 5,
+    "min_data_in_leaf": 42,
+    "verbose": -1,
+    "feature_pre_filter": false,
+    "seed": 42
+  },
+  "deploy_thresholds": {
+    "AUC_DEPLOY_MIN": 0.55,
+    "AUC_DEPLOY_SUSPECT_MAX": 0.65,
+    "DSR_DEPLOY_MIN": 0.95
+  }
+}

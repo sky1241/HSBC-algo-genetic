@@ -213,6 +213,10 @@ _DEFAULT_LGBM_PARAMS = {
     "bagging_freq": 5,
     "min_data_in_leaf": 20,
     "verbose": -1,
+    # R8 fix : Optuna varie min_data_in_leaf entre trials. LightGBM par
+    # défaut active feature_pre_filter sur premier fit qui freeze la
+    # config et raise sur 2e fit avec min_data_in_leaf différent.
+    "feature_pre_filter": False,
 }
 
 

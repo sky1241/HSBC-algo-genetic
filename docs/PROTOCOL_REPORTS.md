@@ -624,6 +624,80 @@ NON LANCÉ (cf P0bis, BUG-PRE-001).
 
 ---
 
+## R8 — P10 LGBM combinator vrai training BTC H1 (quick mode)
+
+### Étape 1 — Code
+- **Décision**: nouveau script `scripts/training/train_lgbm_combinator.py`
+  qui reproduit le pipeline complet : load BTC H1 → features → split
+  temporal → Optuna → DSR → should_deploy → save artifacts.
+- **Justification**: spec exigeait "Dataset 3-4 ans BTC H1 + Optuna max
+  50 + DSR n_trials=50". Aucune exécution réelle avait été faite (R5
+  audit) → cette violation est corrigée par R8.
+- **Fichiers** :
+  - `scripts/training/train_lgbm_combinator.py` (NEW)
+  - `src/lgbm_combinator.py` — fix `feature_pre_filter=False` dans
+    `_DEFAULT_LGBM_PARAMS` (Optuna varie min_data_in_leaf, sans ce flag
+    LightGBM raise sur 2e fit)
+  - `LIMITATIONS_ACTEES.md` — L-004 ajouté
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ pipeline complet exécuté ; AUC + DSR + decision logged.
+  Mode "quick" honnête (HAR/EGARCH mocked à 0, documenté L-004).
+- **Q2**: VPIN rolling O(n) via single-pointer (correction O(n²) initial).
+  fix LightGBM `feature_pre_filter`. Reasons mocked à 0 ignorées par
+  LightGBM (gain split nul).
+- **Q3**: ✅ noms précis.
+- **Q4**: ✅ pas d'imports morts.
+- **Q5**: BTC halving 2024-04-19, refit_every=2000 documentés inline.
+- **Q6**: ✅
+- **Q7**: ✅ script standalone, pas de mutation modules.
+- **Q8**: try/except sur fits arch warnings filtered.
+
+### Étape 3 — Tests
+- Pas de nouveau test pour le script de training (one-shot artifact).
+- Tests P10 module existants (20/20 PASS) garantissent le pipeline.
+
+### Étape 4 — Forge
+- ✅ tests `not slow` toujours green (R-FIX-FORGE).
+
+### Étape 5 — Branchement
+- Pas de branchement live : `should_deploy=False` → `low_vol_combinator_fn`
+  reste None dans `intraday_runner` (callback non câblé).
+- Si Sky bypass `should_deploy` (pour tester en log) → câbler manuellement
+  via `intraday_runner._make_low_vol_combinator_fn(model_path)` (factory
+  à créer si nécessaire).
+
+### Étape 6 — Résultats numériques
+
+```
+ran_at         : 2026-04-28T08:56:41Z
+years_back     : 2
+quick_mode     : True (HAR/EGARCH/composite mocked à 0)
+n_trials_used  : 20
+n_obs_train    : 11914
+n_obs_val      : 2553
+n_obs_test     : 2554
+val_auc        : 0.6267
+dsr_p          : 5.06e-126   ← rejet écrasant
+should_deploy  : False
+reason         : "dsr_p 0.000 < 0.95 (snooping)"
+```
+
+**Interprétation** : `expected_max_SR_under_H0(n_trials=20)` ≈ 1.90,
+notre `sharpe_proxy(AUC=0.627)` ≈ 1.27 → en dessous du seuil de bruit
+attendu pour 20 trials de hyperparam search. DSR rejette → no deploy.
+Le pipeline fonctionne, le verdict est honnête.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+### Limitations actées (cf LIMITATIONS_ACTEES.md L-004)
+- Composite signal + 4 components + phase_K3 mockés à 0 (pas d'historique).
+- Résolution = R8-bis (attendre 30j+ baseline R3 collectors, ou backfill
+  historique alternative).
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |

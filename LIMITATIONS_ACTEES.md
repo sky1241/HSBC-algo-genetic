@@ -74,6 +74,42 @@
 `vpin_at_entry` dans meta_context = None à cause de L-001. Les deux limitations
 seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
 
+## L-004 — Features composite + phase_K3 mockées à 0 dans le training P10
+
+- **Origine**: R8 / P10 — `scripts/training/train_lgbm_combinator.py` fonction
+  `build_full_features` (lignes ~225-235).
+- **Description**: 5 features sont mises à 0 constant dans le dataset
+  d'entraînement faute d'historique disponible :
+    - `composite_signal_score` (P6.5) — collecteurs P6.1-P6.4 créés R3
+      mais data live commence 2026-04-28, pas d'historique 4 ans
+    - `comp_top_ls`, `comp_taker`, `comp_liq`, `comp_oi` (idem)
+    - `phase_K3` (K3 daily phase rotation pas trivial à reconstituer
+      historiquement sans le pipeline daily_phase_job complet)
+- **Cause**: features dépendent de modules live (P6 polling) qui n'ont
+  pas de données historiques rétroactives. La spec P10 disait "Dataset
+  3-4 ans BTC H1 post-2021" mais la stack flow ne couvre pas cette période.
+- **Chunk de résolution**: **R8-bis (futur)** — soit (a) attendre 30j+
+  d'historique vivant via R3 collecteurs et re-train avec data réelle,
+  soit (b) backfill historique via APIs alternatives (Binance n'expose
+  topLongShortRatio que sur 30j).
+- **Impact si non résolue**:
+  - **Cosmétique au plan pipeline** : LightGBM ignore les features
+    constantes (gain de splitting nul). L'AUC mesurée reflète alors
+    uniquement les features non-mockées (VPIN, HAR, EGARCH, time-of-day,
+    days_since_halving).
+  - **BLOQUANT pour AUC > 0.55** : sans le composite signal qui est censé
+    être le contributeur majeur (selon spec), l'AUC plafonne probablement
+    sous le seuil deploy_min. `should_deploy` retournera donc False
+    légitimement.
+- **Mesure R8 (2026-04-28, quick mode)**:
+    - val_auc = 0.6267 (au-dessus de AUC_DEPLOY_MIN=0.55, sous AUC_SUSPECT=0.65)
+    - dsr_p   = 5e-126 (rejet écrasant après déflation 20 trials Optuna)
+    - should_deploy = False (DSR < 0.95)
+    - Conclusion : le signal est bien là sur 17000 bars BTC H1 mais reste
+      sous le seuil de bruit attendu pour 20 trials de hyperparam search.
+- **Garde-fou**: avant de bypass `should_deploy=False`, vérifier que les
+  5 features ne sont plus mockées dans `train_lgbm_combinator.py:build_full_features`.
+
 ## Format pour futures entrées
 
 ```
