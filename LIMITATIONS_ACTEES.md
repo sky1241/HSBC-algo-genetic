@@ -36,6 +36,44 @@
 
 ---
 
+## L-002 — Meta-label features pre_trade partiellement None
+
+- **Origine**: R7 / P9 — `binance_bot/routines/intraday_runner.py` fonction
+  `_build_meta_context` (champs `pre_trade.{rv_predicted_har, vpin_at_entry,
+  cloud_breakout_size_atr_units, volume_relative_30d, funding_rate_at_entry_bps}` +
+  `context.btc_dominance`).
+- **Description**: Ces 6 champs sont mis à `None` parce qu'aucune source live
+  ne les capture au moment de l'OPEN du trade (feature computation cycle-time
+  vs trade-time mismatch). `regime_har`, `atr_at_entry`, `composite_signal`
+  sont disponibles au close-time (recompute) → ces 3 sont remplis.
+- **Cause**:
+  - `vpin_at_entry` : cf L-001 (collecteur VPIN live pas encore branché).
+  - `btc_dominance` : pas d'API client (CoinGecko etc.) configuré.
+  - `rv_predicted_har` : calculable via P4 mais pas persisté à open.
+  - `cloud_breakout_size_atr_units` : Ichimoku breakout taille pas calculée.
+  - `volume_relative_30d` : avg volume 30j pas tracké.
+  - `funding_rate_at_entry_bps` : flow_open_interest a la donnée mais
+    pas requêtée à open.
+- **Chunk de résolution**: **R7-bis (futur)** — capture features à open
+  dans state_manager.add_position et lecture au close. Ou : runner cron
+  qui pré-calcule + persiste le snapshot features chaque 5min.
+- **Impact si non résolue**:
+  - **Cosmétique aujourd'hui** : `build_meta_label` accepte None (test
+    `test_meta_label_handles_missing_optional_features`). Munin reçoit
+    juste un schema partiel mais valide. Hash chain OK.
+  - **Bloquant** pour clustering Munin si on veut featurer/labeliser sur
+    ces variables — l'analyse posteriori serait truquée si la majorité
+    des trades a `vpin_at_entry=None`.
+- **Garde-fou**: avant d'utiliser `trades_meta.jsonl` pour entraîner
+  Munin/un classifier sur features pre_trade, vérifier la fraction de
+  None par champ (devrait être <10% pour features critiques type
+  vpin/regime/composite).
+
+## L-003 — VPIN data_fn placeholder (rappel L-001 sous nouveau angle)
+
+`vpin_at_entry` dans meta_context = None à cause de L-001. Les deux limitations
+seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
+
 ## Format pour futures entrées
 
 ```

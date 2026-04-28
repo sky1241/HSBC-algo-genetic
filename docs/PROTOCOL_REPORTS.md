@@ -564,6 +564,66 @@ NON LANCÉ (cf P0bis, BUG-PRE-001).
 
 ---
 
+## R7 — P9 meta_logger live wire
+
+### Étape 1 — Code
+- **Décision**: extension `intraday_runner` pour instancier `MetaLabelLogger`
+  + injecter dans `PaperTrader` + helper `_build_meta_context` qui produit
+  le dict LdP-schema enrichi à chaque close.
+- **Justification**: le module `bot/trade_meta.py` existe (P9) avec le hook
+  `paper_trader.log_close(meta_context=...)` mais aucun code live ne
+  fournissait `meta_context`. Donc `trades_meta.jsonl` restait vide.
+- **Fichiers** :
+  - `binance_bot/routines/intraday_runner.py` — instanciation
+    `MetaLabelLogger(path=ROOT/'data'/'trades_meta.jsonl')`, passage à
+    `PaperTrader(meta_logger=...)`, et helper `_build_meta_context(...)`
+    invoqué au site `paper.log_close(...)` pour chaque trade fermé.
+  - `binance_bot/tests/test_r7_meta_context.py` (NEW) — 8 tests.
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ MetaLabelLogger instancié, log_close avec meta_context pour
+  chaque close → trades_meta.jsonl reçoit des records hash-chained.
+- **Q2**: features non-disponibles → None (passe la validation per spec).
+  ImportError MetaLabelLogger → `meta_logger=None` → paper_trader
+  fonctionne sans (back-compat).
+- **Q3**: ✅ `_build_meta_context` précis ; mapping reasons (`take_profit`
+  → `TP`, `trailing_stop` → `trailing`).
+- **Q4**: ✅ pas d'imports morts.
+- **Q5**: BTC halving 2024-04-19 (référence dur, documentée inline).
+- **Q6**: ✅
+- **Q7**: ✅ pure (pas de mutation des modules existants).
+- **Q8**: ✅ try/except sur fromisoformat, getattr ATR.
+
+### Étape 3 — Tests
+- 8 tests `test_r7_meta_context.py` :
+  - Tous les blocs requis présents
+  - Symbole slash normalisé
+  - reason mapping (take_profit → TP, trailing_stop → trailing, unknown → manual)
+  - meta_context passe `build_meta_label` validation sans raise
+  - phase=None → 0 (default safe)
+  - E2E paper_trader + meta_logger : 1 close → 1 entry hash-chain valide
+
+### Étape 4 — Forge
+- ✅ "not slow" run : 634 tests / 73s.
+
+### Étape 5 — Branchement vérifié
+- Grep `MetaLabelLogger\|meta_context\|_build_meta_context`
+  dans `intraday_runner.py` → instanciation + appel dans la boucle close.
+- Smoke test E2E (test_paper_trader_with_meta_logger_writes_jsonl_on_close) :
+  log_close → 1 record JSONL avec hash chain valide.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+### Limitations actées
+- **L-002**: 6 champs `pre_trade` partiellement None (vpin_at_entry,
+  btc_dominance, rv_predicted_har, cloud_breakout_size_atr_units,
+  volume_relative_30d, funding_rate_at_entry_bps) — pas de source live
+  capturant à open-time. Documenté dans `LIMITATIONS_ACTEES.md`.
+- Résolution = R7-bis (capture features à open + persistance state).
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |

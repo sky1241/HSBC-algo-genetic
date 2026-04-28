@@ -15,6 +15,7 @@ Workflow:
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 import numpy as np
 import yaml
@@ -203,6 +204,92 @@ def _make_regime_gate_fn(returns_1h_series):
             cached_regime["value"] = "mid"
             return "mid"
     return _gate
+
+
+def _build_meta_context(
+    *,
+    signal_id: str,
+    symbol: str,
+    sig: dict,
+    opened_at_iso: Optional[str],
+    phase_K3: Optional[int],
+    atr_at_entry: Optional[float],
+    regime_har: Optional[str],
+    composite_score: Optional[float],
+) -> dict:
+    """R7 / P9 — Construit le meta_context (LdP 2018 schema enrichi).
+
+    Champs non-disponibles aujourd'hui = None. Les valeurs None passent
+    la validation `build_meta_label` per spec
+    `test_meta_label_handles_missing_optional_features`.
+
+    À enrichir progressivement quand les sources sont câblées :
+      - vpin_at_entry         : P7-bis (collecteur VPIN live)
+      - btc_dominance         : à brancher (CoinGecko ou Binance)
+      - rv_predicted_har      : déjà calculable, à capturer à open
+      - funding_rate_at_entry : déjà fetchable via flow_open_interest
+    """
+    from datetime import datetime as _dt, timezone as _tz
+    BTC_HALVING_2024 = _dt(2024, 4, 19, tzinfo=_tz.utc)
+
+    now = _dt.now(_tz.utc)
+    days_since_halving = int((now - BTC_HALVING_2024).total_seconds() // 86400)
+
+    timestamp_close_ms = int(now.timestamp() * 1000)
+    timestamp_open_ms = timestamp_close_ms
+    if opened_at_iso:
+        try:
+            iso = opened_at_iso.replace('Z', '+00:00') if 'Z' in opened_at_iso else opened_at_iso
+            opened_dt = _dt.fromisoformat(iso)
+            timestamp_open_ms = int(opened_dt.timestamp() * 1000)
+        except Exception:
+            pass
+
+    side = "LONG" if "long" in str(sig.get("action", "")).lower() else "SHORT"
+    reason = str(sig.get("reason", "manual"))
+    # Map to enum strict per spec (sinon validate raise)
+    valid_reasons = {"TP", "SL", "trailing", "EOD", "opposite_signal",
+                     "daily_cap", "manual"}
+    if reason == "take_profit":
+        reason = "TP"
+    elif reason == "trailing_stop":
+        reason = "trailing"
+    elif reason not in valid_reasons:
+        reason = "manual"
+
+    return {
+        "trade_id": signal_id,
+        "timestamp_open": timestamp_open_ms,
+        "timestamp_close": timestamp_close_ms,
+        "symbol": symbol.replace("/", ""),
+        # context block
+        "context": {
+            "phase_K3": int(phase_K3) if phase_K3 is not None else 0,
+            "days_since_halving": days_since_halving,
+            "day_of_week": now.weekday(),
+            "hour_of_day": now.hour,
+            "btc_dominance": None,  # TODO P9-bis : fetch via CoinGecko ou skip
+        },
+        # pre_trade block
+        "pre_trade": {
+            "atr_at_entry": float(atr_at_entry) if atr_at_entry is not None else None,
+            "rv_predicted_har": None,  # TODO : capturer à open
+            "regime_har": regime_har,  # disponible via regime_gate_fn() au close
+            "vpin_at_entry": None,     # cf L-001 (P7-bis collecteur live)
+            "composite_signal": float(composite_score) if composite_score is not None else None,
+            "cloud_breakout_size_atr_units": None,  # TODO : derivé Ichimoku à open
+            "volume_relative_30d": None,            # TODO : avg volume historique
+            "funding_rate_at_entry_bps": None,      # TODO : flow_open_interest @ open
+        },
+        # execution block
+        "execution": {
+            "tf_signal_origin": "2h",  # bot timeframe principal (cf bot_settings)
+            "n_tf_confirming": 1,
+            "slippage_bps": 5.0,  # défault paper_trader (settings.slippage_bps)
+        },
+        # exit block
+        "exit": {"reason": reason},
+    }
 
 
 def _make_garch_audit_check(symbol: str, returns_1h_series, regime_gate_fn):
@@ -523,7 +610,17 @@ def main():
         audit.append({"event": "kill_switch", "reason": msg, "actions": actions, "equity": capital_usdt})
         return 3
 
-    paper = PaperTrader(ROOT / "data" / "paper_log.csv")
+    # R7 / P9 — meta_logger pour persistance schema enrichi LdP 2018
+    # (context+pre_trade+execution+exit + hash chain). Append-only dans
+    # data/trades_meta.jsonl. Si import échoue, paper_trader continue sans.
+    try:
+        from bot.trade_meta import MetaLabelLogger as _MetaLabelLogger  # type: ignore
+        meta_logger = _MetaLabelLogger(path=ROOT / "data" / "trades_meta.jsonl")
+    except Exception as _meta_err:
+        print(f"   ⚠️ MetaLabelLogger init failed: {_meta_err}")
+        meta_logger = None
+
+    paper = PaperTrader(ROOT / "data" / "paper_log.csv", meta_logger=meta_logger)
     daily_loss = state_mgr.get('daily_loss', 0.0)
     rf_cfg = RegimeFilterConfig(**(settings.get('regime_filter') or {}))
 
@@ -810,10 +907,33 @@ def main():
 
                 if entry_price > 0 and entry_qty > 0:
                     qty_native = capital_usdt * entry_qty * trade_mgr.leverage / entry_price
+                    # R7 / P9 — meta_context construit avec features dispo aujourd'hui
+                    # (None pour features non encore tracees, cf L-001 et TODOs).
+                    _atr_for_meta = None
+                    try:
+                        _atr_for_meta = float(df_ichimoku.iloc[-1].get('ATR', 0.0)) or None
+                    except Exception:
+                        pass
+                    _composite_score_for_meta = None
+                    try:
+                        _composite_score_for_meta = float(
+                            (signal_engine.composite_log_fn() or {}).get("score", 0.0)
+                        )
+                    except Exception:
+                        pass
+                    _meta_ctx = _build_meta_context(
+                        signal_id=signal_id, symbol=symbol, sig=sig,
+                        opened_at_iso=opened_at_str,
+                        phase_K3=state_mgr.get('phase_today'),
+                        atr_at_entry=_atr_for_meta,
+                        regime_har=(regime_gate_fn() if regime_gate_fn is not None else None),
+                        composite_score=_composite_score_for_meta,
+                    )
                     paper.log_close(
                         sig['action'], qty=qty_native, exit_price=exit_p, entry_price=entry_price,
                         live_order_id=order_id, signal_id=signal_id, held_seconds=held_s,
                         notes=f"{symbol} {sig.get('reason', '')}",
+                        meta_context=_meta_ctx,
                     )
                 notifier.info(f"[{symbol}] {sig['action']} reason={sig.get('reason')} @ {exit_p:.4f}")
 
