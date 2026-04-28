@@ -37,6 +37,132 @@ from bot.paper_trader import PaperTrader
 from bot.recovery_wal import WAL
 
 
+# P0 (2026-04-28) — Portfolio-aware sizing helpers ----------------------------
+
+# Defaults conservateurs MDPI 2025 ("Cryptocurrency Market Maturation and
+# Evolving Risk Profiles") : en stress regime, BTC/ETH co-corr ~0.85,
+# BTC/SOL ~0.80, vol annualisée 60-95%. Utilisés tant que pas de cron
+# de calcul live des corrélations rolling 30j.
+_DEFAULT_PORTFOLIO_CORR = {
+    ("BTC/USDT", "ETH/USDT"): 0.85,
+    ("BTC/USDT", "SOL/USDT"): 0.80,
+    ("ETH/USDT", "SOL/USDT"): 0.85,
+}
+_DEFAULT_PORTFOLIO_VOL = {
+    "BTC/USDT": 0.60,
+    "ETH/USDT": 0.75,
+    "SOL/USDT": 0.95,
+}
+
+
+def _load_portfolio_features(path, symbols):
+    """Charge corrélations + volatilités, fallback sur defaults conservateurs.
+
+    Returns:
+        (corr_df, vol_dict) — corr_df: DataFrame symbol×symbol Pearson;
+        vol_dict: {symbol: vol_ann_fraction}.
+    """
+    import json
+    import numpy as np
+    import pandas as pd
+
+    # Toujours initialiser corr complète et symétrique avec defaults
+    n = len(symbols)
+    corr_df = pd.DataFrame(np.eye(n), index=symbols, columns=symbols)
+    for i, si in enumerate(symbols):
+        for j, sj in enumerate(symbols):
+            if i == j:
+                continue
+            key = (si, sj) if (si, sj) in _DEFAULT_PORTFOLIO_CORR else (sj, si)
+            corr_df.iloc[i, j] = float(_DEFAULT_PORTFOLIO_CORR.get(key, 0.7))
+
+    vol_dict = {s: float(_DEFAULT_PORTFOLIO_VOL.get(s, 0.80)) for s in symbols}
+
+    # Override par fichier persistent si présent (calcul live futur)
+    if path.exists():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            file_corr = data.get("correlations", {})
+            for si in symbols:
+                for sj in symbols:
+                    if si in file_corr and sj in file_corr[si]:
+                        corr_df.loc[si, sj] = float(file_corr[si][sj])
+            file_vol = data.get("volatilities", {})
+            for s in symbols:
+                if s in file_vol:
+                    vol_dict[s] = float(file_vol[s])
+        except Exception as e:
+            print(f"⚠️ portfolio_features.json invalid ({e}) — using defaults")
+
+    return corr_df, vol_dict
+
+
+def _make_portfolio_scale_fn(state_mgr,
+                             current_symbol,
+                             total_capital,
+                             corr_df,
+                             vol_dict,
+                             max_portfolio_risk,
+                             current_price):
+    """Construit le callback `portfolio_scale_fn` pour un symbole donné.
+
+    Le callback retourne un facteur [0, 1] basé sur le risk agrégé déjà utilisé
+    par les positions ouvertes des AUTRES symboles (le symbole courant est exclu
+    pour éviter le double-comptage avant ouverture nouvelle position).
+    """
+    def _scale_fn():
+        try:
+            from src.vol_targeting import compute_aggregated_var  # type: ignore
+        except ImportError:
+            try:
+                from vol_targeting import compute_aggregated_var  # type: ignore
+            except ImportError:
+                return 1.0  # fallback safe si import échoue
+
+        # Construire open_positions agrégé (tous symboles SAUF current_symbol)
+        open_positions = {}
+        symbols_dict = state_mgr.state.get("symbols", {}) or {}
+        for sym, sym_state in symbols_dict.items():
+            if sym == current_symbol:
+                continue  # éviter double-comptage
+            longs = sym_state.get("positions_long", []) or []
+            shorts = sym_state.get("positions_short", []) or []
+            # Notional USDT approximé : `size` est stocké en fraction du capital
+            # (0.01 = 1%), donc notional ≈ size × total_capital (hypothèse 1x).
+            # Approximation OK pour P0; un futur chunk pourra raffiner avec leverage.
+            cap_factor = float(total_capital) if total_capital > 0 else 100.0
+            for p in longs:
+                notional = float(p.get("size", 0)) * cap_factor
+                if notional > 0:
+                    open_positions.setdefault(sym, {"side": "long", "notional": 0.0})
+                    open_positions[sym]["notional"] += notional
+            for p in shorts:
+                notional = float(p.get("size", 0)) * cap_factor
+                if notional > 0:
+                    open_positions.setdefault(sym, {"side": "short", "notional": 0.0})
+                    open_positions[sym]["notional"] += notional
+
+        if not open_positions or total_capital <= 0:
+            return 1.0  # pas d'autres positions → pas de pénalisation
+
+        sigma_pf = compute_aggregated_var(
+            open_positions=open_positions,
+            rolling_correlations=corr_df,
+            rolling_volatilities=vol_dict,
+            total_capital=float(total_capital),
+        )
+        if max_portfolio_risk <= 0:
+            return 0.0
+        remaining = max(0.0, max_portfolio_risk - sigma_pf)
+        return float(min(1.0, remaining / max_portfolio_risk))
+
+    return _scale_fn
+
+
+# -----------------------------------------------------------------------------
+
+
 def main():
     print("="*70)
     print(f"🔄 INTRADAY RUN — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -164,6 +290,15 @@ def main():
     daily_loss = state_mgr.get('daily_loss', 0.0)
     rf_cfg = RegimeFilterConfig(**(settings.get('regime_filter') or {}))
 
+    # P0 — Portfolio features pour Kelly portfolio-aware (corrélations + volatilités).
+    # Sources :
+    #   1. data/portfolio_features.json si présent (calculé par cron quotidien futur)
+    #   2. Sinon defaults conservateurs MDPI 2025 (stress regime BTC+ETH ~0.85, +SOL ~0.80)
+    portfolio_features_path = ROOT / "data" / "portfolio_features.json"
+    portfolio_corr_df, portfolio_vol_dict = _load_portfolio_features(portfolio_features_path,
+                                                                     symbols=[c['pair'] for c in sym_cfgs])
+    max_portfolio_risk = float(settings.get('max_portfolio_risk', 0.06))
+
     overall_signals = 0
     for sym_cfg in sym_cfgs:
         symbol = sym_cfg['pair']
@@ -219,11 +354,24 @@ def main():
         positions_long = state_mgr.get_positions('long', symbol=symbol)
         positions_short = state_mgr.get_positions('short', symbol=symbol)
 
+        # P0 — Construire le callback portfolio_scale_fn (Kelly portfolio-aware)
+        # pour ce symbole, en excluant ses propres positions du calcul agrégé.
+        portfolio_scale_fn = _make_portfolio_scale_fn(
+            state_mgr=state_mgr,
+            current_symbol=symbol,
+            total_capital=capital_usdt,
+            corr_df=portfolio_corr_df,
+            vol_dict=portfolio_vol_dict,
+            max_portfolio_risk=max_portfolio_risk,
+            current_price=current_price,
+        )
+
         # Une instance SignalEngine par symbole (state isolé)
         signal_engine = SignalEngine(
             max_positions=max_pos_per_symbol,
             daily_loss_threshold=0.10,
             atr_trailing_mult=float(settings.get('atr_trailing_multiplier', 2.0)),
+            portfolio_scale_fn=portfolio_scale_fn,
         )
         signal_engine.load_state(positions_long, positions_short, daily_loss)
 

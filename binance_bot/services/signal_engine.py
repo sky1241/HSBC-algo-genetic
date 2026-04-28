@@ -1,33 +1,48 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Signal Engine: détecte signaux EXACT comme backtest_long_short."""
+"""Signal Engine: détecte signaux EXACT comme backtest_long_short.
+
+P0 (2026-04-28): support `portfolio_state` pour moduler le `size` du signal
+d'entrée selon le risk agrégé multi-symbole déjà utilisé. Évite l'over-bet
+quand BTC+ETH+SOL sont co-corrélés.
+"""
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 
 class SignalEngine:
     """
     Reproduit la logique EXACTE de backtest_long_short pour détecter signaux.
-    
+
     État interne maintenu: positions_long, positions_short (max 3 chacun).
+
+    P0: optionnellement un `portfolio_scale_fn` callable est invoqué juste
+    avant d'émettre un signal `open_long`/`open_short` pour moduler `size`
+    selon le risk agrégé déjà utilisé multi-symbole. Si non fourni → comportement
+    legacy avec size=position_size_pct constant.
     """
-    
+
     def __init__(
         self,
         max_positions: int = 3,
         daily_loss_threshold: float = 0.10,
         atr_trailing_mult: float = 2.0,
+        portfolio_scale_fn: Optional[Callable[[], float]] = None,
     ):
         """
         Args:
             max_positions: nombre max de positions par côté (3 dans backtest)
             daily_loss_threshold: seuil perte journalière (10% dans backtest)
             atr_trailing_mult: multiplicateur ATR pour le trailing stop (cliquet)
+            portfolio_scale_fn: P0 — callable sans args qui retourne un facteur
+                [0, 1] basé sur le risk agrégé multi-symbole. Si None ou retourne
+                None, le sizing reste 1.0 (legacy).
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
         self.atr_trailing_mult = float(atr_trailing_mult)
+        self.portfolio_scale_fn = portfolio_scale_fn
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
         self.daily_loss = 0.0
@@ -122,42 +137,55 @@ class SignalEngine:
                 self.positions_short.remove(pos)
         
         # === ENTRÉES (si signal Ichimoku) ===
-        
+
+        # P0 portfolio-aware: scale [0,1] selon risk agrégé multi-symbole déjà utilisé
+        # Default = 1.0 (sizing legacy inchangé) si callback None ou échec.
+        portfolio_scale = 1.0
+        if self.portfolio_scale_fn is not None:
+            try:
+                _scale = self.portfolio_scale_fn()
+                if _scale is not None and np.isfinite(_scale):
+                    portfolio_scale = float(max(0.0, min(1.0, _scale)))
+            except Exception:
+                portfolio_scale = 1.0  # safe fallback
+
+        sized = 0.01 * portfolio_scale  # 1% × scale portfolio-aware
+
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
             if len(self.positions_long) < self.max_positions:
                 # Calculer stop et TP
                 atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                 tp_mult = params.get('tp_mult', 20.0)
-                
+
                 entry = current_price  # Simplifié (en réel: next open + slippage)
                 stop = entry - (atr * atr_stop_mult)
                 tp = entry + (atr * tp_mult)
-                
+
                 signals.append({
                     "action": "open_long",
                     "entry": entry,
                     "stop": stop,
                     "tp": tp,
-                    "size": 0.01  # 1% capital (sera recalculé par trade_manager)
+                    "size": sized,  # P0: 1% × portfolio_scale
                 })
-        
+
         # Signal SHORT: bear_cross + close < nuage + pas de LONG ouverts
         if last.get('signal_short', False) and len(self.positions_long) == 0:
             if len(self.positions_short) < self.max_positions:
                 atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                 tp_mult = params.get('tp_mult', 20.0)
-                
+
                 entry = current_price
                 stop = entry + (atr * atr_stop_mult)
                 tp = entry - (atr * tp_mult)
-                
+
                 signals.append({
                     "action": "open_short",
                     "entry": entry,
                     "stop": stop,
                     "tp": tp,
-                    "size": 0.01
+                    "size": sized,  # P0: 1% × portfolio_scale
                 })
         
         # Fermer LONG si signal SHORT opposé (et vice-versa)
