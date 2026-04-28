@@ -110,6 +110,45 @@ seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
 - **Garde-fou**: avant de bypass `should_deploy=False`, vérifier que les
   5 features ne sont plus mockées dans `train_lgbm_combinator.py:build_full_features`.
 
+## L-005 — flow_liquidations daemon désactivé (WS-001)
+
+- **Origine**: commit R3 (P6.3) — daemon hsbc-flow-liquidations créé
+  mais Binance fstream.binance.com ferme le stream `!forceOrder@arr`
+  silencieusement via CLOSE frame post-SUBSCRIBE (cf BUGS.md WS-001).
+- **Description**: pas de data live de liquidations agrégées dans
+  `data/flow_liq_buckets.jsonl` (fichier absent depuis le début).
+  Daemon désactivé via `systemctl --user disable hsbc-flow-liquidations`
+  pour ne pas garder de connexion WS zombie.
+- **Cause**: Binance Futures USDM serveur-side. Endpoints
+  `<symbol>@aggTrade` et `<symbol>@forceOrder` (et `!forceOrder@arr`)
+  ferment la connexion proactivement. Pas un bug client.
+- **Chunk de résolution**: à ouvrir séparément, pas urgent.
+  Options envisagées :
+    - REST polling `/fapi/v1/forceOrders` (limité au compte
+      authentifié, ne convient pas pour cascade detection global)
+    - Service externe (CoinGlass API, Coinalyze)
+    - Ticket support Binance pour confirmer si CLOSE frame est
+      intentionnel (deprecation) ou bug temporaire
+- **Impact si non résolue**:
+  - **Cosmétique aujourd'hui en mode log-only P6.5** :
+    `compute_composite_score` accepte liq absent gracieusement.
+    Test runtime confirme : `score = -0.207` (finite, pas NaN, pas
+    crash) avec `components.liq = 0.0` et `n_obs.liq = 0`. Le
+    composite continue à fonctionner sur 3/4 features.
+  - **BLOQUANT pour activation mode "gate" P6.5** :
+    score sous-estimé d'un facteur 0.75 (poids 0.25 de liq inclus
+    mais toujours nul). Si on bascule en gate avec seuil 0.4, le
+    seuil devient effectivement 0.4 / 0.75 = 0.53 sur les 3
+    features dispo. À recalibrer post-fix.
+  - **BLOQUANT pour analyse Munin clustering** : la dimension
+    "capitulation" (liq imbalance) manque, l'analyse posteriori
+    sera 4 → 3 dimensions (perte d'info pour clustering events
+    type "long capitulation cascade").
+- **Garde-fou**: avant de basculer P6.5 en `gate` mode, soit
+  résoudre L-005 (collecteur alt), soit recalibrer les seuils
+  composite explicitement pour 3 features (multiplier seuils par
+  4/3 ≈ 1.33).
+
 ## Format pour futures entrées
 
 ```
