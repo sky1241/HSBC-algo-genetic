@@ -372,8 +372,21 @@ def main():
             daily_loss_threshold=0.10,
             atr_trailing_mult=float(settings.get('atr_trailing_multiplier', 2.0)),
             portfolio_scale_fn=portfolio_scale_fn,
+            # P1 — daily caps + kill_switch + notifier
+            daily_loss_soft_cap_pct=float(settings.get('daily_loss_soft_cap_pct', 0.0)),
+            daily_gain_soft_cap_pct=float(settings.get('daily_gain_soft_cap_pct', 0.0)),
+            daily_loss_hard_cap_pct=float(settings.get('daily_loss_hard_cap_pct', 0.0)),
+            kill_switch_path=kill_flag,
+            notifier=notifier,
         )
-        signal_engine.load_state(positions_long, positions_short, daily_loss)
+        # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
+        daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))
+        block_until_iso = state_mgr.get('block_until_iso', None)
+        signal_engine.load_state(
+            positions_long, positions_short, daily_loss,
+            daily_pnl_pct=daily_pnl_pct,
+            block_until_iso=block_until_iso,
+        )
 
         signals = signal_engine.detect_signals(df_ichimoku, params, current_price)
 
@@ -441,6 +454,15 @@ def main():
                         notes=f"{symbol} {sig.get('reason', '')}",
                     )
                 notifier.info(f"[{symbol}] {sig['action']} reason={sig.get('reason')} @ {exit_p:.4f}")
+
+        # P1 — Si SignalEngine a déclenché un soft cap, persister le block_until_iso
+        # global (partagé multi-symbole : un cap déclenché par n'importe quel symbol
+        # bloque toutes les nouvelles entrées).
+        if signal_engine.block_until_iso is not None:
+            existing = state_mgr.get('block_until_iso', None)
+            # Garder le timestamp le plus tardif (sécurité)
+            if existing is None or signal_engine.block_until_iso > existing:
+                state_mgr.set('block_until_iso', signal_engine.block_until_iso)
 
         # Persister état signal_engine -> state.symbols[symbol]
         pl_new, ps_new = signal_engine.get_positions_state()

@@ -3,12 +3,20 @@
 """Signal Engine: détecte signaux EXACT comme backtest_long_short.
 
 P0 (2026-04-28): support `portfolio_state` pour moduler le `size` du signal
-d'entrée selon le risk agrégé multi-symbole déjà utilisé. Évite l'over-bet
-quand BTC+ETH+SOL sont co-corrélés.
+d'entrée selon le risk agrégé multi-symbole déjà utilisé.
+
+P1 (2026-04-28): daily caps soft/hard sur PnL signed du jour.
+- Soft loss/gain : flat positions internes + block_until_iso = next UTC midnight
+- Hard loss : trigger kill_switch + Telegram CRITICAL + freeze
+Sorties TP/SL/trailing restent actives même si block actif (le bot doit pouvoir
+fermer ses positions pendant le block).
 """
-import pandas as pd
-import numpy as np
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 
 class SignalEngine:
@@ -21,6 +29,10 @@ class SignalEngine:
     avant d'émettre un signal `open_long`/`open_short` pour moduler `size`
     selon le risk agrégé déjà utilisé multi-symbole. Si non fourni → comportement
     legacy avec size=position_size_pct constant.
+
+    P1: daily_loss_soft_cap_pct, daily_gain_soft_cap_pct, daily_loss_hard_cap_pct
+    déclenchent flat positions + block jusqu'à 00:00 UTC suivant (soft) ou
+    kill_switch (hard).
     """
 
     def __init__(
@@ -29,23 +41,47 @@ class SignalEngine:
         daily_loss_threshold: float = 0.10,
         atr_trailing_mult: float = 2.0,
         portfolio_scale_fn: Optional[Callable[[], float]] = None,
+        daily_loss_soft_cap_pct: float = 0.0,
+        daily_gain_soft_cap_pct: float = 0.0,
+        daily_loss_hard_cap_pct: float = 0.0,
+        kill_switch_path: Optional[Path] = None,
+        notifier: Optional[Any] = None,
     ):
         """
         Args:
             max_positions: nombre max de positions par côté (3 dans backtest)
-            daily_loss_threshold: seuil perte journalière (10% dans backtest)
+            daily_loss_threshold: seuil perte journalière legacy (10% backtest)
             atr_trailing_mult: multiplicateur ATR pour le trailing stop (cliquet)
-            portfolio_scale_fn: P0 — callable sans args qui retourne un facteur
-                [0, 1] basé sur le risk agrégé multi-symbole. Si None ou retourne
-                None, le sizing reste 1.0 (legacy).
+            portfolio_scale_fn: P0 — callable sans args, scale [0,1] portfolio-aware.
+            daily_loss_soft_cap_pct: P1 — perte signed (e.g. 0.02 = -2%) qui flat
+                positions + block nouvelles entrées jusqu'au prochain 00:00 UTC.
+                0.0 désactive.
+            daily_gain_soft_cap_pct: P1 — gain (e.g. 0.03 = +3%) qui flat positions
+                + block. 0.0 désactive.
+            daily_loss_hard_cap_pct: P1 — perte hard (e.g. 0.10 = -10%) qui
+                déclenche kill_switch + Telegram CRITICAL. 0.0 désactive.
+            kill_switch_path: P1 — chemin vers data/.killed pour trigger_kill().
+                None = pas de kill switch (mode test/backtest).
+            notifier: P1 — TelegramNotifier (méthodes critical/warn/info).
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
         self.atr_trailing_mult = float(atr_trailing_mult)
         self.portfolio_scale_fn = portfolio_scale_fn
+        # P1 daily caps
+        self.daily_loss_soft_cap_pct = float(daily_loss_soft_cap_pct)
+        self.daily_gain_soft_cap_pct = float(daily_gain_soft_cap_pct)
+        self.daily_loss_hard_cap_pct = float(daily_loss_hard_cap_pct)
+        self.kill_switch_path = kill_switch_path
+        self.notifier = notifier
+        # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
         self.daily_loss = 0.0
+        # P1 — PnL signed du jour (positif = gain, négatif = perte) en fraction capital
+        self.daily_pnl_pct = 0.0
+        # P1 — timestamp ISO UTC jusqu'auquel block_new_entries est actif (None = pas de block)
+        self.block_until_iso: Optional[str] = None
 
     def _ratchet_trailing_stops(self, current_price: float, atr: float):
         """Met à jour les stops des positions ouvertes (cliquet — jamais desserré).
@@ -65,11 +101,131 @@ class SignalEngine:
             if new_stop < pos.get("stop", float("inf")):
                 pos["stop"] = new_stop
     
-    def load_state(self, positions_long: List[Dict], positions_short: List[Dict], daily_loss: float):
-        """Charge positions depuis state_manager."""
+    def load_state(
+        self,
+        positions_long: List[Dict],
+        positions_short: List[Dict],
+        daily_loss: float,
+        daily_pnl_pct: float = 0.0,
+        block_until_iso: Optional[str] = None,
+    ):
+        """Charge positions + daily_pnl + block timestamp depuis state_manager.
+
+        P1: daily_pnl_pct et block_until_iso ajoutés (defaults backward-compat).
+        """
         self.positions_long = positions_long
         self.positions_short = positions_short
         self.daily_loss = daily_loss
+        self.daily_pnl_pct = float(daily_pnl_pct)
+        self.block_until_iso = block_until_iso
+
+    # ===== P1 daily caps helpers =====
+
+    def _now_utc(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+    def _next_utc_midnight_iso(self) -> str:
+        """Retourne ISO timestamp du prochain 00:00 UTC."""
+        now = self._now_utc()
+        tomorrow = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return tomorrow.isoformat()
+
+    def _is_blocked_now(self) -> bool:
+        """True si block_until_iso > now (= entries bloquées). Auto-clear si expiré."""
+        if not self.block_until_iso:
+            return False
+        try:
+            until = datetime.fromisoformat(self.block_until_iso)
+        except (TypeError, ValueError):
+            return False
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        if self._now_utc() >= until:
+            # Block expiré → clear
+            self.block_until_iso = None
+            return False
+        return True
+
+    def _flat_all_internal_positions(
+        self, current_price: float, reason: str
+    ) -> List[Dict]:
+        """Émet signaux close pour toutes positions internes. Vide les listes."""
+        out: List[Dict] = []
+        for pos in list(self.positions_long):
+            out.append({
+                "action": "close_long",
+                "pos_id": pos["id"],
+                "exit": current_price,
+                "reason": reason,
+            })
+        self.positions_long = []
+        for pos in list(self.positions_short):
+            out.append({
+                "action": "close_short",
+                "pos_id": pos["id"],
+                "exit": current_price,
+                "reason": reason,
+            })
+        self.positions_short = []
+        return out
+
+    def _hard_cap_triggered(self) -> bool:
+        if self.daily_loss_hard_cap_pct <= 0:
+            return False
+        return self.daily_pnl_pct <= -self.daily_loss_hard_cap_pct
+
+    def _soft_loss_cap_triggered(self) -> bool:
+        if self.daily_loss_soft_cap_pct <= 0:
+            return False
+        return self.daily_pnl_pct <= -self.daily_loss_soft_cap_pct
+
+    def _soft_gain_cap_triggered(self) -> bool:
+        if self.daily_gain_soft_cap_pct <= 0:
+            return False
+        return self.daily_pnl_pct >= self.daily_gain_soft_cap_pct
+
+    def _trigger_hard_cap(self, current_price: float) -> List[Dict]:
+        """Hard cap: flat all + kill switch + Telegram critical.
+
+        Retourne les signaux close. Kill switch + alerte sont side-effects.
+        """
+        signals = self._flat_all_internal_positions(current_price, reason="hard_loss_cap")
+        msg = (
+            f"HARD DAILY LOSS CAP triggered: pnl={self.daily_pnl_pct*100:+.3f}% "
+            f"<= -{self.daily_loss_hard_cap_pct*100:.2f}% (freeze until manual audit)"
+        )
+        # Kill switch (best effort)
+        if self.kill_switch_path is not None:
+            try:
+                from bot.kill_switch import trigger_kill  # type: ignore
+                trigger_kill(self.kill_switch_path, msg)
+            except Exception:
+                pass
+        # Telegram alert (best effort)
+        if self.notifier is not None:
+            try:
+                self.notifier.critical(msg)
+            except Exception:
+                pass
+        return signals
+
+    def _trigger_soft_cap(
+        self, current_price: float, reason: str
+    ) -> List[Dict]:
+        """Soft cap: flat all + set block_until = next UTC midnight."""
+        signals = self._flat_all_internal_positions(current_price, reason=reason)
+        self.block_until_iso = self._next_utc_midnight_iso()
+        if self.notifier is not None:
+            try:
+                pnl_str = f"{self.daily_pnl_pct*100:+.3f}%"
+                self.notifier.warn(
+                    f"Daily {reason} hit at PnL={pnl_str}. Block new entries until {self.block_until_iso}."
+                )
+            except Exception:
+                pass
+        return signals
     
     def detect_signals(
         self,
@@ -94,12 +250,16 @@ class SignalEngine:
         """
         if len(df_ichimoku) == 0:
             return []
-        
+
         signals = []
         last = df_ichimoku.iloc[-1]
         atr = float(last['ATR']) if pd.notna(last['ATR']) else 0.0
-        
-        # Vérifier si daily_loss dépasse seuil (stop trading pour aujourd'hui)
+
+        # P1 — HARD CAP en premier (priorité absolue, kill switch + freeze)
+        if self._hard_cap_triggered():
+            return self._trigger_hard_cap(current_price)
+
+        # Vérifier si daily_loss dépasse seuil legacy (stop trading pour aujourd'hui)
         if self.daily_loss >= self.daily_loss_threshold:
             return signals
 
@@ -136,6 +296,24 @@ class SignalEngine:
                 })
                 self.positions_short.remove(pos)
         
+        # P1 — Soft caps APRÈS sorties TP/SL/trailing (les ferme proprement),
+        # AVANT toute nouvelle entrée. Si soft cap atteint :
+        #   1. Flat positions internes restantes (en plus des TP/SL déjà sortis)
+        #   2. Set block_until_iso = next UTC midnight
+        #   3. Return immédiat (pas de nouvelle entrée ni rotation opposite)
+        if self._soft_loss_cap_triggered():
+            signals.extend(self._trigger_soft_cap(current_price, "soft_loss_cap"))
+            return signals
+        if self._soft_gain_cap_triggered():
+            signals.extend(self._trigger_soft_cap(current_price, "soft_gain_cap"))
+            return signals
+
+        # P1 — Block check : si bloqué, pas de nouvelle entrée mais sorties OK.
+        # Les sorties TP/SL/trailing au-dessus se sont déjà exécutées; on saute
+        # juste le bloc d'entrées en dessous.
+        if self._is_blocked_now():
+            return signals
+
         # === ENTRÉES (si signal Ichimoku) ===
 
         # P0 portfolio-aware: scale [0,1] selon risk agrégé multi-symbole déjà utilisé

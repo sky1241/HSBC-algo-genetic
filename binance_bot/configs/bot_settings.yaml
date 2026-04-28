@@ -9,6 +9,17 @@ timeframe: "2h"
 position_size_pct: 0.01   # 1% du capital par trade ($1 marge sur $100)
 max_positions_per_symbol: 3   # 3 LONG XOR 3 SHORT par symbole (pas mixé)
 
+# P1 (2026-04-28) — Daily caps soft/hard sur PnL signed du jour (% capital).
+# - Soft caps : flat toutes les positions internes + bloque nouvelles entrées
+#   jusqu'au prochain 00:00 UTC. Sorties TP/SL/trailing restent actives.
+# - Hard cap (loss only) : déclenche kill_switch + alerte Telegram CRITICAL +
+#   freeze jusqu'à audit manuel (rm data/.killed).
+# Mettre 0 pour désactiver un seuil.
+daily_loss_soft_cap_pct: 0.02   # -2% : flat + block until next UTC midnight
+daily_gain_soft_cap_pct: 0.03   # +3% : flat + block (cap rémunération discipline)
+daily_loss_hard_cap_pct: 0.10   # -10% : kill switch + freeze
+max_portfolio_risk: 0.06        # P0 : budget sigma_pf agrégé multi-symbole
+
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
 max_leverage: 125
