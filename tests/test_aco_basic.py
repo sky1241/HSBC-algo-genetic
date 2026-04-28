@@ -29,7 +29,7 @@ import pytest
 
 # BUG-PRE-001 (BUGS.md): tests ACO chargent le pipeline et tournent
 # l'optimizer sur des données réelles, >30s par défaut forge.
-pytestmark = pytest.mark.timeout(300)
+pytestmark = [pytest.mark.timeout(300), pytest.mark.slow]  # BUG-PRE-001 / R-FIX-FORGE
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

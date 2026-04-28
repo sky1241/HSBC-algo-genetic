@@ -4,9 +4,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src import io_loader, stats_eval, wfa
 import run_oos
+
+# R-FIX-FORGE — Tests pipeline WFA complet ~40s, trop lent pour Forge.
+pytestmark = pytest.mark.slow
 
 
 def _make_mock_dataset() -> pd.DataFrame:

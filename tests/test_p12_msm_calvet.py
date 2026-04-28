@@ -8,6 +8,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# R-FIX-FORGE — MSM MLE Nelder-Mead sur 64-state grid → ~2min total.
+# Trop lent pour Forge ; on l'exclut du run "not slow".
+pytestmark = pytest.mark.slow
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 

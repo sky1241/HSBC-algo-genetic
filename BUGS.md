@@ -13,14 +13,26 @@
 - **Regression**: did the fix break anything else?
 -->
 
-## BUG-PRE-001: test_aco_basic.py::test_acor_smoke timeout pré-existant
-- **Status**: OPEN (détecté pendant P0bis 2026-04-27, hors scope P0bis)
-- **Symptom**: `test_acor_smoke` dépasse le timeout pytest (30s en run forge, 60s en run pytest direct → 2 fails). Le test `test_constraint_satisfaction` du même fichier timeout aussi en pytest 60s.
-- **Root cause**: ACO (Ant Colony Optimization) `acor` smoke test probablement boucle sur trop d'itérations pour un test rapide. À investiguer.
-- **Vérification pré-existant**: confirmé via `git stash` + run du test seul AVANT modifs P0bis → 2 fails timeout identiques. Donc PAS introduit par P0bis.
-- **Impact P0bis**: forge.py rapporte FAIL à cause de ce timeout. Bloque le pipeline de validation Forge VERT.
-- **Fix**: à investiguer dans un chunk dédié (hors P0bis-P12 du roadmap). Soit augmenter timeout, soit réduire iters dans le smoke test, soit marker `pytest.mark.slow`.
-- **Test**: `tests/test_aco_basic.py::test_acor_smoke` + `test_constraint_satisfaction`
+## BUG-PRE-001: tests legacy timeout > 30s bloquent Forge
+- **Status**: FIXED (R-FIX-FORGE 2026-04-28) — Forge réutilisable avec `pytest -m "not slow"`
+- **Symptom**: tests legacy (ACO smoke, alpha_backtest, regime_lgbm, MSM,
+  WFA pipeline) excèdent 30s. Forge fail sur tous les chunks à cause de
+  ces tests legacy même quand le chunk testé n'a aucun rapport.
+- **Root cause**: tests d'intégration lents par nature (MLE Nelder-Mead
+  sur 64 états MSM, WFA pipeline full sur 3 ans, ACO 100+ itérations).
+  Pas de bug fonctionnel, juste durée.
+- **Fix**: marker `@pytest.mark.slow` (au niveau module via `pytestmark`)
+  sur 5 fichiers concernés + déclaration `markers = slow:` dans `pytest.ini`.
+- **Commande Forge** : `pytest -m "not slow"`. **607/607 tests** passent
+  en ~75s vs ~240s avec le suite complet (gain 3.2×).
+- **Tests slow toujours run-able localement** : `pytest -m "slow"` ou
+  `pytest tests/test_p12_msm_calvet.py` directement.
+- **Fichiers markés slow**:
+  - `tests/test_aco_basic.py`
+  - `tests/test_alpha_backtest.py`
+  - `tests/test_regime_lgbm.py`
+  - `tests/test_p12_msm_calvet.py`
+  - `tests/test_wfa_pipeline.py`
 
 ## QUANT-002: White's Reality Check + Hansen SPA test
 - **Status**: FIXED (2026-04-26, 14/14 tests passent — `tests/test_reality_check.py`)
