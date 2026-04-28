@@ -1,69 +1,68 @@
-"""P8 — EGARCH(1,1) & TGARCH(1,1) : volatilité asymétrique.
+"""P8 / R6 — TGARCH(1,1) & EGARCH(1,1) via `arch` lib (Kevin Sheppard).
 
-Capture le "leverage effect" (effet d'asymétrie) : les chocs négatifs
-amplifient la volatilité plus que les chocs positifs de même magnitude.
-Complément naturel à HAR-RV (P4) qui est symétrique.
+Capture le "leverage effect" (asymétrie) : chocs négatifs amplifient la
+volatilité plus que les chocs positifs de même magnitude. Complément à
+HAR-RV (P4, symétrique).
+
+Migration R6 (2026-04-28)
+-------------------------
+Première version (P8 commit 1c10962) utilisait scipy MLE custom (Nelder-Mead
+sur log-likelihood gaussien). La spec demandait `arch` lib (Kevin Sheppard).
+R6 ré-architecture en wrapper de `arch.arch_model` :
+  - fit_tgarch / fit_egarch retournent des dicts à API stable (omega, alpha,
+    gamma, beta, sigma2_last, etc.) MAIS internellement utilisent arch_model.
+  - L'objet ARCHModelResult est stocké dans la clé "_arch_fit" du dict pour
+    permettre forecast multi-step via arch.
 
 Modèles
 -------
-TGARCH(1,1) (Glosten-Jagannathan-Runkle 1993, Zakoian 1994):
-    sigma²_t = omega + alpha * eps²_{t-1}
-                     + gamma * eps²_{t-1} * I(eps_{t-1} < 0)
-                     + beta  * sigma²_{t-1}
-    Leverage effect : gamma > 0  (down-moves boost vol).
-    Stationarité    : alpha + gamma/2 + beta < 1 (Gaussian innovations).
+TGARCH (GJR — Glosten-Jagannathan-Runkle 1993) :
+    sigma²_t = omega + alpha * eps²_{t-1} + gamma * eps²_{t-1} * I(<0) + beta * sigma²_{t-1}
+    Leverage : gamma > 0  (down boost vol).
 
-EGARCH(1,1) (Nelson 1991):
-    ln(sigma²_t) = omega + alpha * (|z_{t-1}| - E|z|)
-                         + gamma * z_{t-1}
-                         + beta  * ln(sigma²_{t-1})
-    avec z_t = eps_t / sigma_t  (résidu standardisé).
-    Pour Gaussien   : E|z| = sqrt(2/pi) ~= 0.7979.
-    Leverage effect : gamma < 0  (négatif amplifie sigma).
-    Stationarité    : |beta| < 1.
+EGARCH (Nelson 1991) :
+    ln(sigma²_t) = omega + alpha * (|z_{t-1}| - E|z|) + gamma * z_{t-1} + beta * ln(sigma²_{t-1})
+    Leverage : gamma < 0  (z négatif amplifie ln sigma²).
 
-API
----
-    fit_tgarch(returns)              -> dict params + log_likelihood
-    fit_egarch(returns)              -> dict params + log_likelihood
-    forecast_tgarch(params, h)       -> array vols horizon h
-    forecast_egarch(params, h)       -> array vols horizon h (Monte Carlo)
-    detect_leverage_effect(params)   -> bool (test asymétrie)
-    classify_vol_regime(sigma_now, sigma_baseline) -> label
-
-Hyperparamètres figés (anti-snooping) :
-    Optimisation MLE Gaussien
-    Initial guess : alpha=0.05, beta=0.85, gamma=0.05
-    Bornes : omega>1e-9, alpha,beta,gamma in [0,1] (TGARCH) ou (-1,1) (EGARCH gamma)
-    Pas d'optim Optuna : on garde les estimées MLE par série.
+Per-symbol assignment (R6, conformément spec) :
+    BTCUSDT -> TGARCH
+    ETHUSDT -> EGARCH
+    SOLUSDT -> TGARCH (default conservatif)
 
 Références
 ----------
-Glosten, Jagannathan, Runkle (1993). "On the relation between the expected
-    value and the volatility of the nominal excess return on stocks."
-    Journal of Finance, 48(5), 1779-1801.
-Nelson (1991). "Conditional heteroskedasticity in asset returns: A new
-    approach." Econometrica, 59(2), 347-370.
-Zakoian (1994). "Threshold heteroskedastic models." Journal of Economic
-    Dynamics and Control, 18(5), 931-955.
+Glosten, Jagannathan, Runkle (1993). JoF 48(5) 1779-1801.
+Nelson (1991). Econometrica 59(2) 347-370.
+Zakoian (1994). JEDC 18(5) 931-955.
+Sheppard, K. (2024). `arch` lib. github.com/bashtage/arch
 """
 from __future__ import annotations
 
+import warnings
+from dataclasses import dataclass
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from scipy import optimize
 
+try:
+    from arch import arch_model
+    HAS_ARCH = True
+except ImportError:
+    HAS_ARCH = False
+    arch_model = None  # type: ignore
 
-_E_ABS_Z_GAUSSIAN = float(np.sqrt(2.0 / np.pi))  # ~= 0.7979
-_DEFAULT_INIT = {"omega": 1e-6, "alpha": 0.05, "beta": 0.85, "gamma": 0.05}
-_LEVERAGE_THRESHOLD = 0.05  # gamma significatif au-dessus du noise floor MLE
-# (γ=0 vrai → MLE ~0.04 par contrainte de positivité ; γ=0.10 → MLE ~0.14
-# sur n=3000. Seuil 0.05 sépare proprement noise vs effet réel.)
+# Filtre les warnings DataScaleWarning de arch (returns en fraction = scale ~1e-4)
+# On rescale x100 dans le fit pour rester dans la zone optimale, puis on
+# revient à l'échelle originale post-fit.
+_LEVERAGE_THRESHOLD = 0.05  # cohérent avec premiere version P8
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+SYMBOL_GARCH_MODEL: dict[str, str] = {
+    "BTCUSDT": "TGARCH",
+    "ETHUSDT": "EGARCH",
+    "SOLUSDT": "TGARCH",
+}
+DEFAULT_GARCH_MODEL = "TGARCH"
 
 
 def _to_array(returns) -> np.ndarray:
@@ -73,322 +72,6 @@ def _to_array(returns) -> np.ndarray:
         r = np.asarray(returns, dtype=float)
         r = r[np.isfinite(r)]
     return r
-
-
-def _demean(r: np.ndarray) -> tuple[np.ndarray, float]:
-    mu = float(np.mean(r))
-    return r - mu, mu
-
-
-# ---------------------------------------------------------------------------
-# TGARCH(1,1) — GJR
-# ---------------------------------------------------------------------------
-
-
-def _tgarch_recursion(
-    eps: np.ndarray,
-    omega: float,
-    alpha: float,
-    gamma: float,
-    beta: float,
-) -> np.ndarray:
-    """Calcule sigma²_t pour t=0..T-1. sigma²_0 = var(eps)."""
-    n = len(eps)
-    sigma2 = np.empty(n, dtype=float)
-    var0 = float(np.mean(eps ** 2))
-    sigma2[0] = max(var0, 1e-12)
-    for t in range(1, n):
-        e_prev = eps[t - 1]
-        indicator = 1.0 if e_prev < 0.0 else 0.0
-        sigma2[t] = (
-            omega
-            + alpha * e_prev * e_prev
-            + gamma * e_prev * e_prev * indicator
-            + beta * sigma2[t - 1]
-        )
-        if sigma2[t] < 1e-12:
-            sigma2[t] = 1e-12
-    return sigma2
-
-
-def _tgarch_neg_log_likelihood(theta: np.ndarray, eps: np.ndarray) -> float:
-    omega, alpha, gamma, beta = theta
-    if omega <= 0 or alpha < 0 or gamma < 0 or beta < 0:
-        return 1e12
-    if alpha + gamma / 2.0 + beta >= 0.9999:  # stationarité stricte
-        return 1e12
-    sigma2 = _tgarch_recursion(eps, omega, alpha, gamma, beta)
-    if not np.all(np.isfinite(sigma2)) or np.any(sigma2 <= 0):
-        return 1e12
-    ll = -0.5 * np.sum(np.log(2.0 * np.pi * sigma2) + (eps ** 2) / sigma2)
-    return -float(ll)
-
-
-def fit_tgarch(returns) -> dict:
-    """Estime TGARCH(1,1) par MLE Gaussien.
-
-    Returns:
-        dict {
-            "omega", "alpha", "gamma", "beta", "mu",
-            "sigma2_last": float,        # sigma²_T (fit)
-            "log_likelihood": float,
-            "leverage_effect": bool,     # gamma > seuil
-            "stationary": bool,
-            "n_obs": int,
-            "model": "TGARCH",
-        }
-    """
-    r = _to_array(returns)
-    if len(r) < 50:
-        return _empty_result("TGARCH")
-    eps, mu = _demean(r)
-    var_r = float(np.var(eps, ddof=1))
-    init = np.array([
-        var_r * (1.0 - _DEFAULT_INIT["alpha"] - _DEFAULT_INIT["gamma"] / 2.0 - _DEFAULT_INIT["beta"]),
-        _DEFAULT_INIT["alpha"],
-        _DEFAULT_INIT["gamma"],
-        _DEFAULT_INIT["beta"],
-    ])
-    init[0] = max(init[0], 1e-8)
-    bounds = [(1e-10, None), (0.0, 0.999), (0.0, 0.999), (0.0, 0.999)]
-
-    res = optimize.minimize(
-        _tgarch_neg_log_likelihood,
-        init,
-        args=(eps,),
-        method="L-BFGS-B",
-        bounds=bounds,
-    )
-    omega, alpha, gamma, beta = res.x
-    sigma2 = _tgarch_recursion(eps, omega, alpha, gamma, beta)
-    return {
-        "model": "TGARCH",
-        "omega": float(omega),
-        "alpha": float(alpha),
-        "gamma": float(gamma),
-        "beta": float(beta),
-        "mu": float(mu),
-        "sigma2_last": float(sigma2[-1]),
-        "eps_last": float(eps[-1]),
-        "log_likelihood": float(-res.fun),
-        "leverage_effect": bool(gamma > _LEVERAGE_THRESHOLD),
-        "stationary": bool(alpha + gamma / 2.0 + beta < 1.0),
-        "n_obs": int(len(eps)),
-        "converged": bool(res.success),
-    }
-
-
-def forecast_tgarch(params: dict, h: int = 1) -> np.ndarray:
-    """Forecast vol h-step ahead. E[I(eps<0)] = 0.5 (Gaussien centré).
-
-    Returns:
-        np.array de longueur h avec sigma_t (pas sigma²).
-    """
-    if h <= 0 or params.get("model") != "TGARCH":
-        return np.array([])
-    omega = params["omega"]
-    alpha = params["alpha"]
-    gamma = params["gamma"]
-    beta = params["beta"]
-    sigma2_last = params["sigma2_last"]
-    eps_last = params["eps_last"]
-
-    out = np.empty(h, dtype=float)
-    # 1-step : on connait eps_last (réalisé)
-    indicator = 1.0 if eps_last < 0.0 else 0.0
-    sig2_1 = omega + alpha * eps_last ** 2 + gamma * eps_last ** 2 * indicator + beta * sigma2_last
-    out[0] = float(np.sqrt(max(sig2_1, 1e-12)))
-
-    # >=2 step : E[eps²_{t-1}] = sigma²_{t-1}, E[I·eps²] = sigma²/2 (Gaussien)
-    sig2_prev = sig2_1
-    persist = alpha + gamma / 2.0 + beta
-    for k in range(1, h):
-        sig2_k = omega + persist * sig2_prev
-        out[k] = float(np.sqrt(max(sig2_k, 1e-12)))
-        sig2_prev = sig2_k
-    return out
-
-
-# ---------------------------------------------------------------------------
-# EGARCH(1,1) — Nelson 1991
-# ---------------------------------------------------------------------------
-
-
-def _egarch_recursion(
-    eps: np.ndarray,
-    omega: float,
-    alpha: float,
-    gamma: float,
-    beta: float,
-) -> np.ndarray:
-    n = len(eps)
-    log_sigma2 = np.empty(n, dtype=float)
-    var0 = float(np.mean(eps ** 2))
-    log_sigma2[0] = float(np.log(max(var0, 1e-12)))
-    for t in range(1, n):
-        sigma_prev = float(np.sqrt(np.exp(log_sigma2[t - 1])))
-        if sigma_prev <= 0:
-            sigma_prev = 1e-6
-        z_prev = eps[t - 1] / sigma_prev
-        log_sigma2[t] = (
-            omega
-            + alpha * (abs(z_prev) - _E_ABS_Z_GAUSSIAN)
-            + gamma * z_prev
-            + beta * log_sigma2[t - 1]
-        )
-        # Borne pour éviter overflow numérique
-        if log_sigma2[t] > 50:
-            log_sigma2[t] = 50.0
-        elif log_sigma2[t] < -50:
-            log_sigma2[t] = -50.0
-    return log_sigma2
-
-
-def _egarch_neg_log_likelihood(theta: np.ndarray, eps: np.ndarray) -> float:
-    omega, alpha, gamma, beta = theta
-    if abs(beta) >= 0.9999:
-        return 1e12
-    log_sigma2 = _egarch_recursion(eps, omega, alpha, gamma, beta)
-    if not np.all(np.isfinite(log_sigma2)):
-        return 1e12
-    sigma2 = np.exp(log_sigma2)
-    ll = -0.5 * np.sum(np.log(2.0 * np.pi * sigma2) + (eps ** 2) / sigma2)
-    return -float(ll)
-
-
-def fit_egarch(returns) -> dict:
-    """Estime EGARCH(1,1) par MLE Gaussien.
-
-    Returns:
-        dict structure similaire à fit_tgarch,
-        avec "log_sigma2_last" et "leverage_effect" = (gamma < -seuil).
-    """
-    r = _to_array(returns)
-    if len(r) < 50:
-        return _empty_result("EGARCH")
-    eps, mu = _demean(r)
-    # Init data-aware : omega = (1-beta) * log(var) → stationarité initiale OK
-    var_r = max(float(np.var(eps, ddof=1)), 1e-10)
-    beta0 = 0.95
-    init = np.array([(1.0 - beta0) * float(np.log(var_r)), 0.1, -0.05, beta0])
-    # Nelder-Mead : robuste sur surface EGARCH non lisse
-    res = optimize.minimize(
-        _egarch_neg_log_likelihood,
-        init,
-        args=(eps,),
-        method="Nelder-Mead",
-        options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 5000},
-    )
-    omega, alpha, gamma, beta = res.x
-    # Borne dure post-fit pour éviter |beta| >= 1
-    if abs(beta) >= 0.9999:
-        beta = 0.9999 * np.sign(beta) if beta != 0 else 0.95
-    log_sigma2 = _egarch_recursion(eps, omega, alpha, gamma, beta)
-    return {
-        "model": "EGARCH",
-        "omega": float(omega),
-        "alpha": float(alpha),
-        "gamma": float(gamma),
-        "beta": float(beta),
-        "mu": float(mu),
-        "log_sigma2_last": float(log_sigma2[-1]),
-        "sigma2_last": float(np.exp(log_sigma2[-1])),
-        "eps_last": float(eps[-1]),
-        "log_likelihood": float(-res.fun),
-        "leverage_effect": bool(gamma < -_LEVERAGE_THRESHOLD),
-        "stationary": bool(abs(beta) < 1.0),
-        "n_obs": int(len(eps)),
-        "converged": bool(res.success),
-    }
-
-
-def forecast_egarch(params: dict, h: int = 1, n_sims: int = 2000, seed: int = 0) -> np.ndarray:
-    """Forecast vol EGARCH par Monte Carlo (E[exp(log sig²)] non analytique simple).
-
-    Returns:
-        np.array de longueur h avec sigma_t médian sur n_sims trajectoires.
-    """
-    if h <= 0 or params.get("model") != "EGARCH":
-        return np.array([])
-    omega = params["omega"]
-    alpha = params["alpha"]
-    gamma = params["gamma"]
-    beta = params["beta"]
-    log_sig2_T = params["log_sigma2_last"]
-    eps_last = params["eps_last"]
-    sigma_T = float(np.sqrt(np.exp(log_sig2_T)))
-    z_T = eps_last / sigma_T if sigma_T > 0 else 0.0
-
-    # 1-step : déterministe (z_T connu)
-    log_sig2_1 = (
-        omega
-        + alpha * (abs(z_T) - _E_ABS_Z_GAUSSIAN)
-        + gamma * z_T
-        + beta * log_sig2_T
-    )
-    out = np.empty(h, dtype=float)
-    out[0] = float(np.sqrt(np.exp(log_sig2_1)))
-    if h == 1:
-        return out
-
-    # >=2 step : Monte Carlo
-    rng = np.random.default_rng(seed)
-    log_sig2 = np.full(n_sims, log_sig2_1)
-    for k in range(1, h):
-        z = rng.standard_normal(n_sims)
-        log_sig2 = (
-            omega
-            + alpha * (np.abs(z) - _E_ABS_Z_GAUSSIAN)
-            + gamma * z
-            + beta * log_sig2
-        )
-        out[k] = float(np.median(np.sqrt(np.exp(log_sig2))))
-    return out
-
-
-# ---------------------------------------------------------------------------
-# Diagnostics
-# ---------------------------------------------------------------------------
-
-
-def detect_leverage_effect(params: dict, threshold: float = _LEVERAGE_THRESHOLD) -> bool:
-    """Test si l'effet de levier est significatif.
-
-    TGARCH : gamma > +threshold (down-moves amplifient vol).
-    EGARCH : gamma < -threshold (z négatif amplifie ln sigma²).
-    """
-    if not params or "model" not in params:
-        return False
-    g = params.get("gamma", 0.0)
-    if params["model"] == "TGARCH":
-        return bool(g > threshold)
-    if params["model"] == "EGARCH":
-        return bool(g < -threshold)
-    return False
-
-
-def classify_vol_regime(sigma_forecast: float, sigma_baseline: float) -> str:
-    """Classifie le régime de volatilité prévue vs baseline.
-
-    Returns:
-        "calm"      : forecast < 0.7 * baseline
-        "normal"    : 0.7-1.5 * baseline
-        "elevated"  : 1.5-2.5 * baseline
-        "extreme"   : > 2.5 * baseline
-    """
-    if not np.isfinite(sigma_forecast) or sigma_baseline <= 0:
-        return "normal"
-    ratio = sigma_forecast / sigma_baseline
-    if ratio < 0.7:
-        return "calm"
-    if ratio < 1.5:
-        return "normal"
-    if ratio < 2.5:
-        return "elevated"
-    return "extreme"
-
-
-# ---------------------------------------------------------------------------
 
 
 def _empty_result(model: str) -> dict:
@@ -406,14 +89,231 @@ def _empty_result(model: str) -> dict:
         "stationary": False,
         "n_obs": 0,
         "converged": False,
+        "_arch_fit": None,
+        "_scale": 1.0,
     }
 
 
+def _fit_arch(returns, vol: str, model_label: str, gamma_leverage_sign: int) -> dict:
+    """Wrapper interne : fit arch_model, extrait dict.
+
+    Args:
+        vol: "GARCH" pour TGARCH (avec o=1), "EGARCH" pour EGARCH.
+        model_label: "TGARCH" ou "EGARCH" (key dans le dict retour).
+        gamma_leverage_sign: +1 si leverage = gamma > seuil (TGARCH),
+            -1 si leverage = gamma < -seuil (EGARCH).
+    """
+    if not HAS_ARCH:
+        return _empty_result(model_label)
+    r = _to_array(returns)
+    if len(r) < 50:
+        return _empty_result(model_label)
+
+    # Rescale x100 pour rester dans zone optimale d'optimisation arch
+    scale = 100.0
+    r_scaled = r * scale
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model = arch_model(
+            r_scaled, mean="Constant", vol=vol, p=1, o=1, q=1, dist="Normal",
+            rescale=False,
+        )
+        try:
+            fit = model.fit(disp="off", show_warning=False)
+        except Exception:
+            return _empty_result(model_label)
+
+    # Extraction des params (noms standardisés arch lib)
+    p = fit.params
+    mu_scaled = float(p.get("mu", 0.0))
+    omega_scaled = float(p.get("omega", 0.0))
+    alpha = float(p.get("alpha[1]", 0.0))
+    gamma = float(p.get("gamma[1]", 0.0))
+    beta = float(p.get("beta[1]", 0.0))
+
+    # cond_vol et returns sont en échelle scaled. On revient à l'échelle originale.
+    cond_vol_scaled = np.asarray(fit.conditional_volatility)
+    sigma2_last_scaled = float(cond_vol_scaled[-1] ** 2) if len(cond_vol_scaled) else 0.0
+    sigma2_last = sigma2_last_scaled / (scale * scale)
+    eps_last = float(r[-1] - mu_scaled / scale)
+    mu = mu_scaled / scale
+    omega = omega_scaled / (scale * scale)
+
+    # Stationarité TGARCH : alpha + gamma/2 + beta < 1 (Gaussien sym)
+    # EGARCH : |beta| < 1 (autoregressive log-vol)
+    if model_label == "TGARCH":
+        stationary = bool(alpha + gamma / 2.0 + beta < 1.0)
+    else:
+        stationary = bool(abs(beta) < 1.0)
+
+    # Leverage : signe du gamma vs seuil
+    if gamma_leverage_sign > 0:
+        leverage = bool(gamma > _LEVERAGE_THRESHOLD)
+    else:
+        leverage = bool(gamma < -_LEVERAGE_THRESHOLD)
+
+    converged = bool(getattr(fit, "convergence_flag", 0) == 0)
+
+    return {
+        "model": model_label,
+        "omega": omega,
+        "alpha": alpha,
+        "gamma": gamma,
+        "beta": beta,
+        "mu": mu,
+        "sigma2_last": sigma2_last,
+        "eps_last": eps_last,
+        "log_likelihood": float(fit.loglikelihood),
+        "leverage_effect": leverage,
+        "stationary": stationary,
+        "n_obs": int(len(r)),
+        "converged": converged,
+        "_arch_fit": fit,
+        "_scale": scale,
+    }
+
+
+def fit_tgarch(returns) -> dict:
+    """TGARCH(1,1) GJR via `arch_model(vol='GARCH', o=1)` (taux et signal scaled x100)."""
+    return _fit_arch(returns, vol="GARCH", model_label="TGARCH", gamma_leverage_sign=+1)
+
+
+def fit_egarch(returns) -> dict:
+    """EGARCH(1,1) via `arch_model(vol='EGARCH', o=1)` (taux et signal scaled x100)."""
+    return _fit_arch(returns, vol="EGARCH", model_label="EGARCH", gamma_leverage_sign=-1)
+
+
+def _forecast_via_arch(params: dict, h: int) -> np.ndarray:
+    """Multi-step forecast via arch.fit.forecast(horizon=h). Retourne sigma (pas sigma²).
+
+    EGARCH multi-step requires `method="simulation"` (not analytic). On essaie
+    l'analytique d'abord (fast pour TGARCH), fallback simulation si non
+    supporté (cas EGARCH h > 1).
+    """
+    fit = params.get("_arch_fit")
+    if fit is None or h <= 0:
+        return np.array([])
+    scale = float(params.get("_scale", 1.0))
+    fc = None
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            fc = fit.forecast(horizon=h, reindex=False)
+        except (ValueError, NotImplementedError):
+            # Analytic non supporté (typique EGARCH h>1) → simulation
+            try:
+                fc = fit.forecast(
+                    horizon=h, reindex=False,
+                    method="simulation", simulations=500,
+                )
+            except Exception:
+                return np.array([])
+        except Exception:
+            return np.array([])
+    if fc is None:
+        return np.array([])
+    try:
+        var_scaled = np.asarray(fc.variance.iloc[-1].values, dtype=float)
+    except Exception:
+        return np.array([])
+    sigma_scaled = np.sqrt(np.maximum(var_scaled, 0.0))
+    sigma = sigma_scaled / scale
+    return sigma
+
+
+def forecast_tgarch(params: dict, h: int = 1) -> np.ndarray:
+    """Forecast vol h-step ahead pour TGARCH. Sigma (pas sigma²)."""
+    if params.get("model") != "TGARCH":
+        return np.array([])
+    return _forecast_via_arch(params, h)
+
+
+def forecast_egarch(params: dict, h: int = 1) -> np.ndarray:
+    """Forecast vol h-step ahead pour EGARCH. Sigma (pas sigma²)."""
+    if params.get("model") != "EGARCH":
+        return np.array([])
+    return _forecast_via_arch(params, h)
+
+
+# ---------------------------------------------------------------------------
+# Per-symbol assignment (R6 spec)
+# ---------------------------------------------------------------------------
+
+
+def fit_for_symbol(symbol: str, returns) -> dict:
+    """Per-symbol GARCH model selection (R6 spec).
+
+    BTCUSDT -> TGARCH, ETHUSDT -> EGARCH, SOLUSDT -> TGARCH.
+    Symbol non listé -> TGARCH default (conservatif).
+    """
+    sym = str(symbol).replace("/", "").upper()
+    model_type = SYMBOL_GARCH_MODEL.get(sym, DEFAULT_GARCH_MODEL)
+    if model_type == "EGARCH":
+        return fit_egarch(returns)
+    return fit_tgarch(returns)
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+
+
+def detect_leverage_effect(params: dict, threshold: float = _LEVERAGE_THRESHOLD) -> bool:
+    """TGARCH : gamma > +threshold ; EGARCH : gamma < -threshold."""
+    if not params or "model" not in params:
+        return False
+    g = params.get("gamma", 0.0)
+    if params["model"] == "TGARCH":
+        return bool(g > threshold)
+    if params["model"] == "EGARCH":
+        return bool(g < -threshold)
+    return False
+
+
+def classify_vol_regime(sigma_forecast: float, sigma_baseline: float) -> str:
+    """calm / normal / elevated / extreme vs baseline (cf P8 v1)."""
+    if not np.isfinite(sigma_forecast) or sigma_baseline <= 0:
+        return "normal"
+    ratio = sigma_forecast / sigma_baseline
+    if ratio < 0.7:
+        return "calm"
+    if ratio < 1.5:
+        return "normal"
+    if ratio < 2.5:
+        return "elevated"
+    return "extreme"
+
+
+def garch_regime_label(forecast_sigma: float, sigma_baseline: float) -> str:
+    """Mappe la classif vol GARCH vers les labels HAR-RV {low,mid,high}.
+
+    Pour comparer GARCH vs HAR (P4) : on prend le forecast sigma 1-step
+    et on classifie selon ratio à baseline.
+        ratio < 0.7  -> "low"   (vs HAR "low")
+        0.7-1.5      -> "mid"
+        > 1.5        -> "high"
+    """
+    if not np.isfinite(forecast_sigma) or sigma_baseline <= 0:
+        return "mid"
+    ratio = forecast_sigma / sigma_baseline
+    if ratio < 0.7:
+        return "low"
+    if ratio < 1.5:
+        return "mid"
+    return "high"
+
+
 __all__ = [
+    "HAS_ARCH",
+    "SYMBOL_GARCH_MODEL",
+    "DEFAULT_GARCH_MODEL",
     "fit_tgarch",
-    "forecast_tgarch",
     "fit_egarch",
+    "fit_for_symbol",
+    "forecast_tgarch",
     "forecast_egarch",
     "detect_leverage_effect",
     "classify_vol_regime",
+    "garch_regime_label",
 ]

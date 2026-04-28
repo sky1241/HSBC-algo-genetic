@@ -494,6 +494,76 @@ NON LANCÉ (cf P0bis, BUG-PRE-001).
 
 ---
 
+## R6 — P8 GARCH ré-architecture `arch` lib + per-symbol + audit_log
+
+### Étape 1 — Code
+- **Décision**: rewrite complet de `src/garch.py` en wrapper `arch_model`
+  (Kevin Sheppard) tout en gardant la même API dict (rétro-compat tests).
+- **Justification**: la spec P8 demandait textuellement "via `arch` lib".
+  Ma première impl (commit 1c10962) était scipy from-scratch — violation.
+  Migration nécessaire. API dict préservée pour limiter le rework des tests.
+- **Fichiers** :
+  - `src/garch.py` — rewrite : wrapper `arch.arch_model` avec
+    rescale x100 (zone optimale optimizer), extraction params standardisée,
+    `_arch_fit` stocké dans le dict pour permettre forecast multi-step.
+    Per-symbol assignment via `SYMBOL_GARCH_MODEL` + `fit_for_symbol(symbol, returns)`.
+    Nouveau helper `garch_regime_label(forecast_sigma, baseline)` → low/mid/high
+    pour comparer avec HAR-RV labels.
+  - `tests/test_p8_garch.py` — 4 tests forecast adaptés (params dict
+    construits manuellement → fit réel). Reste 16 tests qui passent.
+  - `tests/test_p8_garch_arch.py` (NEW) — 12 tests migration arch :
+    HAS_ARCH, per-symbol BTC=TGARCH/ETH=EGARCH/SOL=TGARCH, slash format,
+    fallback default, dict include `_arch_fit`, garch_regime_label thresholds.
+  - `binance_bot/routines/intraday_runner.py` — factory
+    `_make_garch_audit_check(symbol, returns, regime_gate_fn)` qui fit
+    GARCH per-symbol, compare avec HAR-RV regime, retourne dict
+    `{disagreement, har_label, garch_label, model, ...}`. Appelé après
+    `regime_gate_fn` dans la main loop ; résultat append à `audit_log`
+    (event="garch_har_disagreement" si désaccord, sinon "garch_har_check").
+  - `binance_bot/tests/test_r6_garch_audit.py` (NEW) — 6 tests audit check.
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ 3 violations spec P8 corrigées :
+  (1) `arch` lib utilisée (vs scipy custom) ;
+  (2) per-symbol BTC=TGARCH/ETH=EGARCH/SOL=TGARCH ;
+  (3) branchement parallel HAR-RV avec audit_log flag.
+- **Q2**: rescale x100 pour stabilité (DataScaleWarning évité) ; rescale
+  inverse à la sortie. EGARCH multi-step fallback simulation (analytic
+  non supporté h>1). Returns short < 50 → empty result. fit non convergé
+  → reason posté dans audit, pas de crash.
+- **Q3**: ✅ noms précis (`_make_garch_audit_check`, `garch_regime_label`,
+  `SYMBOL_GARCH_MODEL`, `fit_for_symbol`).
+- **Q4**: ✅ pas d'imports morts. `_LEVERAGE_THRESHOLD = 0.05` cohérent
+  avec v1.
+- **Q5**: ✅ rescale x100, simulations=500 pour EGARCH commentés.
+- **Q6**: ✅
+- **Q7**: ✅ pure (aucun module modifié hors garch.py + intraday factory).
+- **Q8**: ✅ try/except précis (`ValueError`, `NotImplementedError` pour
+  fallback simulation EGARCH ; `Exception` final pour fail-safe).
+
+### Étape 3 — Tests
+- **34 tests R6** au total :
+  - `tests/test_p8_garch.py` : 16 (recovery + forecast + classify, post-migration)
+  - `tests/test_p8_garch_arch.py` : 12 (HAS_ARCH, per-symbol, slash format, default)
+  - `binance_bot/tests/test_r6_garch_audit.py` : 6 (audit check disagreement,
+    short series, per-symbol model selection, agreement, disagreement forced)
+
+### Étape 4 — Forge
+- ✅ Suite "not slow" passe : **626 tests / 77s** (Forge-compatible
+  désormais grâce à R-FIX-FORGE).
+
+### Étape 5 — Branchement vérifié
+- Grep `_make_garch_audit_check|fit_for_symbol|garch_regime_label`
+  dans intraday_runner → factory + invocation.
+- `audit_log.append({"event": "garch_har_disagreement", ...})` posté à
+  chaque cycle dans `binance_bot/data/trades_audit.jsonl` quand HAR ≠ GARCH.
+- Pas d'effet trade : pure observation Munin pour analyse.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |

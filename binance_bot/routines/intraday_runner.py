@@ -15,6 +15,8 @@ Workflow:
 import sys
 from pathlib import Path
 from datetime import datetime
+
+import numpy as np
 import yaml
 
 # Ajouter binance_bot au path
@@ -201,6 +203,62 @@ def _make_regime_gate_fn(returns_1h_series):
             cached_regime["value"] = "mid"
             return "mid"
     return _gate
+
+
+def _make_garch_audit_check(symbol: str, returns_1h_series, regime_gate_fn):
+    """R6 / P8 — Compare HAR-RV regime label vs GARCH per-symbol regime label.
+
+    Si désaccord → retourne dict {disagreement: True, har_label, garch_label,
+    forecast_sigma, baseline_sigma, model}. Sinon disagreement: False.
+
+    None si returns trop courts ou GARCH non disponible (arch lib absent).
+
+    Le caller (intraday_runner main loop) write le résultat dans audit_log.
+    Aucun effet trade : c'est purement observation.
+    """
+    if returns_1h_series is None or len(returns_1h_series) < 100:
+        return None
+    try:
+        try:
+            from src.garch import fit_for_symbol, garch_regime_label, HAS_ARCH  # type: ignore
+        except ImportError:
+            from garch import fit_for_symbol, garch_regime_label, HAS_ARCH  # type: ignore
+    except ImportError:
+        return None
+    if not HAS_ARCH:
+        return None
+
+    # Fit GARCH per-symbol
+    fit = fit_for_symbol(symbol, returns_1h_series)
+    if not fit.get("converged"):
+        return {"disagreement": False, "reason": "garch_did_not_converge",
+                "model": fit.get("model")}
+
+    # Forecast 1-step sigma + baseline = std historique des returns
+    try:
+        from src.garch import forecast_tgarch, forecast_egarch  # type: ignore
+    except ImportError:
+        from garch import forecast_tgarch, forecast_egarch  # type: ignore
+    forecaster = forecast_egarch if fit["model"] == "EGARCH" else forecast_tgarch
+    sigma_arr = forecaster(fit, h=1)
+    if sigma_arr.size == 0:
+        return {"disagreement": False, "reason": "garch_forecast_empty",
+                "model": fit["model"]}
+    forecast_sigma = float(sigma_arr[0])
+    baseline_sigma = float(np.std(returns_1h_series.dropna(), ddof=1))
+    garch_label = garch_regime_label(forecast_sigma, baseline_sigma)
+
+    har_label = regime_gate_fn() if regime_gate_fn is not None else "mid"
+    disagreement = (har_label != garch_label)
+    return {
+        "disagreement": disagreement,
+        "har_label": har_label,
+        "garch_label": garch_label,
+        "model": fit["model"],
+        "forecast_sigma": forecast_sigma,
+        "baseline_sigma": baseline_sigma,
+        "leverage_effect": fit.get("leverage_effect", False),
+    }
 
 
 def _make_vpin_gate_config(settings: dict):
@@ -624,6 +682,27 @@ def main():
             print(f"   ⚠️ HAR-RV fetch 1h returns failed for {symbol}: {_e}")
             returns_1h_series = None
         regime_gate_fn = _make_regime_gate_fn(returns_1h_series)
+
+        # R6 / P8 — GARCH per-symbol audit vs HAR-RV regime. Pas d'effet trade,
+        # juste audit_log. Si désaccord HAR vs GARCH → flag pour analyse Munin.
+        try:
+            garch_audit = _make_garch_audit_check(symbol, returns_1h_series, regime_gate_fn)
+            if garch_audit is not None and garch_audit.get("disagreement"):
+                audit.append({
+                    "event": "garch_har_disagreement",
+                    "symbol": symbol,
+                    **garch_audit,
+                })
+            elif garch_audit is not None:
+                # Log même quand accord pour traçabilité (peut être utilisé
+                # comme baseline statistique de fréquence des désaccords).
+                audit.append({
+                    "event": "garch_har_check",
+                    "symbol": symbol,
+                    **garch_audit,
+                })
+        except Exception as _gerr:
+            print(f"   ⚠️ GARCH audit failed for {symbol}: {_gerr}")
 
         # Une instance SignalEngine par symbole (state isolé)
         signal_engine = SignalEngine(
