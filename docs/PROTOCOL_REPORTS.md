@@ -51,8 +51,23 @@ via pytest direct).
 
 ### Étape 5 — Branchement vérifié
 - Grep `cost_model|_round_trip_fee_cost_usdt` dans pipeline → **31 hits**
-- 4 appels actifs dans la boucle de trades (lignes 867, 887, 917, 935)
-- Mini-WFA 30j BTC : ⚠️ **NON FAIT** — déféré à R2 (tâche dédiée).
+- Appels actifs dans la boucle de trades (lignes 867, 887, 917, 935, 974,
+  1042, 1111, 1144, 1174, 1202, 1229)
+- **Mini-WFA validation R2 (90j BTC H1, 2160 bars)** :
+  ```
+  equity NO_FEES   : 1.00777896
+  equity WITH_FEES : 1.00753737
+  delta            : 0.00024159
+  n_trades         : 30
+  drag attendu     : ~0.000240  (n_trades × 0.01 × 8e-4 = position_size × round_trip)
+  ratio obs/exp    : 1.01  ✅
+  ```
+  Validation numérique : les fees affectent bien le PnL final, et le
+  drag observé matche presque exactement le calcul théorique
+  (`n_trades × position_size × 8 bps round-trip`). Branchement P0bis
+  fonctionnel **et exact**, pas seulement présent en grep.
+
+  Script : `scripts/validation/p0bis_mini_wfa_fees.py` (reproductible).
 
 ### Étape 6 — Commit
 - Hash : `20899b5`
