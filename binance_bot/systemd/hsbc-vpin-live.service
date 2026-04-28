@@ -1,0 +1,16 @@
+[Unit]
+Description=HSBC bot VPIN live collector (P7-bis) — long-running, aggTrade->trade + bookTicker WS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.vpin_live_runner
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/vpin_live.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/vpin_live.log
+
+[Install]
+WantedBy=default.target

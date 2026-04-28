@@ -31,6 +31,18 @@ vpin_kill_obi_threshold: 0.30    # OBI seuil sous lequel cascade imminente
 vpin_reset_threshold: 0.50       # hystérésis : block lifted dès que VPIN passe sous
 vpin_block_duration_minutes: 15  # plafond safety du block (failsafe, reset gagne)
 
+# P7-bis (R-mission autonome 2026-04-28) — collecteur VPIN live
+# (aggTrade replaced by @trade per WS-001, + @bookTicker pour OBI).
+# DEFAULT OFF : Sky décide d'activer via systemctl et flip ce flag à true.
+vpin_collector_enabled: false
+# Bucket sizes auto-calculées au premier lancement (klines daily 7d / 50,
+# Easley 2012 V/N). Recomputed si > 7j stale.
+vpin_bucket_size_usdt:
+  BTCUSDT: null
+  ETHUSDT: null
+  SOLUSDT: null
+vpin_bucket_size_last_compute_iso: null
+
 # P11 / R9 — Funding-aware close (Binance Futures settlement HH:00 UTC).
 # Runner hsbc-funding-close.timer fires HH:55-59 pour HH ∈ {0,8,16}.
 # Si la position courante a un funding adverse > threshold, flat avant settlement.
