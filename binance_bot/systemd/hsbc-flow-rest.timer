@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger HSBC flow REST collector (top_ls + taker + open_interest) every 5 min
+
+[Timer]
+# P6.1, P6.2, P6.4 : Binance Futures REST endpoints, polling 5min
+# (rate limit 1000 req/5min/IP, on fait 9 reqs total → marge confortable).
+OnCalendar=*:0/5:00 UTC
+Persistent=true
+Unit=hsbc-flow-rest.service
+
+[Install]
+WantedBy=timers.target

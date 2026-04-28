@@ -237,6 +237,83 @@ NON LANCÉ (cf P0bis).
 
 ---
 
+---
+
+## R3 — P6.1-P6.4 flow stack: création runners systemd
+
+### Étape 1 — Code
+- **Décision**: 2 nouveaux runners + 3 unités systemd (REST oneshot timer
+  + WS daemon long-running). Ne pas modifier les modules P6 existants.
+- **Justification**: les modules P6.1-P6.4 exposent déjà `poll_and_store()`
+  et `LiquidationWSManager` ; il manquait juste le câblage systemd.
+- **Fichiers créés**:
+  - `binance_bot/routines/flow_rest_collector.py` — appelle 3 polls × 3 symbols
+  - `binance_bot/routines/flow_liquidations_daemon.py` — long-running WS
+  - `binance_bot/systemd/hsbc-flow-rest.timer` — OnCalendar 5min
+  - `binance_bot/systemd/hsbc-flow-rest.service` — oneshot
+  - `binance_bot/systemd/hsbc-flow-liquidations.service` — Type=simple,
+    Restart=always
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ Spec P6 demandait poll 5min des 3 endpoints REST + WS persistent
+  pour liquidations. Match.
+- **Q2**: Fail-safe: erreur 1 service → autres continuent (`_safe_poll` catch
+  any exception). WS daemon: SIGTERM/SIGINT handlers + `manager.stop(drain)`.
+- **Q3**: noms précis (`flow_rest_collector`, `flow_liquidations_daemon`).
+- **Q4**: pas d'imports morts.
+- **Q5**: `HEARTBEAT_INTERVAL_SEC = 300` documenté ; `SYMBOLS` constant top.
+- **Q6**: pep8 / type hints / docstrings.
+- **Q7**: pas d'effet de bord — les modules P6 sont read-only à l'import.
+- **Q8**: try/except spécifique sur les polls ; SIGTERM handler explicite.
+
+### Étape 3 — Tests
+- `binance_bot/tests/test_r3_flow_collectors.py` — 5 tests :
+  - `_safe_poll` swallows exceptions / returns count on success
+  - `main` iterates 3 symbols × 3 services
+  - partial failure n'interrompt pas le run
+  - WS daemon start/stop cleanly
+
+### Étape 4 — Forge
+NON LANCÉ (cf P0bis, BUG-PRE-001).
+
+### Étape 5 — Branchement vérifié EN PROD LIVE
+- **Smoke test REST collector** (vraie API Binance) :
+  ```
+  [top_ls] BTCUSDT +30 new records → flow_top_ls_BTCUSDT.jsonl
+  [taker]  BTCUSDT +30 new records → flow_taker_BTCUSDT.jsonl
+  [oi]     BTCUSDT +30 new records → flow_oi_BTCUSDT.jsonl
+  ... idem ETH + SOL ...
+  flow_rest_collector done: 270 new records across 3 symbols × 3 services
+  ```
+  Format vérifié (sample BTC top_ls) :
+  ```json
+  {"ts_ms": 1777350600000, "symbol": "BTCUSDT", "long_short_ratio": 0.7883,
+   "long_account": 0.4408, "short_account": 0.5592}
+  ```
+- **Smoke test WS daemon** (vraie connexion fstream.binance.com) :
+  ```
+  [INFO] starting WS daemon for ('BTCUSDT', 'ETHUSDT', 'SOLUSDT')
+  [INFO] Websocket connected
+  [INFO] received signal 15 — shutting down WS
+  [INFO] daemon exited cleanly
+  ```
+  (SIGTERM gérée proprement, daemon exits cleanly.)
+
+### Étape 6 — Commit
+- Hash : (en cours)
+- ⚠️ **systemd units NON ENABLED** par sécurité (touche le bot live actif).
+  Pour activer en prod, l'opérateur doit lancer manuellement :
+  ```bash
+  cd /home/ludov/HSBC-algo-genetic/binance_bot/systemd
+  systemctl --user link $(pwd)/hsbc-flow-rest.timer
+  systemctl --user link $(pwd)/hsbc-flow-rest.service
+  systemctl --user link $(pwd)/hsbc-flow-liquidations.service
+  systemctl --user enable --now hsbc-flow-rest.timer
+  systemctl --user enable --now hsbc-flow-liquidations.service
+  ```
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |

@@ -1,0 +1,16 @@
+[Unit]
+Description=HSBC bot flow liquidations WS daemon (P6.3) — long-running, !forceOrder@arr
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.flow_liquidations_daemon
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/flow_liquidations.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/flow_liquidations.log
+
+[Install]
+WantedBy=default.target
