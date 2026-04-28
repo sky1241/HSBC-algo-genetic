@@ -770,6 +770,88 @@ Le pipeline fonctionne, le verdict est honnête.
 
 ---
 
+## R10 — P12 MSM Calvet-Fisher rapport A.6.4 formel (V2 OPTIONNEL)
+
+### Étape 1 — Code
+- **Décision**: aucun code change. P12 a été implémenté sur demande explicite
+  Sky 2026-04-28 (commit `b90f4af`) en tant que NICE-to-have V2.
+- **Justification rétrospective**: spec P12 disait "À implémenter SEULEMENT si
+  P0bis-P11 stables sur 30 jours testnet ET demande explicite Sky". Sky avait
+  demandé immédiatement ("fait go"), donc condition (2) satisfaite. Condition
+  (1) non — bot n'avait pas tourné 30j stable. R10 = paperwork pour formaliser
+  le statut V2 et acter le rapport A.6.4 manquant à l'origine.
+- **Fichiers existants** :
+  - `src/msm_calvet.py` (510 LOC) — module pur Calvet-Fisher 2004
+  - `tests/test_p12_msm_calvet.py` (11 tests) — markés `pytest.mark.slow`
+    en R-FIX-FORGE car MSM MLE Nelder-Mead × 64-state grid ≈ 2min total
+
+### Étape 2 — Auto-review Q1-Q8 (rétrospectif)
+- **Q1 spec respectée ?** ✅
+  - sigma²_t = sigma_bar² × Π_{i=1}^{k_bar} M_{i,t}, M_{i,t} ∈ {m_0, 2-m_0}
+  - gamma_i = 1 - (1 - gamma_k)^(b^(i - k_bar))
+  - Forward filter complet pour likelihood
+  - MLE Nelder-Mead avec params bornés (m_0 ∈ (1,2), gamma_k ∈ (0,1))
+  - Forecast multi-step analytique : pi @ M^h dot grid
+- **Q2 cas limites ?**
+  - returns < 50 obs → empty result avec converged=False
+  - sigma_bar=0 ou NaN → classify_macro_regime retourne "normal"
+  - horizon ≤ 0 → array vide
+  - log(sigma²) clamp [-50, +50] pour éviter overflow exp
+- **Q3 naming ?** ✅ `MSMFitResult`, `fit_msm`, `forecast_msm_volatility`,
+  `classify_macro_regime`, `simulate_msm`, `_state_grid`, `_transition_matrix`.
+- **Q4 imports/dead code ?** ✅ pas d'imports morts détectés.
+- **Q5 magic numbers ?** ✅ documentés inline :
+  - `_DEFAULT_K_BAR = 6` (2^6 = 64 états, tractable)
+  - `_DEFAULT_B = 2.0` (spacing binaire)
+  - `_DEFAULT_INIT = {m0: 1.4, sigma_bar: 0.02, gamma_k: 0.5}`
+  - thresholds classify : 0.7 / 1.3 / 2.0 (calm/normal/stressed/crisis)
+- **Q6 conventions ?** ✅ pep8, type hints (`MSMFitResult` dataclass),
+  docstrings détaillées, refs paper Calvet-Fisher 2004.
+- **Q7 side-effects ?** ✅ pure (pas de mutation d'état partagé).
+- **Q8 errors ?** ✅ try/except sur scipy.optimize si non-convergence ;
+  fallback `_empty_fit` en cas d'échec.
+
+### Étape 3 — Tests
+- 11/11 PASS (~2min runtime, marker slow → exclus du Forge run "not slow")
+- Couvre :
+  - simulate_msm finite positive vol + higher m0 → fatter tails
+  - msm_handles_short_series (n<50)
+  - msm_fit_returns_valid_params (recovery synthetic)
+  - msm_fit_handles_nan_dropping
+  - forecast_horizon_one_returns_positive
+  - forecast_invalid_horizon → empty
+  - forecast_long_horizon → converge à sigma_bar (h=200)
+  - forecast_empty_fit → empty
+  - classify_macro_regime_thresholds + edge_cases (NaN, baseline=0)
+
+### Étape 4 — Forge
+- ✅ via R-FIX-FORGE : exclu de "not slow" (durée >30s par fichier).
+  Toujours run-able localement via `pytest tests/test_p12_msm_calvet.py`.
+
+### Étape 5 — Branchement
+- **Aucun branchement live** (V2 par design).
+- Module exposé `from src.msm_calvet import fit_msm, forecast_msm_volatility,
+  classify_macro_regime, simulate_msm, MSMFitResult`. Disponible pour
+  consommation future via :
+  - Cron daily de macro regime forecasting (à créer si besoin)
+  - Composante optionnelle dans flow_composite_signal en mode "macro adapt"
+  - Consultation manuelle via Munin pour confirmer transitions de régime
+
+### Étape 6 — Commit
+- Hash original : `b90f4af` (commit 2026-04-28 R5 series).
+- Pas de commit R10 séparé — c'est purement doc (cette section).
+
+### Statut V2 (à acter explicitement)
+- ⚠️ **Condition spec non satisfaite** : "P0bis-P11 stables sur 30 jours testnet"
+  → P11 vient juste d'être enabled (R9), bot n'a pas accumulé 30j de runtime.
+- **Position actuelle** : module dispo + testé, mais branchement live = futur
+  (post-30j de stabilité testnet validés).
+- **Garde-fou** : avant de brancher MSM en production (e.g. comme gate macro
+  régime), vérifier qu'on a au moins 30j de logs intraday + flow + meta sans
+  incident.
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |
