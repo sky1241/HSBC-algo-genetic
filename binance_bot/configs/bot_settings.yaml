@@ -31,6 +31,13 @@ vpin_kill_obi_threshold: 0.30    # OBI seuil sous lequel cascade imminente
 vpin_reset_threshold: 0.50       # hystérésis : block lifted dès que VPIN passe sous
 vpin_block_duration_minutes: 15  # plafond safety du block (failsafe, reset gagne)
 
+# P11 / R9 — Funding-aware close (Binance Futures settlement HH:00 UTC).
+# Runner hsbc-funding-close.timer fires HH:55-59 pour HH ∈ {0,8,16}.
+# Si la position courante a un funding adverse > threshold, flat avant settlement.
+funding_close_threshold_long_bps: 5.0    # close LONG si funding > +5 bps
+funding_close_threshold_short_bps: 5.0   # close SHORT si funding < -5 bps
+funding_close_advance_minutes: 5         # fenêtre [HH:55, HH:60) de check
+
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
 max_leverage: 125
