@@ -9,3 +9,18 @@ PyWavelets
 tqdm
 hmmlearn
 scikit-learn
+# Mission quant 2026-04-28 — deps pinned compatible release (~=)
+# arch (Kevin Sheppard, Oxford) — P8 GARCH/EGARCH MLE
+arch~=8.0
+# statsmodels — pulled in by arch ; explicit pin pour reproductibilité
+statsmodels~=0.14
+# lightgbm — P10 LGBM combinator
+lightgbm~=4.0
+# pytest-cov — couverture en pipeline (G3)
+pytest-cov~=7.0
+# requests — utilisé par flow_*.py REST polling (Binance APIs)
+requests
+# websocket-client — utilisé par flow_liquidations WS daemon
+websocket-client
+# pyyaml — bot_settings.yaml + funding_close_runner
+pyyaml
