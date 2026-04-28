@@ -127,12 +127,21 @@ def _build_trade_manager(symbol: str, settings: dict, trade_mode: str):
             leverage = float(sym_cfg.get("leverage", 1.0))
             break
     try:
-        data_fetcher = DataFetcher(symbol=symbol, timeframe="1h", years_back=1)
+        data_fetcher = DataFetcher(symbol=symbol, timeframe="1h")
+        # Auto-detect position mode (testnet généralement oneway)
+        pos_mode = "oneway"
+        try:
+            info = data_fetcher.exchange.fapiPrivateGetPositionSideDual()
+            if info.get("dualSidePosition"):
+                pos_mode = "hedge"
+        except Exception:
+            pass
         return TradeManager(
             exchange=data_fetcher.exchange,
             symbol=symbol,
             mode=trade_mode,
             leverage=leverage,
+            position_mode=pos_mode,
         )
     except Exception as e:
         logger.warning(f"build TradeManager {symbol}: {e}")
