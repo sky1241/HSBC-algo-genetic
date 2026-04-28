@@ -13,6 +13,74 @@
 - **Regression**: did the fix break anything else?
 -->
 
+## WS-001: Binance fstream ferme @aggTrade et @forceOrder via CLOSE frame
+- **Status**: OPEN — ROOT CAUSE IDENTIFIÉE, fix non appliqué (out of scope investigation)
+- **Symptom**: daemon `hsbc-flow-liquidations.service` connecté à
+  `wss://fstream.binance.com/ws/!forceOrder@arr` reçoit 0 events depuis
+  3+ heures (35+ heartbeats consécutifs avec events_received=0,
+  buckets_flushed=0, connection_errors=0). Découvert pendant investigation
+  pré-mission v3 (P7-bis) le 2026-04-28T17:50Z.
+- **Root cause**: Binance Futures USDM (mainnet `fstream.binance.com`)
+  envoie un **CLOSE frame** post-SUBSCRIBE pour les streams `@aggTrade`
+  et `@forceOrder` (single-symbol et multi-stream `!forceOrder@arr`).
+  Visible explicitement avec `binance-futures-connector` :
+    "CLOSE frame received, closing websocket connection
+     GOT: {\"result\":null,\"id\":1777391904983}  ← juste l'ACK SUBSCRIBE"
+  Avec `websocket-client 1.9.0` (notre lib actuelle), le close frame est
+  silencieux : la lib ne loggue pas l'event close, le compteur reste à 0,
+  pas d'exception, pas de connection_errors. Pattern catastrophique
+  car le daemon paraît "active running" depuis systemd (cf audit
+  R3 qui a validé ce daemon comme COMPLET, audit invalide rétrospectivement
+  pour P6.3).
+- **Tests effectués** (T+1h30 investigation):
+  - H1 (compteur cassé) : ÉLIMINÉ — log RAW MSG temporaire ajouté à
+    `_on_message`, daemon restart, 60s, aucun "WS-DEBUG RAW" → callback
+    vraiment pas appelé.
+  - H2 (LiquidationWSManager bug) : ÉLIMINÉ — client minimal
+    `websocket.create_connection` direct sur `!forceOrder@arr` → 0 events
+    en 30s (même comportement).
+  - H3 (endpoint trafic test) : streams qui MARCHENT depuis fstream :
+    `@trade` (events immédiats), `@bookTicker` (events immédiats).
+    Streams qui NE MARCHENT PAS : `@aggTrade`, `@forceOrder`,
+    `!forceOrder@arr`. Mêmes URL syntaxe `/ws/<stream>` et
+    `/stream?streams=<stream>` testées.
+  - H4 (lib officielle Binance) : `binance-futures-connector` reçoit
+    UNIQUEMENT l'ACK SUBSCRIBE puis le CLOSE frame. Confirme cause
+    serveur-side, pas client-side.
+- **Impact rétroactif sur audit READY FOR TESTNET** :
+  - R3 verdict pour P6.3 (`flow_liquidations`) **PARTIELLEMENT INVALIDÉ**.
+    Le daemon tourne mais la fonction métier (collecter buckets de
+    liquidations agrégées 1min × side) n'est PAS opérationnelle.
+  - R3 verdict pour P6.1 (top_ls), P6.2 (taker), P6.4 (open_interest)
+    **TOUJOURS VALIDE** — ces 3 utilisent REST classique, pas WS, et
+    écrivent bien des records (vérifié 60+ lignes par jsonl).
+  - P7-bis spec (collecteur VPIN live) **DOIT ÊTRE MODIFIÉE** : remplacer
+    `<symbol>@aggTrade` par `<symbol>@trade` (sémantiquement équivalent
+    pour calcul VPIN — chaque trade individuel au lieu d'agrégé par
+    price+side+time). `@bookTicker` reste OK pour OBI.
+- **Fix proposé** (NON APPLIQUÉ, hors scope investigation):
+  1. **Pour P7-bis** : utiliser `<symbol>@trade` au lieu de `<symbol>@aggTrade`.
+     Adapter `parse_force_order_event` → `parse_trade_event` pour le
+     payload Binance `@trade` (champs `s, t, p, q, T, m`).
+     Test E2E live à confirmer.
+  2. **Pour flow_liquidations** : pas d'alternative WS triviale.
+     Options à explorer dans un chunk dédié:
+     - REST polling `/fapi/v1/forceOrders` (limité aux ordres
+       authentifiés du compte, pas global → ne convient pas pour
+       liquidation cascade detection)
+     - Service externe (CoinGlass, Coinalyze API)
+     - Investigation Binance support : ce CLOSE frame est-il
+       intentionnel/permanent, ou un bug temporaire ?
+  3. **Court terme** : disabler `hsbc-flow-liquidations.service` pour
+     ne pas consommer une connexion WS pour rien :
+        $ systemctl --user stop hsbc-flow-liquidations
+        $ systemctl --user disable hsbc-flow-liquidations
+- **Test post-fix**: à définir lors du fix réel. Critère minimum :
+  daemon doit afficher `events_received > 0` ET `buckets_flushed > 0`
+  dans heartbeat après 5min de connexion.
+- **Investigation**: Sky 2026-04-28T17:50Z, branche `main` (pas de
+  branche debug dédiée car cause identifiée sans modification de code).
+
 ## BUG-PRE-001: tests legacy timeout > 30s bloquent Forge
 - **Status**: FIXED (R-FIX-FORGE 2026-04-28) — Forge réutilisable avec `pytest -m "not slow"`
 - **Symptom**: tests legacy (ACO smoke, alpha_backtest, regime_lgbm, MSM,
