@@ -47,6 +47,7 @@ class SignalEngine:
         kill_switch_path: Optional[Path] = None,
         notifier: Optional[Any] = None,
         drawdown_scale_fn: Optional[Callable[[], float]] = None,
+        var_gate_fn: Optional[Callable[[str, float], Tuple[bool, str]]] = None,
     ):
         """
         Args:
@@ -68,6 +69,10 @@ class SignalEngine:
                 [0, 1] selon le drawdown depuis equity_high (anti-martingale,
                 cf src/risk_sizing.drawdown_size_multiplier). Combiné multiplicativement
                 avec portfolio_scale dans le sizing final.
+            var_gate_fn: P3 — callable (side, notional_pct) -> (allowed, reason)
+                qui BLOQUE l'émission d'un signal d'entrée si la VaR95 projetée
+                du portefeuille dépasse le seuil. Distinct de portfolio_scale_fn
+                qui module la taille — ici on bloque carrément.
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -81,6 +86,8 @@ class SignalEngine:
         self.notifier = notifier
         # P2 anti-martingale
         self.drawdown_scale_fn = drawdown_scale_fn
+        # P3 portfolio risk gate VaR95
+        self.var_gate_fn = var_gate_fn
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -218,6 +225,27 @@ class SignalEngine:
                 pass
         return signals
 
+    def _var_gate_blocks(self, side: str, notional_pct: float) -> bool:
+        """P3 — True si var_gate_fn refuse l'entrée. False si pas de gate ou autorisé.
+
+        Sécurisation: si le callback raise, on AUTORISE par défaut (fallback safe
+        symétrique aux autres callbacks: ne jamais bloquer le bot par exception).
+        """
+        if self.var_gate_fn is None:
+            return False
+        try:
+            allowed, reason = self.var_gate_fn(side, float(notional_pct))
+            if not allowed and self.notifier is not None:
+                try:
+                    self.notifier.info(
+                        f"VaR gate blocked entry side={side} sized={notional_pct:.5f}: {reason}"
+                    )
+                except Exception:
+                    pass
+            return not bool(allowed)
+        except Exception:
+            return False  # safe fallback: autoriser
+
     def _trigger_soft_cap(
         self, current_price: float, reason: str
     ) -> List[Dict]:
@@ -350,39 +378,41 @@ class SignalEngine:
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
             if len(self.positions_long) < self.max_positions:
-                # Calculer stop et TP
-                atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
-                tp_mult = params.get('tp_mult', 20.0)
-
-                entry = current_price  # Simplifié (en réel: next open + slippage)
-                stop = entry - (atr * atr_stop_mult)
-                tp = entry + (atr * tp_mult)
-
-                signals.append({
-                    "action": "open_long",
-                    "entry": entry,
-                    "stop": stop,
-                    "tp": tp,
-                    "size": sized,  # P0: 1% × portfolio_scale
-                })
+                # P3 — VaR95 gate : bloque l'émission si VaR projetée > seuil
+                if self._var_gate_blocks("long", sized):
+                    pass  # signal d'entrée filtré par le gate, pas d'émission
+                else:
+                    atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
+                    tp_mult = params.get('tp_mult', 20.0)
+                    entry = current_price  # Simplifié (en réel: next open + slippage)
+                    stop = entry - (atr * atr_stop_mult)
+                    tp = entry + (atr * tp_mult)
+                    signals.append({
+                        "action": "open_long",
+                        "entry": entry,
+                        "stop": stop,
+                        "tp": tp,
+                        "size": sized,
+                    })
 
         # Signal SHORT: bear_cross + close < nuage + pas de LONG ouverts
         if last.get('signal_short', False) and len(self.positions_long) == 0:
             if len(self.positions_short) < self.max_positions:
-                atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
-                tp_mult = params.get('tp_mult', 20.0)
-
-                entry = current_price
-                stop = entry + (atr * atr_stop_mult)
-                tp = entry - (atr * tp_mult)
-
-                signals.append({
-                    "action": "open_short",
-                    "entry": entry,
-                    "stop": stop,
-                    "tp": tp,
-                    "size": sized,  # P0: 1% × portfolio_scale
-                })
+                if self._var_gate_blocks("short", sized):
+                    pass  # filtré par le gate
+                else:
+                    atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
+                    tp_mult = params.get('tp_mult', 20.0)
+                    entry = current_price
+                    stop = entry + (atr * atr_stop_mult)
+                    tp = entry - (atr * tp_mult)
+                    signals.append({
+                        "action": "open_short",
+                        "entry": entry,
+                        "stop": stop,
+                        "tp": tp,
+                        "size": sized,
+                    })
         
         # Fermer LONG si signal SHORT opposé (et vice-versa)
         if last.get('signal_short', False) and len(self.positions_long) > 0:

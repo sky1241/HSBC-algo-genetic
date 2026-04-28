@@ -160,6 +160,54 @@ def _make_portfolio_scale_fn(state_mgr,
     return _scale_fn
 
 
+def _make_var_gate_fn(state_mgr, current_symbol, corr_df, vol_dict, threshold):
+    """P3 — Factory du callback var_gate_fn(side, notional_pct) -> (allowed, reason).
+
+    Lit l'état actuel des positions de tous les autres symboles + ajoute la
+    position projetée pour current_symbol, calcule VaR95, compare au seuil.
+    """
+    def _gate(side, notional_pct):
+        try:
+            try:
+                from src.portfolio_risk_gate import can_enter_new_position  # type: ignore
+            except ImportError:
+                from portfolio_risk_gate import can_enter_new_position  # type: ignore
+        except ImportError:
+            return True, ""  # safe fallback: si module absent, autoriser
+
+        # Construire open_positions agrégé (tous symboles, current inclus si déjà ouvert)
+        open_positions = {}
+        symbols_dict = state_mgr.state.get("symbols", {}) or {}
+        for sym, sym_state in symbols_dict.items():
+            longs = sym_state.get("positions_long", []) or []
+            shorts = sym_state.get("positions_short", []) or []
+            for p in longs:
+                np_ = float(p.get("size", 0))
+                if np_ > 0:
+                    if sym not in open_positions:
+                        open_positions[sym] = {"side": "long", "notional_pct": 0.0}
+                    open_positions[sym]["notional_pct"] += np_
+            for p in shorts:
+                np_ = float(p.get("size", 0))
+                if np_ > 0:
+                    if sym not in open_positions:
+                        open_positions[sym] = {"side": "short", "notional_pct": 0.0}
+                    open_positions[sym]["notional_pct"] += np_
+
+        return can_enter_new_position(
+            symbol=current_symbol,
+            side=side,
+            notional_pct=float(notional_pct),
+            current_state={
+                "open_positions": open_positions,
+                "rolling_correlations": corr_df,
+                "rolling_volatilities": vol_dict,
+            },
+            threshold=float(threshold),
+        )
+    return _gate
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -416,6 +464,16 @@ def main():
             current_price=current_price,
         )
 
+        # P3 — Construire var_gate_fn(side, notional_pct) -> (allowed, reason)
+        # qui BLOQUE les nouvelles entrées si VaR95 projetée > seuil.
+        var_gate_fn = _make_var_gate_fn(
+            state_mgr=state_mgr,
+            current_symbol=symbol,
+            corr_df=portfolio_corr_df,
+            vol_dict=portfolio_vol_dict,
+            threshold=float(settings.get('portfolio_var_threshold', 0.08)),
+        )
+
         # Une instance SignalEngine par symbole (state isolé)
         signal_engine = SignalEngine(
             max_positions=max_pos_per_symbol,
@@ -430,6 +488,8 @@ def main():
             notifier=notifier,
             # P2 — anti-martingale drawdown scaling
             drawdown_scale_fn=drawdown_scale_fn,
+            # P3 — VaR95 gate (bloque les entrées au-dessus du seuil)
+            var_gate_fn=var_gate_fn,
         )
         # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
         daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))

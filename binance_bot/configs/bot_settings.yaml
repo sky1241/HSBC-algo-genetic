@@ -19,6 +19,7 @@ daily_loss_soft_cap_pct: 0.02   # -2% : flat + block until next UTC midnight
 daily_gain_soft_cap_pct: 0.03   # +3% : flat + block (cap rémunération discipline)
 daily_loss_hard_cap_pct: 0.10   # -10% : kill switch + freeze
 max_portfolio_risk: 0.06        # P0 : budget sigma_pf agrégé multi-symbole
+portfolio_var_threshold: 0.08   # P3 : VaR95 24h seuil — bloque entrées au-dessus
 
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
