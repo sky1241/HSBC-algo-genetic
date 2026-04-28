@@ -203,6 +203,53 @@ def _make_regime_gate_fn(returns_1h_series):
     return _gate
 
 
+def _make_composite_log_fn(symbol: str, data_dir):
+    """R4 / P6.5 — Factory du callback composite_log_fn.
+
+    Le callback retourne le dict de compute_composite_score augmenté de
+    "symbol" pour que SignalEngine puisse persister par symbole.
+
+    MODE LOG-ONLY : pas de blocage, juste collecte de baseline 30j.
+
+    Args:
+        symbol: "BTCUSDT" / "ETHUSDT" / "SOLUSDT" (sans slash).
+        data_dir: pathlib.Path vers binance_bot/data/.
+
+    Returns:
+        Callable[[], dict] qui retourne le dict score+components+symbol.
+    """
+    from pathlib import Path
+    sym_clean = str(symbol).replace("/", "").upper()
+    top_ls = Path(data_dir) / f"flow_top_ls_{sym_clean}.jsonl"
+    taker = Path(data_dir) / f"flow_taker_{sym_clean}.jsonl"
+    oi = Path(data_dir) / f"flow_oi_{sym_clean}.jsonl"
+    # Liq path GLOBAL (R3 daemon écrit tous symboles dans un seul fichier).
+    # Limitation connue : composite liq imbalance non filtré par symbole.
+    liq = Path(data_dir) / "flow_liq_buckets.jsonl"
+
+    def _log() -> dict:
+        try:
+            try:
+                from services.flow_composite_signal import compute_composite_score  # type: ignore
+            except ImportError:
+                from binance_bot.services.flow_composite_signal import compute_composite_score  # type: ignore
+        except ImportError:
+            return {"symbol": sym_clean, "score": 0.0, "error": "module_missing"}
+        try:
+            result = compute_composite_score(
+                top_ls_path=top_ls,
+                taker_path=taker,
+                liq_path=liq,
+                oi_path=oi,
+            )
+            result["symbol"] = sym_clean
+            return result
+        except Exception as e:
+            return {"symbol": sym_clean, "score": 0.0, "error": str(e)}
+
+    return _log
+
+
 def _make_var_gate_fn(state_mgr, current_symbol, corr_df, vol_dict, threshold):
     """P3 — Factory du callback var_gate_fn(side, notional_pct) -> (allowed, reason).
 
@@ -555,6 +602,9 @@ def main():
             var_gate_fn=var_gate_fn,
             # P4 — HAR-RV regime gate (bloque entrées en regime=low)
             regime_gate_fn=regime_gate_fn,
+            # P6.5 / R4 — composite signal log-only (baseline 30j, AUCUN blocage)
+            composite_log_fn=_make_composite_log_fn(symbol, ROOT / "data"),
+            composite_log_path=(ROOT / "data" / "flow_composite_log.jsonl"),
         )
         # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
         daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))

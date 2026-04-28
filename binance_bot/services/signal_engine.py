@@ -11,6 +11,8 @@ P1 (2026-04-28): daily caps soft/hard sur PnL signed du jour.
 Sorties TP/SL/trailing restent actives même si block actif (le bot doit pouvoir
 fermer ses positions pendant le block).
 """
+import json
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
@@ -51,6 +53,8 @@ class SignalEngine:
         regime_gate_fn: Optional[Callable[[], str]] = None,
         low_vol_combinator_fn: Optional[Callable[[], float]] = None,
         low_vol_combinator_threshold: float = 0.6,
+        composite_log_fn: Optional[Callable[[], dict]] = None,
+        composite_log_path: Optional[Path] = None,
     ):
         """
         Args:
@@ -85,6 +89,15 @@ class SignalEngine:
                 tous deux low vol (regime=="low" ET proba > threshold).
             low_vol_combinator_threshold: P10 — seuil P(low_vol) au-dessus duquel
                 le combinator confirme low vol (default 0.6).
+            composite_log_fn: P6.5 — callable sans args qui retourne dict
+                {score, components, n_obs} (cf. flow_composite_signal.compute_composite_score).
+                MODE LOG-ONLY : on logge le score à chaque cycle de detect_signals
+                pour collecter 30j de baseline. AUCUN BLOCAGE de signaux.
+                Activation gate (block trades adverses) : pas dans R4, requires
+                30j baseline + Sky validation.
+            composite_log_path: P6.5 — Path d'un JSONL append-only où persister
+                le score et les composants à chaque cycle. None = log via notifier
+                seulement (perd les données entre runs).
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -105,6 +118,9 @@ class SignalEngine:
         # P10 — combinator P(low_vol) (LightGBM, gate dur si confirme HAR-RV)
         self.low_vol_combinator_fn = low_vol_combinator_fn
         self.low_vol_combinator_threshold = float(low_vol_combinator_threshold)
+        # P6.5 — composite signal log-only (mode baseline 30j, AUCUN blocage)
+        self.composite_log_fn = composite_log_fn
+        self.composite_log_path = composite_log_path
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -265,6 +281,52 @@ class SignalEngine:
         except Exception:
             return False  # safe fallback
 
+    def _log_composite_signal(self) -> None:
+        """P6.5 — log-only mode. Appel composite_log_fn, persiste si path set.
+
+        AUCUN BLOCAGE. Le but est de collecter une baseline 30j pour pouvoir
+        plus tard activer un mode GATE qui bloquerait les trades adverses.
+        Sécurisation: toute exception → silent (mode log-only, ne jamais
+        bloquer le bot par erreur du composite_signal).
+
+        Le callback composite_log_fn doit retourner un dict contenant au moins
+        "score" (et éventuellement "components", "n_obs", "symbol"). Le SignalEngine
+        complète avec ts_ms et persiste si composite_log_path est défini.
+        """
+        if self.composite_log_fn is None:
+            return
+        try:
+            result = self.composite_log_fn()
+        except Exception:
+            return
+        if not isinstance(result, dict):
+            return
+        result["ts_ms"] = int(time.time() * 1000)
+        symbol_label = str(result.get("symbol", "UNKNOWN"))
+        # Persistance JSONL si path configuré
+        if self.composite_log_path is not None:
+            try:
+                p = Path(self.composite_log_path)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                with open(p, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(result, default=str) + "\n")
+            except Exception:
+                pass
+        # Notifier info léger (ne spam pas, juste audit visible)
+        if self.notifier is not None:
+            try:
+                score = float(result.get("score", 0.0))
+                comps = result.get("components", {})
+                self.notifier.info(
+                    f"P6.5 composite log {symbol_label}: score={score:+.3f} "
+                    f"(top_ls={comps.get('top_ls', 0):+.2f}, "
+                    f"taker={comps.get('taker', 0):+.2f}, "
+                    f"liq={comps.get('liq', 0):+.2f}, "
+                    f"oi={comps.get('oi', 0):+.2f})"
+                )
+            except Exception:
+                pass
+
     def _low_vol_combinator_blocks(self) -> bool:
         """P10 — gate dur si HAR-RV ET combinator confirment tous deux low vol.
 
@@ -356,6 +418,9 @@ class SignalEngine:
         """
         if len(df_ichimoku) == 0:
             return []
+
+        # P6.5 — log-only snapshot du composite signal (AUCUN blocage)
+        self._log_composite_signal()
 
         signals = []
         last = df_ichimoku.iloc[-1]

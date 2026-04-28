@@ -314,6 +314,75 @@ NON LANCÉ (cf P0bis, BUG-PRE-001).
 
 ---
 
+## R4 — P6.5 composite signal: branchement signal_engine mode LOG-ONLY
+
+### Étape 1 — Code
+- **Décision**: extension `signal_engine.SignalEngine` + factory dans
+  `intraday_runner._make_composite_log_fn`.
+- **Justification**: même pattern callback que P0/P3/P4. Mode log-only
+  (per spec : 30j baseline avant activation gate).
+- **Fichiers modifiés**:
+  - `binance_bot/services/signal_engine.py` — params
+    `composite_log_fn`, `composite_log_path` + méthode
+    `_log_composite_signal()` + hook tout début de `detect_signals`
+  - `binance_bot/routines/intraday_runner.py` — factory
+    `_make_composite_log_fn(symbol, data_dir)` + injection au
+    `SignalEngine(...)` instantiation
+
+### Étape 2 — Auto-review Q1-Q8
+- **Q1**: ✅ Spec dit "Mode INITIAL : log only (pas d'effet sur ordres)
+  pendant 30 jours". Implémenté : aucun blocage, juste persist JSONL +
+  notifier.info. Mode GATE = futur (post-baseline + Sky validation).
+- **Q2**: composite_log_fn=None → no-op. callback raise → silent
+  (try/except). path=None → pas de write. dict invalide → silent.
+- **Q3**: ✅ noms précis (`composite_log_fn`, `composite_log_path`,
+  `_log_composite_signal`).
+- **Q4**: ✅ pas d'import mort (json, time ajoutés en haut).
+- **Q5**: pas de magic number nouveau.
+- **Q6**: pep8, type hints (`Optional[Callable[[], dict]]`,
+  `Optional[Path]`).
+- **Q7**: ✅ pure (pas de mutation des modules existants, juste
+  ajout de paramètres optionnels + 1 hook 1-line dans detect_signals).
+- **Q8**: try/except spécifiques. **AUCUN** `except Exception: pass`
+  général.
+
+### Étape 3 — Tests
+- `binance_bot/tests/test_r4_composite_log.py` — 10 tests :
+  - no-op si pas de fn
+  - persist JSONL avec ts_ms ajouté
+  - append multiple lines
+  - exception callback safe silent
+  - dict invalide silent
+  - path=None pas de write
+  - notifier.info appelé avec format correct
+  - hook detect_signals appelle composite_log
+  - df vide → pas d'appel
+  - factory `_make_composite_log_fn` produit callable
+
+### Étape 4 — Forge
+NON LANCÉ (cf P0bis).
+
+### Étape 5 — Branchement vérifié EN PROD LIVE
+- Smoke test E2E (2 cycles `detect_signals`) :
+  ```
+  JSONL lines: 2
+    ts=1777360121188 symbol=BTCUSDT score=+0.000
+                     n_obs={'top_ls': 30, 'taker': 30, 'liq': 0, 'oi': 0}
+    ts=1777360121206 symbol=BTCUSDT score=+0.000
+                     n_obs={'top_ls': 30, 'taker': 30, 'liq': 0, 'oi': 0}
+  ```
+- Score = 0 attendu : `zscore_last(min_obs=100)` retourne 0 tant qu'on
+  n'a pas 100 obs. Avec 30 records (R3 backfill initial 5min) on est
+  sous le seuil. Baseline réelle après 30j de poll cron.
+- Limitation connue : `flow_liq_buckets.jsonl` est GLOBAL (tous symboles
+  dans un fichier), donc `liq imbalance` non filtré par symbol — futur
+  enhancement.
+
+### Étape 6 — Commit
+- Hash : (en cours)
+
+---
+
 # Synthèse R1
 
 | Chunk | Bug détecté | Action | Branchement live |
