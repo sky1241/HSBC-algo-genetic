@@ -165,10 +165,13 @@ def drawdown_size_multiplier(
 
     Returns:
         Multiplicateur de taille [0.0, 1.0]. 1.0 si pas d'historique
-        (rolling_equity_high <= 0) ou current_equity <= 0 (cas limite).
+        (rolling_equity_high <= 0). 0.0 si current_equity <= 0 (compte
+        liquidé / margin call → kill side dans le caller).
     """
-    if rolling_equity_high <= 0 or current_equity <= 0:
+    if rolling_equity_high <= 0:
         return 1.0
+    if current_equity <= 0:
+        return 0.0  # compte liquidé : multiplicateur = 0 (no new trades)
     dd = (float(current_equity) - float(rolling_equity_high)) / float(rolling_equity_high)
     if dd < -0.15:
         return 0.0

@@ -89,9 +89,17 @@ def test_first_trade_no_history_returns_one():
     """Pas d'historique (rolling_high <= 0) → 1.0 sans crash."""
     assert drawdown_size_multiplier(100.0, 0.0) == 1.0
     assert drawdown_size_multiplier(100.0, -50.0) == 1.0
-    # current_equity dégénéré
-    assert drawdown_size_multiplier(0.0, 100.0) == 1.0
-    assert drawdown_size_multiplier(-10.0, 100.0) == 1.0
+
+
+def test_zero_or_negative_equity_returns_kill():
+    """current_equity <= 0 (compte liquidé / margin call) → 0.0 (kill).
+
+    Spec: dd < -15% → 0.0. Si current_equity ≤ 0 sur rolling_high > 0,
+    dd ≤ -100% donc largement dans le tier kill. Garde-fou explicite.
+    """
+    # rolling_high > 0 + current ≤ 0 → kill
+    assert drawdown_size_multiplier(0.0, 100.0) == 0.0
+    assert drawdown_size_multiplier(-10.0, 100.0) == 0.0
 
 
 # ---------------------------------------------------------------------------
