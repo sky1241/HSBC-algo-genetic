@@ -299,6 +299,56 @@ def main():
                                                                      symbols=[c['pair'] for c in sym_cfgs])
     max_portfolio_risk = float(settings.get('max_portfolio_risk', 0.06))
 
+    # P2 — Anti-martingale: track rolling_equity_high + drawdown circuit breaker.
+    # Update à chaque run: max(rolling_equity_high, capital_usdt). Refinement
+    # futur: vraie fenêtre 90j rolling (current = lifetime high simplifié).
+    rolling_equity_high_usdt = float(state_mgr.get('rolling_equity_high_usdt', 0.0) or 0.0)
+    if capital_usdt > rolling_equity_high_usdt:
+        rolling_equity_high_usdt = capital_usdt
+        state_mgr.set('rolling_equity_high_usdt', rolling_equity_high_usdt)
+
+    # Construire drawdown_scale_fn (callback sans args, lazy import risk_sizing)
+    def _make_drawdown_scale_fn(_capital_usdt, _rolling_high):
+        def _fn():
+            try:
+                from src.risk_sizing import drawdown_size_multiplier  # type: ignore
+            except ImportError:
+                try:
+                    from risk_sizing import drawdown_size_multiplier  # type: ignore
+                except ImportError:
+                    return 1.0
+            return float(drawdown_size_multiplier(_capital_usdt, _rolling_high))
+        return _fn
+
+    drawdown_scale_fn = _make_drawdown_scale_fn(capital_usdt, rolling_equity_high_usdt)
+
+    # P2 — Vérifier le drawdown circuit breaker UNE FOIS au boot (avant la
+    # boucle symbols). Si dd < -15% sur le compte global, on déclenche
+    # kill_switch + Telegram CRITICAL + audit (raison spécifique drawdown).
+    if rolling_equity_high_usdt > 0:
+        _dd_pct = (capital_usdt - rolling_equity_high_usdt) / rolling_equity_high_usdt
+        if _dd_pct < -0.15:
+            _msg = (
+                f"DRAWDOWN CIRCUIT BREAKER: equity={capital_usdt:.2f} USDT "
+                f"vs rolling_high={rolling_equity_high_usdt:.2f} USDT "
+                f"(dd={_dd_pct*100:.2f}% < -15.00%)"
+            )
+            print(f"🛑 {_msg}")
+            audit.append({
+                "event": "drawdown_circuit_breaker",
+                "current_equity_usdt": float(capital_usdt),
+                "rolling_equity_high_usdt": float(rolling_equity_high_usdt),
+                "dd_pct": float(_dd_pct),
+            })
+            try:
+                notifier.critical(_msg)
+            except Exception:
+                pass
+            from bot.kill_switch import trigger_kill as _trigger_kill
+            _trigger_kill(kill_flag, _msg)
+            print(f"   Bot KILLED. Pour réactiver: rm {kill_flag}")
+            return 4
+
     overall_signals = 0
     for sym_cfg in sym_cfgs:
         symbol = sym_cfg['pair']
@@ -378,6 +428,8 @@ def main():
             daily_loss_hard_cap_pct=float(settings.get('daily_loss_hard_cap_pct', 0.0)),
             kill_switch_path=kill_flag,
             notifier=notifier,
+            # P2 — anti-martingale drawdown scaling
+            drawdown_scale_fn=drawdown_scale_fn,
         )
         # P1 — daily_pnl_pct + block_until_iso depuis state global (partagés multi-symbole)
         daily_pnl_pct = float(state_mgr.get('daily_pnl_pct', 0.0))

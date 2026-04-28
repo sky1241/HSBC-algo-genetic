@@ -140,4 +140,43 @@ def run_phase_strategy(
     return global_returns, per_phase
 
 
-__all__ = ["simulate_strategy", "run_phase_strategy"]
+def drawdown_size_multiplier(
+    current_equity: float,
+    rolling_equity_high: float,
+) -> float:
+    """P2 — Anti-martingale dynamic sizing factor based on drawdown.
+
+    Reduces position size as drawdown grows. Reset only on new equity high
+    (NO reset on rebound — full Kelly only when truly above prior peak).
+
+    Source: López de Prado M., "Advances in Financial Machine Learning",
+    Wiley 2018, Chapter 10 (Bet Sizing).
+
+    Tiers:
+        dd < -15% : 0.0  (arrêt système attendu, déclenche kill switch upstream)
+        dd < -10% : 0.5  (taille réduite de moitié)
+        dd <  -5% : 0.667 (deux tiers)
+        dd >= -5% : 1.0  (taille pleine, marche normale)
+
+    Args:
+        current_equity: équité actuelle (USDT, ou unité quelconque).
+        rolling_equity_high: max equity sur la fenêtre de référence
+            (ex. 90 jours rolling, ou lifetime high comme fallback minimum).
+
+    Returns:
+        Multiplicateur de taille [0.0, 1.0]. 1.0 si pas d'historique
+        (rolling_equity_high <= 0) ou current_equity <= 0 (cas limite).
+    """
+    if rolling_equity_high <= 0 or current_equity <= 0:
+        return 1.0
+    dd = (float(current_equity) - float(rolling_equity_high)) / float(rolling_equity_high)
+    if dd < -0.15:
+        return 0.0
+    if dd < -0.10:
+        return 0.5
+    if dd < -0.05:
+        return 0.667
+    return 1.0
+
+
+__all__ = ["simulate_strategy", "run_phase_strategy", "drawdown_size_multiplier"]

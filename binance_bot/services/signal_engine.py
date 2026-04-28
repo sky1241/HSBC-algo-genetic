@@ -46,6 +46,7 @@ class SignalEngine:
         daily_loss_hard_cap_pct: float = 0.0,
         kill_switch_path: Optional[Path] = None,
         notifier: Optional[Any] = None,
+        drawdown_scale_fn: Optional[Callable[[], float]] = None,
     ):
         """
         Args:
@@ -63,6 +64,10 @@ class SignalEngine:
             kill_switch_path: P1 — chemin vers data/.killed pour trigger_kill().
                 None = pas de kill switch (mode test/backtest).
             notifier: P1 — TelegramNotifier (méthodes critical/warn/info).
+            drawdown_scale_fn: P2 — callable sans args qui retourne un facteur
+                [0, 1] selon le drawdown depuis equity_high (anti-martingale,
+                cf src/risk_sizing.drawdown_size_multiplier). Combiné multiplicativement
+                avec portfolio_scale dans le sizing final.
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -74,6 +79,8 @@ class SignalEngine:
         self.daily_loss_hard_cap_pct = float(daily_loss_hard_cap_pct)
         self.kill_switch_path = kill_switch_path
         self.notifier = notifier
+        # P2 anti-martingale
+        self.drawdown_scale_fn = drawdown_scale_fn
         # État runtime
         self.positions_long: List[Dict] = []
         self.positions_short: List[Dict] = []
@@ -327,7 +334,18 @@ class SignalEngine:
             except Exception:
                 portfolio_scale = 1.0  # safe fallback
 
-        sized = 0.01 * portfolio_scale  # 1% × scale portfolio-aware
+        # P2 anti-martingale: scale [0,1] selon drawdown depuis equity high.
+        # Combiné MULTIPLICATIVEMENT avec portfolio_scale → si l'un est 0, sizing = 0.
+        dd_scale = 1.0
+        if self.drawdown_scale_fn is not None:
+            try:
+                _dd = self.drawdown_scale_fn()
+                if _dd is not None and np.isfinite(_dd):
+                    dd_scale = float(max(0.0, min(1.0, _dd)))
+            except Exception:
+                dd_scale = 1.0  # safe fallback
+
+        sized = 0.01 * portfolio_scale * dd_scale  # 1% × scale composite
 
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
