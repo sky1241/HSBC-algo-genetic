@@ -11,10 +11,14 @@
 
 ---
 
-## L-001 — VPIN data_fn placeholder retourne None — **RÉSOLUE conditionnellement**
+## L-001 — VPIN data_fn placeholder retourne None — **RÉSOLUE + ACTIVÉE**
 
-- **Status**: ✅ RÉSOLUE conditionnellement (P7-bis mergé `f5f22d7` 2026-04-28).
-  Code prêt, activation requiert intervention Sky.
+- **Status**: ✅ RÉSOLUE + ACTIVÉE 2026-04-29 sur cette machine.
+  Code mergé `f5f22d7` 2026-04-28, daemon `hsbc-vpin-live.service`
+  enabled+running depuis 2026-04-29 05:29 CEST. Bucket sizes calculées
+  V/N=50 sur 7d klines : BTC=158M, ETH=123M, SOL=22.7M USDT. WS
+  connectés (6 streams : 3 symbols × @trade + @bookTicker). Records
+  flushés dans `data/vpin_live.jsonl` toutes les 30s.
 - **Origine**: R5 / P7 — `binance_bot/routines/intraday_runner.py` fonction
   `_make_vpin_data_fn(symbol)`.
 - **Description**: La fonction retournait toujours `None` jusqu'à P7-bis.

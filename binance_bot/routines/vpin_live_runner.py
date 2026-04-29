@@ -57,12 +57,48 @@ def _load_settings() -> dict:
 
 
 def _save_settings(cfg: dict) -> None:
-    """Sauvegarde back to yaml. Préserve les comments? Non, yaml.safe_dump
-    perd les comments. Risk acceptable car les seules clés modifiées
-    sont celles qu'on contrôle (vpin_bucket_size_usdt et timestamp)."""
+    """Surgical line-based update — préserve les comments du yaml.
+
+    yaml.safe_dump strippait tous les comments (régression observée
+    2026-04-29 lors de l'activation P7-bis). On édite seulement les 4
+    lignes qu'on a réellement besoin de modifier après recompute des
+    bucket sizes : 3× bucket_size + 1× last_compute_iso.
+    """
     try:
-        SETTINGS_PATH.write_text(yaml.safe_dump(cfg, sort_keys=False),
-                                  encoding="utf-8")
+        original = SETTINGS_PATH.read_text(encoding="utf-8").splitlines()
+        sizes = cfg.get("vpin_bucket_size_usdt") or {}
+        last_iso = cfg.get("vpin_bucket_size_last_compute_iso")
+
+        out: list[str] = []
+        in_bucket_block = False
+        for line in original:
+            stripped = line.strip()
+            # Ouverture du bloc bucket_size
+            if stripped.startswith("vpin_bucket_size_usdt:"):
+                in_bucket_block = True
+                out.append(line)
+                continue
+            # Mise à jour des sous-clés du bloc bucket_size
+            if in_bucket_block:
+                # Sortie du bloc = ligne sans indent ou clé top-level
+                if line and not line.startswith(("  ", "\t")):
+                    in_bucket_block = False
+                else:
+                    for sym in sizes:
+                        if stripped.startswith(f"{sym}:"):
+                            indent = line[: len(line) - len(line.lstrip())]
+                            out.append(f"{indent}{sym}: {sizes[sym]}")
+                            break
+                    else:
+                        out.append(line)
+                    continue
+            # Mise à jour last_compute_iso (clé top-level)
+            if stripped.startswith("vpin_bucket_size_last_compute_iso:"):
+                out.append(f"vpin_bucket_size_last_compute_iso: '{last_iso}'")
+                continue
+            out.append(line)
+
+        SETTINGS_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
     except Exception as e:
         logger.warning(f"settings save failed: {e}")
 
