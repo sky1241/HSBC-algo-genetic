@@ -47,7 +47,64 @@ def test_vpin_gate_config_defaults_when_missing():
     assert cfg.block_duration_minutes == 15
 
 
-def test_vpin_data_fn_placeholder_returns_none():
-    """Tant que le collecteur live n'existe pas, retourne None (gate skip)."""
+def test_vpin_data_fn_returns_none_when_jsonl_absent(monkeypatch, tmp_path):
+    """P7-bis : si data/vpin_live.jsonl absent → None (gate skip safe).
+
+    Pré-P7-bis ce test asserait `None` car la fn était placeholder
+    inconditionnel. Post-P7-bis (mergé f5f22d7), la fn lit le jsonl
+    et l'absence du fichier reste la condition None safe.
+    """
+    from routines import intraday_runner
+    fake_root = tmp_path / "fakeroot"
+    (fake_root / "data").mkdir(parents=True)
+    monkeypatch.setattr(intraday_runner, "ROOT", fake_root)
     fn = _make_vpin_data_fn("BTCUSDT")
-    assert fn() is None
+    assert fn() is None  # file doesn't exist
+
+
+def test_vpin_data_fn_returns_tuple_when_jsonl_fresh(monkeypatch, tmp_path):
+    """P7-bis : avec record frais dans jsonl → (vpin, obi)."""
+    from routines import intraday_runner
+    import json
+    import time
+    fake_root = tmp_path / "fakeroot"
+    (fake_root / "data").mkdir(parents=True)
+    jsonl = fake_root / "data" / "vpin_live.jsonl"
+    now_ms = int(time.time() * 1000)
+    jsonl.write_text(json.dumps({
+        "ts_ms": now_ms,
+        "symbol": "BTCUSDT",
+        "vpin": 0.42,
+        "obi": 0.78,
+        "n_buckets": 5,
+        "n_trades": 120,
+    }) + "\n")
+    monkeypatch.setattr(intraday_runner, "ROOT", fake_root)
+    fn = _make_vpin_data_fn("BTCUSDT")
+    result = fn()
+    assert result is not None
+    vpin, obi = result
+    assert vpin == pytest.approx(0.42)
+    assert obi == pytest.approx(0.78)
+
+
+def test_vpin_data_fn_returns_none_when_jsonl_stale(monkeypatch, tmp_path):
+    """P7-bis : record > 10min stale → None (daemon probablement down)."""
+    from routines import intraday_runner
+    import json
+    import time
+    fake_root = tmp_path / "fakeroot"
+    (fake_root / "data").mkdir(parents=True)
+    jsonl = fake_root / "data" / "vpin_live.jsonl"
+    stale_ms = int(time.time() * 1000) - (15 * 60 * 1000)  # 15min ago
+    jsonl.write_text(json.dumps({
+        "ts_ms": stale_ms,
+        "symbol": "BTCUSDT",
+        "vpin": 0.42,
+        "obi": 0.78,
+        "n_buckets": 5,
+        "n_trades": 120,
+    }) + "\n")
+    monkeypatch.setattr(intraday_runner, "ROOT", fake_root)
+    fn = _make_vpin_data_fn("BTCUSDT")
+    assert fn() is None  # stale

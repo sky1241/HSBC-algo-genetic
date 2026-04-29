@@ -154,6 +154,49 @@ seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
 - **Garde-fou**: avant de bypass `should_deploy=False`, vérifier que les
   5 features ne sont plus mockées dans `train_lgbm_combinator.py:build_full_features`.
 
+## L-007 — VPIN bucket calibration unit mismatch — **RÉSOLUE** (2026-04-29)
+
+- **Status**: ✅ RÉSOLUE par fix `vpin_live_collector.py:add_trade`
+  + test régression `test_vpin_live_builder_calibration_realistic_units_l007`.
+  Découvert via audit honnête lors de l'activation P7-bis.
+- **Origine**: P7-bis / R3 — `binance_bot/services/vpin_live_collector.py`
+  fonction `VPINLiveBuilder.add_trade(price, qty, ts_ms)`.
+- **Description**: `compute_bucket_sizes` retourne bucket_size_v en
+  **quote currency (USDT)** — formule canonique Easley 2012 V/N sur
+  `quote_volume_daily_7d` des klines (~158M USDT pour BTC). Mais
+  `add_trade` stockait `q` (le payload Binance @trade `q` field) qui
+  est en **base currency (BTC)**. Comparaison incohérente dans
+  `build_volume_buckets` → ratio ~50000× trop petit → **0 buckets ne
+  ferment jamais en production**.
+- **Détection**: 2026-04-29 ~06:18 (45min après activation), heartbeat
+  daemon : BTC=124k events, ETH=229k events, SOL=40k events,
+  `n_buckets=0` partout, `connection_errors=0`. WS stables, OBI
+  fonctionnel, mais VPIN figé à 0.0.
+- **Cause racine**: tests P7-bis utilisaient `bucket_size_v=10.0` +
+  `qty=1.0` (volumes abstraits sans dimensionnalité). Le mismatch ne
+  se manifestait pas avec des unités arbitraires, n'apparaissait qu'au
+  contact production.
+- **Fix**: `self._volumes.append(p * q)` au lieu de `self._volumes.append(q)`
+  → stocke notional USDT cohérent avec `bucket_size_v` USDT.
+  VPIN value invariante (compute_vpin = mean(|buy-sell|/total),
+  ratios indépendants de l'unité), seule la VITESSE de fermeture
+  change : avant ~28 jours/bucket BTC, après ~28 min/bucket sur flow
+  mainnet normal (158M / ~5.6M /min = ~28 min).
+- **Test régression**: `test_vpin_live_builder_calibration_realistic_units_l007`
+  utilise désormais price=$50k, qty=0.5 BTC, bucket=$158M. Asserts
+  ≥1 bucket fermée sur 7000 trades. Si ce test repasse au vert avec
+  `_volumes.append(q)`, c'est que le bug est revenu.
+- **Impact si non résolue (rétro)**:
+  - **Cosmétique** en `vpin_mode: "log_only"` (config actuelle) :
+    gate désactivé silencieusement (`("allow", "vpin_data_unavailable")`),
+    comportement identique au pré-P7-bis.
+  - **BLOQUANT** en `vpin_mode: "gate"` : aucune cascade détectée,
+    gate inutile (toujours allow). Recalibration nécessaire avant
+    bascule gate.
+- **Garde-fou**: avant bascule `vpin_mode: "gate"`, vérifier
+  `data/vpin_live.jsonl` contient des records avec `n_buckets > 0`
+  (au moins 5-10 sur 1h de soak, sinon investigation).
+
 ## L-005 — flow_liquidations daemon désactivé (WS-001)
 
 - **Origine**: commit R3 (P6.3) — daemon hsbc-flow-liquidations créé

@@ -70,6 +70,35 @@ def test_vpin_live_builder_balanced_flow_low_vpin():
     assert vpin == pytest.approx(0.0, abs=0.05)
 
 
+def test_vpin_live_builder_calibration_realistic_units_l007():
+    """L-007 regression : bucket_size_v en USDT (notional), qty en BTC.
+
+    Avant fix : `_volumes` stockait `q` (BTC) → comparé à bucket_size en
+    USDT → ratio ~50000x trop petit → 0 buckets ferment en production
+    (observé 2026-04-29 : 124k trades BTC en 45min, n_buckets=0).
+
+    Après fix : `_volumes` stocke `p * q` (notional USDT) → cohérent.
+    Avec bucket_size=158M USDT et trades BTC à $50k × 0.5 BTC = $25k
+    notional → 158M / 25k ≈ 6320 trades pour fermer 1 bucket.
+    Test : 7000 trades doivent fermer ≥ 1 bucket.
+    """
+    b = VPINLiveBuilder("BTCUSDT", bucket_size_v=158_000_000.0, window=50)
+    for i in range(7000):
+        price = 50000.0 + (i % 100) * 1.0  # léger trend pour BVC
+        b.add_trade(price, 0.5, 1700000000000 + i * 100)
+    vpin = b.current_vpin()
+    assert b.n_trades() == 7000
+    # Avec p=50k, q=0.5 → notional=$25k/trade. 7000 × $25k = $175M > 158M
+    # → au moins 1 bucket DOIT fermer (sinon = bug L-007 retour).
+    assert b.n_buckets() >= 1, (
+        f"Calibration L-007 bug : 7000 trades à $25k notional "
+        f"({7000 * 25000} USDT) >> bucket_size $158M, mais "
+        f"n_buckets={b.n_buckets()}. _volumes stocke probablement "
+        f"q (BTC) au lieu de p*q (USDT)."
+    )
+    assert 0.0 <= vpin <= 1.0
+
+
 # ---------------------------------------------------------------------------
 # OBIBuilder
 # ---------------------------------------------------------------------------

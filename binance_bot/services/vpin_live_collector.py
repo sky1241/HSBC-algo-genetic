@@ -89,7 +89,19 @@ class VPINLiveBuilder:
         self._n_buckets_last: int = 0
 
     def add_trade(self, price: float, qty: float, ts_ms: int) -> None:
-        """Ajoute un trade au buffer. ts_ms = timestamp Binance event time."""
+        """Ajoute un trade au buffer. ts_ms = timestamp Binance event time.
+
+        BUG-FIX 2026-04-29 (L-007 unit mismatch) : `bucket_size_v` est
+        documenté en QUOTE currency (USDT) — formule Easley 2012 V/N
+        sur quote_volume klines. Mais le payload Binance @trade fournit
+        `q` en BASE currency (BTC pour BTCUSDT). On stocke donc le
+        notional `p * q` (USDT) pour cohérence d'unité avec le seuil
+        de fermeture de bucket dans build_volume_buckets.
+        VPIN value invariante (compute_vpin = mean(|buy-sell|/total),
+        ratios indépendants de l'unité), seule la VITESSE de fermeture
+        de bucket change (avant : ~28 jours/bucket, après : ~28 min/bucket
+        sur BTC mainnet flow normal).
+        """
         try:
             p = float(price)
             q = float(qty)
@@ -98,7 +110,7 @@ class VPINLiveBuilder:
         if p <= 0 or q <= 0:
             return
         self._prices.append(p)
-        self._volumes.append(q)
+        self._volumes.append(p * q)  # notional USDT (cf docstring)
         self._ts_ms.append(int(ts_ms))
 
     def current_vpin(self) -> float:
