@@ -122,10 +122,16 @@ class VPINLiveBuilder:
             return 0.0
         try:
             from src.vpin import build_volume_buckets, compute_vpin  # type: ignore
-        except ImportError:
+        except ImportError as e1:
             try:
                 from vpin import build_volume_buckets, compute_vpin  # type: ignore
-            except ImportError:
+            except ImportError as e2:
+                logger.error(
+                    "VPIN compute disabled — cannot import build_volume_buckets/"
+                    "compute_vpin (src.vpin: %s ; vpin: %s). Check sys.path "
+                    "includes the repo root.",
+                    e1, e2,
+                )
                 return 0.0
         prices = pd.Series(self._prices)
         volumes = pd.Series(self._volumes)
