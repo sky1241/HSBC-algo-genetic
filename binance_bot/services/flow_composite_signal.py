@@ -206,64 +206,95 @@ def compute_composite_score(
     liq_path: Path,
     oi_path: Path,
     days_back: int = _DEFAULT_ZSCORE_LOOKBACK_DAYS,
+    min_obs_for_active: int = 100,
 ) -> dict:
     """Calcule le score composite à partir des 4 jsonl jeux de flux.
+
+    Renormalisation dynamique des poids (COMPOSITE-001) :
+    si une feature n'a pas assez d'observations valides pour produire un
+    z-score fiable (n_obs < min_obs_for_active), elle est SKIPPÉE et les
+    poids des features actives sont renormalisés à somme = 1.0. C'est la
+    bonne pratique factor modeling / ESG composite scoring : préserver
+    la comparabilité du score quel que soit le nombre de features dispos.
+
+    Cas d'usage critique : depuis WS-001, le flux liq n'a plus de data
+    (Binance ferme @forceOrder côté serveur). Avant ce fix, la composante
+    liq valait 0.0 mais conservait son poids 0.25, ce qui réduisait
+    mécaniquement le score de 25%. Maintenant, les 3 autres features
+    sont renormalisées (top_ls 0.30→0.40, taker 0.25→0.333, oi 0.20→0.267)
+    et le score reste comparable à un score 4-features.
 
     Returns:
         dict {
             "score": float ∈ [-1, +1] (clipped),
-            "components": {top_ls, taker, liq, oi} z-scores bruts (pre-weight),
-            "weights": dict des pondérations,
-            "n_obs": dict des comptes par flux (pour diagnostiquer drift).
+            "raw_score": float (pre-clip),
+            "components": z-scores des features ACTIVES uniquement,
+            "weights": pondérations renormalisées des features ACTIVES,
+            "base_weights": pondérations de design (audit trail),
+            "active_features": liste des features utilisées dans le score,
+            "degraded": True si au moins 1 feature manquante,
+            "n_obs": dict des comptes par flux (toutes les 4, pour drift).
         }
-
-    Si un flux est manquant ou insuffisant, son composant z = 0.0
-    (n'altère pas le score, juste pas de contribution).
     """
     df_top_ls = _load_jsonl(top_ls_path, days_back=days_back)
     df_taker = _load_jsonl(taker_path, days_back=days_back)
     df_liq = _load_jsonl(liq_path, days_back=days_back)
     df_oi = _load_jsonl(oi_path, days_back=days_back)
 
-    s_top_ls = compute_top_ls_inverted_series(df_top_ls)
-    s_taker = compute_taker_centered_series(df_taker)
-    s_liq = compute_liq_imbalance_series(df_liq)
-    s_oi = compute_oi_change_pct_series(df_oi)
+    series_map = {
+        "top_ls": compute_top_ls_inverted_series(df_top_ls),
+        "taker": compute_taker_centered_series(df_taker),
+        "liq": compute_liq_imbalance_series(df_liq),
+        "oi": compute_oi_change_pct_series(df_oi),
+    }
+    n_obs_map = {k: int(len(s)) for k, s in series_map.items()}
 
-    z_top_ls = zscore_last(s_top_ls)
-    z_taker = zscore_last(s_taker)
-    z_liq = zscore_last(s_liq)
-    z_oi = zscore_last(s_oi)
+    base_weights = {
+        "top_ls": _WEIGHT_TOP_LS,
+        "taker": _WEIGHT_TAKER,
+        "liq": _WEIGHT_LIQ,
+        "oi": _WEIGHT_OI,
+    }
 
-    raw_score = (
-        _WEIGHT_TOP_LS * z_top_ls
-        + _WEIGHT_TAKER * z_taker
-        + _WEIGHT_LIQ * z_liq
-        + _WEIGHT_OI * z_oi
+    # Une feature est "active" si suffisamment d'obs pour z-score fiable
+    active_components = {
+        k: zscore_last(s, min_obs=min_obs_for_active)
+        for k, s in series_map.items()
+        if len(s) >= min_obs_for_active
+    }
+
+    if not active_components:
+        return {
+            "score": 0.0,
+            "raw_score": 0.0,
+            "components": {},
+            "weights": {},
+            "base_weights": base_weights,
+            "active_features": [],
+            "degraded": True,
+            "n_obs": n_obs_map,
+        }
+
+    # Renormalisation des poids actifs à somme = 1.0
+    sum_active_weights = sum(base_weights[k] for k in active_components.keys())
+    normalized_weights = {
+        k: base_weights[k] / sum_active_weights for k in active_components.keys()
+    }
+
+    raw_score = sum(
+        normalized_weights[k] * active_components[k] for k in active_components.keys()
     )
     score = clip_score(raw_score)
 
     return {
         "score": score,
         "raw_score": float(raw_score),
-        "components": {
-            "top_ls": z_top_ls,
-            "taker": z_taker,
-            "liq": z_liq,
-            "oi": z_oi,
-        },
-        "weights": {
-            "top_ls": _WEIGHT_TOP_LS,
-            "taker": _WEIGHT_TAKER,
-            "liq": _WEIGHT_LIQ,
-            "oi": _WEIGHT_OI,
-        },
-        "n_obs": {
-            "top_ls": int(len(s_top_ls)),
-            "taker": int(len(s_taker)),
-            "liq": int(len(s_liq)),
-            "oi": int(len(s_oi)),
-        },
+        "components": active_components,
+        "weights": normalized_weights,
+        "base_weights": base_weights,
+        "active_features": list(active_components.keys()),
+        "degraded": len(active_components) < len(base_weights),
+        "n_obs": n_obs_map,
     }
 
 

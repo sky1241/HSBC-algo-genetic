@@ -216,25 +216,26 @@ seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
     - Service externe (CoinGlass API, Coinalyze)
     - Ticket support Binance pour confirmer si CLOSE frame est
       intentionnel (deprecation) ou bug temporaire
-- **Impact si non résolue**:
-  - **Cosmétique aujourd'hui en mode log-only P6.5** :
-    `compute_composite_score` accepte liq absent gracieusement.
-    Test runtime confirme : `score = -0.207` (finite, pas NaN, pas
-    crash) avec `components.liq = 0.0` et `n_obs.liq = 0`. Le
-    composite continue à fonctionner sur 3/4 features.
-  - **BLOQUANT pour activation mode "gate" P6.5** :
-    score sous-estimé d'un facteur 0.75 (poids 0.25 de liq inclus
-    mais toujours nul). Si on bascule en gate avec seuil 0.4, le
-    seuil devient effectivement 0.4 / 0.75 = 0.53 sur les 3
-    features dispo. À recalibrer post-fix.
+- **Impact si non résolue (mis à jour 2026-04-30 — fix COMPOSITE-001)**:
+  - **Composite signal opère en mode `degraded=true`** sur 3 features
+    actives (top_ls, taker, oi) avec poids renormalisés
+    dynamiquement à somme=1.0 :
+      - top_ls : 0.30 → 0.40
+      - taker  : 0.25 → 0.333
+      - oi     : 0.20 → 0.267
+    `compute_composite_score` skippe la composante liq (n_obs=0) et
+    rebalance les autres. Score reste comparable aux futurs scores
+    4-features après calibration (cf. `tests/test_composite_renormalization.py`).
+  - **Plus BLOQUANT pour activation mode "gate" P6.5** : le score
+    n'est plus mécaniquement sous-estimé. Le seuil 0.4 reste
+    cohérent (poids actifs sommant à 1.0).
   - **BLOQUANT pour analyse Munin clustering** : la dimension
     "capitulation" (liq imbalance) manque, l'analyse posteriori
     sera 4 → 3 dimensions (perte d'info pour clustering events
     type "long capitulation cascade").
-- **Garde-fou**: avant de basculer P6.5 en `gate` mode, soit
-  résoudre L-005 (collecteur alt), soit recalibrer les seuils
-  composite explicitement pour 3 features (multiplier seuils par
-  4/3 ≈ 1.33).
+- **Garde-fou**: avant de basculer P6.5 en `gate` mode, vérifier
+  que la baseline 30j a bien été collectée en mode `degraded=true`
+  (sinon recalibrer les seuils si on retrouve une source liq).
 
 ## Format pour futures entrées
 
