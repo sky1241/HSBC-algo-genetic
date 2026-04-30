@@ -1,4 +1,24 @@
-# BUGS — HSBC-algo-genetic
+# BUGS.md — Runtime / Binance / Implementation Bugs
+
+Ce fichier suit les bugs détectés en runtime (crashs, comportements
+silencieux, intégrations cassées) et les fixes appliqués.
+
+## Voir aussi
+
+- **MISSION_REWFA.md** : 6 bugs méthodologiques (BUG-A à BUG-F)
+  découverts par audit du 27/04/2026 matin sur le pipeline 14 ans
+  historique. BUG-A et BUG-B fixés par P0bis et P0 (mission
+  précédente). BUG-C, BUG-D, BUG-E, BUG-F partiellement adressés ;
+  le re-WFA complet du pipeline est planifié comme mission séparée.
+
+- **LIMITATIONS_ACTEES.md** : limitations connues et tracées
+  (L-001 à L-008+) qui ne sont pas des bugs mais des choix
+  explicites de scope.
+
+- **NEXT_STEPS_30D.md** : revue manuelle Sky à J+30 du soak
+  (calibration composite, retrain LGBM, bilan PSR, decision tree).
+
+---
 
 > Format: each bug has an ID, status, symptom, root cause, fix, and test.
 > This file is READ BY CLAUDE AT BOOT. Keep it accurate.
