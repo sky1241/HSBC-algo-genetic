@@ -50,6 +50,11 @@ funding_close_threshold_long_bps: 5.0    # close LONG si funding > +5 bps
 funding_close_threshold_short_bps: 5.0   # close SHORT si funding < -5 bps
 funding_close_advance_minutes: 5         # fenêtre [HH:55, HH:60) de check
 
+# P5 — PSR live alpha decay detection (PSR-001 branchement systemd 2026-04-30)
+# Lu par scripts/production/psr_live_daily.py (cron via hsbc-psr.timer 23:50 UTC).
+psr_benchmark_sr: 1.0                    # Sharpe benchmark NON annualisé à dépasser
+psr_min_track_record_length: 15          # min returns pour PSR significatif (Bailey-LdP MinTRL)
+
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
 max_leverage: 125

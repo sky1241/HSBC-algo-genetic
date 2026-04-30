@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC PSR Live Daily Computation (P5 alpha decay detection)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic
+ExecStart=/home/ludov/HSBC-algo-genetic/.venv/bin/python /home/ludov/HSBC-algo-genetic/scripts/production/psr_live_daily.py
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/psr_daily.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/psr_daily.log
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

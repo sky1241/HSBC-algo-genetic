@@ -1,0 +1,10 @@
+[Unit]
+Description=HSBC PSR Live Daily Trigger (23:50 UTC, 5min avant hsbc-daily)
+
+[Timer]
+OnCalendar=*-*-* 23:50:00 UTC
+Persistent=true
+Unit=hsbc-psr.service
+
+[Install]
+WantedBy=timers.target

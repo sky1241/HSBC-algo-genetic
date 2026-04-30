@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""P5 — Cron daily PSR live alpha decay detection.
+"""P5 — Cron daily PSR live alpha decay detection (PSR-001 branchement systemd).
 
 Lit les returns live depuis `binance_bot/data/paper_log.csv` (ou autre source
 selon état de la stack), compute PSR vs benchmark backtest, log dans
@@ -8,16 +8,22 @@ selon état de la stack), compute PSR vs benchmark backtest, log dans
 
 Usage:
     python scripts/production/psr_live_daily.py
-    SR_BENCHMARK=0.0 python scripts/production/psr_live_daily.py
+    SR_BENCHMARK=0.0 PSR_MIN_N=20 python scripts/production/psr_live_daily.py
 
-Variables d'environnement:
-    SR_BENCHMARK : Sharpe benchmark NON annualisé à dépasser (default 0).
-    PSR_WINDOW   : nombre de returns récents à considérer (default 30 jours
-                   = 30 returns daily, 360 si bars 2h).
+Configuration (binance_bot/configs/bot_settings.yaml):
+    psr_benchmark_sr           : Sharpe benchmark à dépasser (default 1.0).
+    psr_min_track_record_length: minimum returns pour PSR significatif
+                                 (default 15 ; Bailey-LdP 2012 MinTRL).
 
-Branchement systemd (futur):
-    Ajouter au timer hsbc-daily.timer ou créer hsbc-psr-daily.timer
-    qui fire à 00:10 UTC quotidiennement.
+Variables d'environnement (overrident le yaml, pour debug ad-hoc):
+    SR_BENCHMARK : remplace psr_benchmark_sr.
+    PSR_WINDOW   : fenêtre de returns à considérer (default 360 = 30j × 12 bars H2).
+    PSR_MIN_N    : remplace psr_min_track_record_length.
+
+Branchement systemd (PSR-001 — branché 2026-04-30):
+    `~/.config/systemd/user/hsbc-psr.timer` fire 23:50 UTC quotidiennement,
+    déclenche `hsbc-psr.service` qui exécute ce script via le wrapper
+    `binance_bot/systemd/hsbc-bot-runner.sh scripts/production/psr_live_daily.py`.
 """
 from __future__ import annotations
 
@@ -39,7 +45,33 @@ from src.psr_live import compute_psr, classify_psr_alert  # type: ignore
 
 PAPER_LOG_PATH = ROOT / "binance_bot" / "data" / "paper_log.csv"
 PSR_HISTORY_PATH = ROOT / "binance_bot" / "data" / "psr_history.jsonl"
+SETTINGS_PATH = ROOT / "binance_bot" / "configs" / "bot_settings.yaml"
 DEFAULT_WINDOW = 360  # 30 jours × 12 bars H2
+DEFAULT_MIN_N = 15  # Bailey-LdP MinTRL ~7-15 jours pour SR_hat=1, alpha=0.05
+DEFAULT_SR_BENCHMARK = 1.0
+
+
+def _load_psr_settings() -> tuple[float, int]:
+    """Lit bot_settings.yaml ; env vars prennent priorité.
+
+    Returns: (sr_benchmark, min_n_returns)
+    """
+    cfg_sr: float = DEFAULT_SR_BENCHMARK
+    cfg_n: int = DEFAULT_MIN_N
+    try:
+        import yaml  # type: ignore
+
+        if SETTINGS_PATH.exists():
+            with open(SETTINGS_PATH, encoding="utf-8") as f:
+                settings = yaml.safe_load(f) or {}
+            cfg_sr = float(settings.get("psr_benchmark_sr", DEFAULT_SR_BENCHMARK))
+            cfg_n = int(settings.get("psr_min_track_record_length", DEFAULT_MIN_N))
+    except Exception as e:  # pragma: no cover (yaml optional, fallback safe)
+        print(f"⚠️ PSR settings: yaml load failed ({e}), using defaults", file=sys.stderr)
+
+    sr_bench = float(os.environ.get("SR_BENCHMARK", str(cfg_sr)))
+    min_n = int(os.environ.get("PSR_MIN_N", str(cfg_n)))
+    return sr_bench, min_n
 
 
 def _load_recent_returns(path: Path, window: int) -> pd.Series:
@@ -79,16 +111,17 @@ def _append_history(record: dict, path: Path) -> None:
 
 
 def main():
-    sr_benchmark = float(os.environ.get("SR_BENCHMARK", "0.0"))
+    sr_benchmark, min_n = _load_psr_settings()
     window = int(os.environ.get("PSR_WINDOW", DEFAULT_WINDOW))
 
     returns = _load_recent_returns(PAPER_LOG_PATH, window)
     n = len(returns)
-    if n < 5:
-        print(f"PSR live: only {n} closed trades, need >=5 — skipping daily report")
+    if n < min_n:
+        print(f"PSR live: {n} closed trades, need >={min_n} — insufficient_data")
         record = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "n_obs": n,
+            "min_required": min_n,
             "psr": None,
             "alert": "insufficient_data",
             "sr_benchmark": sr_benchmark,
