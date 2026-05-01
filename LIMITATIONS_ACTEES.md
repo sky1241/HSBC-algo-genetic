@@ -237,6 +237,38 @@ seront résolues simultanément quand P7-bis (collecteur VPIN live) sera CLOSED.
   que la baseline 30j a bien été collectée en mode `degraded=true`
   (sinon recalibrer les seuils si on retrouve une source liq).
 
+## L-009 — hsbc-intraday.timer désactivé au profit du multi-TF (P-MTF-7)
+
+- **Origine**: mission MISSION_MULTI_TF.md (refonte exécution 15m
+  indexée tendance H2). L'`intraday_runner` mono-H2 est remplacé par :
+    - `hsbc-h2-trend.timer`     (toutes les 2h, calcule la tendance H2)
+    - `hsbc-execution-15m.timer` (toutes les 15m, exécute si H2 aligné)
+- **Description**: pour éviter conflits sur les mêmes positions
+  (state.json::symbols.<sym>.positions_*), le timer mono-H2 doit être
+  désactivé AVANT activation des 2 nouveaux timers.
+- **Cause**: scope de la mission. Mono-H2 et multi-TF utilisent les
+  mêmes structures positions ; les 2 actifs simultanément créeraient
+  des doubles ouvertures / fermetures opposites.
+- **Procédure de bascule** (à exécuter par Sky lors du déploiement
+  P-MTF-11) :
+    ```
+    systemctl --user disable --now hsbc-intraday.timer
+    systemctl --user enable --now hsbc-h2-trend.timer hsbc-execution-15m.timer
+    ```
+  Voir `scripts/deploy_multi_tf.sh` (P-MTF-11) qui automatise ça.
+- **Procédure de rollback** (si problème détecté pendant le soak) :
+    ```
+    systemctl --user disable --now hsbc-h2-trend.timer hsbc-execution-15m.timer
+    systemctl --user enable --now hsbc-intraday.timer
+    ```
+  Le `intraday_runner.py` mono-H2 reste intact dans le repo (pas
+  supprimé) pour permettre le rollback.
+- **Impact si non actée**: si on active les nouveaux timers sans
+  désactiver l'ancien, le bot peut ouvrir 2 positions sur le même
+  symbole (1 par intraday, 1 par execution_15m), ou pire fermer
+  une position l'un à cause d'un signal opposite de l'autre.
+  → checklist OBLIGATOIRE avant `enable --now`.
+
 ## Format pour futures entrées
 
 ```
