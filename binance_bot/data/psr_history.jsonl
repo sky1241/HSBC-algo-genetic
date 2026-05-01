@@ -1,1 +1,3 @@
 {"ts": "2026-04-28T05:08:03.443433+00:00", "n_obs": 0, "psr": null, "alert": "insufficient_data", "sr_benchmark": 0.0}
+{"ts": "2026-04-30T14:11:36.628732+00:00", "n_obs": 0, "min_required": 15, "psr": null, "alert": "insufficient_data", "sr_benchmark": 1.0}
+{"ts": "2026-04-30T23:50:25.237436+00:00", "n_obs": 0, "min_required": 15, "psr": null, "alert": "insufficient_data", "sr_benchmark": 1.0}

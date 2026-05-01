@@ -49,6 +49,13 @@ from binance_bot.services.ichimoku_engine import calculate_ichimoku
 from binance_bot.services.signal_engine import SignalEngine
 from src.trend_filter_h2 import is_h2_trend_stale
 
+# P-MTF-12 : TradeManager + audit + paper + reconcile pour exécution réelle
+from binance_bot.bot.trade_manager import TradeManager
+from binance_bot.bot.audit_log import AuditLog
+from binance_bot.bot.paper_trader import PaperTrader
+from binance_bot.bot.reconciler import reconcile_positions
+from binance_bot.bot.notifier import TelegramNotifier
+
 # Réutilise les factories d'intraday_runner (DRY)
 from binance_bot.routines.intraday_runner import (
     _load_portfolio_features,
@@ -58,6 +65,8 @@ from binance_bot.routines.intraday_runner import (
     _make_vpin_data_fn,
     _make_vpin_gate_config,
     _make_composite_log_fn,
+    _build_features_snapshot_at_open,
+    _build_meta_context,
 )
 from binance_bot.routines.h2_trend_runner import _resolve_symbols
 
@@ -171,7 +180,35 @@ def main() -> int:
         except Exception:
             return 1.0
 
+    # P-MTF-12 : trade_mode + notifier + audit + paper_log + meta_logger
+    trade_mode = (os.environ.get("TRADE_MODE")
+                  or settings.get("trade_mode") or "simulation")
+    notifier = TelegramNotifier()
+    audit = AuditLog(ROOT / "binance_bot" / "data" / "trades_audit.jsonl")
+    audit.append({
+        "event": "boot_execution_runner_15m",
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "trade_mode": trade_mode,
+        "n_symbols": len(symbols),
+    })
+    try:
+        from binance_bot.bot.trade_meta import MetaLabelLogger as _MLL
+        meta_logger = _MLL(path=ROOT / "binance_bot" / "data" / "trades_meta.jsonl")
+    except Exception:
+        meta_logger = None
+    paper = PaperTrader(
+        ROOT / "binance_bot" / "data" / "paper_log.csv",
+        meta_logger=meta_logger,
+    )
+    sym_cfgs = settings.get("symbols", []) or []
+    leverage_by_pair = {
+        c["pair"]: int(c.get("leverage", 10))
+        for c in sym_cfgs
+        if isinstance(c, dict) and "pair" in c
+    }
+
     print(f"=== execution_runner_15m — {datetime.now(timezone.utc).isoformat()} ===")
+    print(f"Trade mode: {trade_mode}")
     print(f"Symbols: {symbols}")
     print(f"Params 15m: {params_15m}")
     print(f"H2 trend max age: {max_age_h}h")
@@ -204,6 +241,30 @@ def main() -> int:
                 shift=int(params_15m["shift"]),
             )
             current_price = float(df_ich.iloc[-1]["close"])
+
+            # P-MTF-12 : init TradeManager + reconcile (live only)
+            leverage = leverage_by_pair.get(symbol, 10)
+            try:
+                exch_info = fetcher.exchange.fapiPrivateGetPositionsideDual()
+                is_hedge = str(exch_info.get("dualSidePosition", False)).lower() == "true"
+            except Exception:
+                is_hedge = False
+            trade_mgr = TradeManager(
+                exchange=fetcher.exchange,
+                symbol=symbol,
+                mode=trade_mode,
+                leverage=leverage,
+                position_mode="hedge" if is_hedge else "oneway",
+            )
+            try:
+                trade_mgr.apply_leverage_on_exchange()
+            except Exception as _le:
+                print(f"   ⚠️ apply_leverage failed for {symbol}: {_le}")
+            if trade_mode == "live":
+                try:
+                    reconcile_positions(state_mgr, fetcher.exchange, symbol)
+                except Exception as _re:
+                    print(f"   ⚠️ reconcile_positions failed for {symbol}: {_re}")
 
             # 3) Build callbacks (réutilise intraday_runner factories)
             portfolio_scale_fn = _make_portfolio_scale_fn(
@@ -276,18 +337,134 @@ def main() -> int:
                 current_price=current_price,
                 params=params_15m,
             )
-            n_signals_total += len(signals)
-            if signals:
-                print(f"  [{symbol}] {len(signals)} signal(s) émis : {[s['action'] for s in signals]}")
-            else:
-                print(f"  [{symbol}] 0 signal (gates ou pas de cassure)")
 
-            # NOTE : l'exécution réelle (TradeManager) n'est pas faite ici dans
-            # P-MTF-5. Elle sera ajoutée en P-MTF-11 lors du déploiement testnet
-            # après validation du pipeline en mode dry-run pendant 24h.
+            # P7 / R5 — persist VPIN state per symbole
+            try:
+                vpin_state_dict = engine.get_vpin_state_dict()
+                if vpin_state_dict is not None:
+                    state_mgr.set_symbol_data(symbol, "vpin_state", vpin_state_dict)
+            except Exception:
+                pass
+
+            if not signals:
+                print(f"  [{symbol}] 0 signal (gates ou pas de cassure)")
+                # Persister positions (trailing stops mis à jour)
+                try:
+                    pl_new, ps_new = engine.get_positions_state()
+                    state_mgr.ensure_symbol(symbol)
+                    state_mgr.state["symbols"][symbol]["positions_long"] = pl_new
+                    state_mgr.state["symbols"][symbol]["positions_short"] = ps_new
+                    state_mgr.save()
+                except Exception:
+                    pass
+                continue
+
+            n_signals_total += len(signals)
+            print(f"  [{symbol}] {len(signals)} signal(s) émis : {[s['action'] for s in signals]}")
+
+            # P-MTF-12 — Exécution réelle via TradeManager
+            for sig in signals:
+                signal_id = f"{datetime.now(timezone.utc).isoformat()}_{symbol}_15m_{sig['action']}"
+                audit.append({
+                    "event": "signal_detected",
+                    "signal_id": signal_id,
+                    "symbol": symbol,
+                    "tf": "15m",
+                    "signal": sig,
+                })
+                try:
+                    order_id = trade_mgr.execute_signal(sig, capital_usdt)
+                except Exception as _ee:
+                    print(f"   ❌ execute_signal failed: {_ee}")
+                    audit.append({
+                        "event": "order_exception",
+                        "signal_id": signal_id,
+                        "symbol": symbol,
+                        "error": str(_ee),
+                    })
+                    continue
+                audit.append({
+                    "event": "order_result",
+                    "signal_id": signal_id,
+                    "symbol": symbol,
+                    "tf": "15m",
+                    "order_id": order_id,
+                    "action": sig["action"],
+                })
+                if sig["action"] in ("open_long", "open_short") and order_id:
+                    side = "long" if sig["action"] == "open_long" else "short"
+                    try:
+                        snap = _build_features_snapshot_at_open(
+                            symbol=symbol,
+                            df_ichimoku=df_ich,
+                            returns_1h_series=returns_1h_series,
+                            regime_gate_fn=regime_gate_fn,
+                            composite_log_fn=engine.composite_log_fn,
+                            vpin_data_fn=engine.vpin_data_fn,
+                        )
+                    except Exception:
+                        snap = None
+                    state_mgr.add_position(
+                        side, sig["entry"], sig["stop"], sig["tp"],
+                        sig.get("size", 0.01),
+                        symbol=symbol, features_snapshot=snap,
+                    )
+                    qty = capital_usdt * sig.get("size", 0.01) * trade_mgr.leverage / sig["entry"]
+                    paper.log_open(
+                        sig["action"], qty=qty, price=sig["entry"],
+                        live_order_id=order_id, signal_id=signal_id,
+                    )
+                    notifier.info(f"[{symbol} 15m] {sig['action']} {qty:.4f} @ {sig['entry']:.4f}")
+                elif "close" in sig["action"]:
+                    side = "long" if "long" in sig["action"] else "short"
+                    existing = next(
+                        (p for p in state_mgr.get_positions(side, symbol=symbol)
+                         if p.get("id") == sig.get("pos_id", "")),
+                        None,
+                    )
+                    entry_price = float(existing.get("entry", 0)) if existing else 0.0
+                    entry_qty = float(existing.get("size", 0)) if existing else 0.0
+                    opened_at_str = existing.get("opened_at") if existing else None
+                    state_mgr.remove_position(side, sig.get("pos_id", ""), symbol=symbol)
+                    exit_p = float(sig.get("exit", current_price))
+                    held_s = 0.0
+                    if opened_at_str:
+                        try:
+                            opened_at = datetime.fromisoformat(
+                                opened_at_str.replace("Z", "+00:00") if "Z" in opened_at_str else opened_at_str
+                            )
+                            held_s = max(0.0, (datetime.now(opened_at.tzinfo or None) - opened_at).total_seconds())
+                        except Exception:
+                            held_s = 0.0
+                    if entry_price > 0 and entry_qty > 0:
+                        qty_native = capital_usdt * entry_qty * trade_mgr.leverage / entry_price
+                        try:
+                            _meta_ctx = _build_meta_context(
+                                signal_id=signal_id, symbol=symbol, sig=sig,
+                                opened_at_iso=opened_at_str,
+                                phase_K3=state_mgr.get("phase_today"),
+                                atr_at_entry=float(df_ich.iloc[-1].get("ATR", 0.0)) or None,
+                                regime_har=(regime_gate_fn() if regime_gate_fn is not None else None),
+                                composite_score=None,
+                                entry_features=(existing.get("features_snapshot") if existing else None),
+                            )
+                        except Exception:
+                            _meta_ctx = None
+                        paper.log_close(
+                            sig["action"], qty=qty_native, exit_price=exit_p, entry_price=entry_price,
+                            live_order_id=order_id, signal_id=signal_id, held_seconds=held_s,
+                            notes=f"{symbol} 15m {sig.get('reason', '')}",
+                            meta_context=_meta_ctx,
+                        )
+                    notifier.info(f"[{symbol} 15m] {sig['action']} reason={sig.get('reason')} @ {exit_p:.4f}")
 
         except Exception as e:
             print(f"  [{symbol}] EXCEPTION: {type(e).__name__}: {e}")
+            audit.append({
+                "event": "symbol_loop_exception",
+                "symbol": symbol,
+                "error": f"{type(e).__name__}: {e}",
+            })
 
     # 6) Flat EOD (P-MTF-9)
     closed_eod = _maybe_flat_eod(settings, state_mgr, symbols)
