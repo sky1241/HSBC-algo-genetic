@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger HSBC H2 trend computation (every 2h, 1min30s after H2 close)
+
+[Timer]
+# H2 Binance ferme à HH:00 UTC tous les 2h pairs (00, 02, 04, ...).
+# On déclenche à HH:01:30 UTC pour laisser le DataFetcher voir la bougie close.
+OnCalendar=*-*-* 00/2:01:30 UTC
+Persistent=true
+Unit=hsbc-h2-trend.service
+
+[Install]
+WantedBy=timers.target

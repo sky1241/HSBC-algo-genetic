@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC H2 trend filter — calcule la direction H2 par symbole (P-MTF-4)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.h2_trend_runner
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/h2_trend.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/h2_trend.log
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

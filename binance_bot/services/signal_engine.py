@@ -59,6 +59,7 @@ class SignalEngine:
         vpin_gate_config: Optional[Any] = None,
         vpin_state_dict: Optional[Mapping[str, Any]] = None,
         vpin_event_log_path: Optional[Path] = None,
+        trend_gate_fn: Optional[Callable[[], dict]] = None,
     ):
         """
         Args:
@@ -114,6 +115,16 @@ class SignalEngine:
             vpin_event_log_path: P7 / R5 — JSONL où on logge chaque évaluation
                 (vpin, obi, action, reason, ts_ms) pour collecte baseline 30j en
                 mode log_only. None → notifier.info seulement.
+            trend_gate_fn: P-MTF-3 (mission multi-TF) — callable sans args qui
+                retourne le snapshot tendance H2 du symbole courant (cf
+                `src.trend_filter_h2.classify_h2_trend`). Format:
+                {"direction": "long"|"short"|"flat", ...}.
+                Utilisé en couche FILTRE devant les signaux d'exécution 15m :
+                - direction="flat"  → bloque toutes les nouvelles entrées
+                - direction="long"  → bloque les nouvelles entrées SHORT
+                - direction="short" → bloque les nouvelles entrées LONG
+                Si callback levant une exception → block par safety.
+                None (default) = pas de gate = comportement legacy mono-H2.
         """
         self.max_positions = max_positions
         self.daily_loss_threshold = daily_loss_threshold
@@ -141,6 +152,8 @@ class SignalEngine:
         self.vpin_data_fn = vpin_data_fn
         self.vpin_gate_config = vpin_gate_config
         self.vpin_event_log_path = vpin_event_log_path
+        # P-MTF-3 — filtre directionnel H2 pour exécution 15m
+        self.trend_gate_fn = trend_gate_fn
         # State VPIN : reconstruit depuis dict si fourni
         try:
             from src.vpin_gate import VPINState  # type: ignore
@@ -489,6 +502,40 @@ class SignalEngine:
         except Exception:
             return False  # safe fallback: autoriser
 
+    def _trend_gate_blocks(self, side: str) -> Tuple[bool, str]:
+        """P-MTF-3 — Filtre directionnel H2 pour exécution 15m.
+
+        Retourne (blocks, reason) :
+          - (False, "") si pas de gate (trend_gate_fn=None) ou direction alignée
+          - (True, raison) si direction H2 != side, ou direction="flat",
+            ou si le callback crash (safe-fail: bloque par sécurité)
+
+        Convention différente des autres gates : ici en cas d'exception on BLOQUE
+        (pas autorise), car le filtre H2 est CRITIQUE pour la thèse multi-TF.
+        Sans signal H2 fiable, on doit s'abstenir.
+        """
+        if self.trend_gate_fn is None:
+            return False, ""  # backward-compat : pas de filtre = comportement legacy
+        try:
+            h2 = self.trend_gate_fn() or {}
+        except Exception as e:
+            # Safe-fail spécifique trend gate : on BLOQUE en cas d'exception
+            if self.notifier is not None:
+                try:
+                    self.notifier.warn(f"trend_gate exception side={side}: {e} → block")
+                except Exception:
+                    pass
+            return True, f"trend_gate_exception:{type(e).__name__}"
+        direction = str(h2.get("direction", "flat")).lower()
+        if direction == "flat":
+            return True, f"h2_flat ({h2.get('reason', '?')})"
+        side_norm = str(side).lower()
+        if side_norm == "long" and direction != "long":
+            return True, f"h2_direction={direction} (block long)"
+        if side_norm == "short" and direction != "short":
+            return True, f"h2_direction={direction} (block short)"
+        return False, ""
+
     def _trigger_soft_cap(
         self, current_price: float, reason: str
     ) -> List[Dict]:
@@ -638,14 +685,19 @@ class SignalEngine:
         combinator_blocks_entries = self._low_vol_combinator_blocks()
         # P7 — VPIN gate : block_new_entries (kill déjà traité tout en haut)
         vpin_blocks_entries = (vpin_action == "block_new_entries")
+        # P-MTF-3 — Trend gate H2 (utilisé par execution_runner_15m)
+        trend_blocks_long, trend_long_reason = self._trend_gate_blocks("long")
+        trend_blocks_short, trend_short_reason = self._trend_gate_blocks("short")
 
         # Signal LONG: bull_cross + close > nuage + pas de SHORT ouverts
         if last.get('signal_long', False) and len(self.positions_short) == 0:
             if len(self.positions_long) < self.max_positions:
                 # P3 — VaR95 gate : bloque l'émission si VaR projetée > seuil
                 # P4 — Regime gate : bloque si regime=="low"
+                # P-MTF-3 — Trend gate : bloque si H2 direction != "long"
                 if (
-                    regime_blocks_entries
+                    trend_blocks_long
+                    or regime_blocks_entries
                     or combinator_blocks_entries
                     or vpin_blocks_entries
                     or self._var_gate_blocks("long", sized)
@@ -669,12 +721,13 @@ class SignalEngine:
         if last.get('signal_short', False) and len(self.positions_long) == 0:
             if len(self.positions_short) < self.max_positions:
                 if (
-                    regime_blocks_entries
+                    trend_blocks_short
+                    or regime_blocks_entries
                     or combinator_blocks_entries
                     or vpin_blocks_entries
                     or self._var_gate_blocks("short", sized)
                 ):
-                    pass  # filtré par les gates (regime / combinator / vpin / var)
+                    pass  # filtré par les gates (trend / regime / combinator / vpin / var)
                 else:
                     atr_stop_mult = params.get('atr_mult', 10.0) * 2.0
                     tp_mult = params.get('tp_mult', 20.0)

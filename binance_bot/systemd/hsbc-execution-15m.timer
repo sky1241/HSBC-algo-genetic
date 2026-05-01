@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger HSBC execution runner 15m (every 15min, 30s after candle close)
+
+[Timer]
+# 15m Binance ferme à *:00, *:15, *:30, *:45 UTC.
+# On déclenche à HH:MM:30 UTC pour laisser DataFetcher voir la bougie close.
+OnCalendar=*-*-* *:00/15:30 UTC
+Persistent=false
+Unit=hsbc-execution-15m.service
+
+[Install]
+WantedBy=timers.target

@@ -55,6 +55,22 @@ funding_close_advance_minutes: 5         # fenêtre [HH:55, HH:60) de check
 psr_benchmark_sr: 1.0                    # Sharpe benchmark NON annualisé à dépasser
 psr_min_track_record_length: 15          # min returns pour PSR significatif (Bailey-LdP MinTRL)
 
+# P-MTF (mission multi-TF) — exécution 15m indexée tendance H2
+# H2 = filtre directionnel (params Ichimoku via phase K3 → params_today)
+# 15m = déclencheur d'entrée (params dédiés, plus courts)
+multi_tf_enabled: true                   # false = mode legacy mono-H2 (intraday seul)
+params_15m:                              # P-MTF-8 : params Ichimoku 15m
+  tenkan: 9                              # plus court que H2 (H2 phase 2 = 21)
+  kijun: 26                              # standard Ichimoku 15m
+  senkou_b: 52                           # standard Ichimoku 15m
+  shift: 26                              # standard Ichimoku 15m
+  atr_mult: 5.0                          # SL plus serré que H2 (H2 phase 2 = 10.5)
+  tp_mult: 3.0                           # TP plus serré (R:R ~1:3 à 1:1.5)
+h2_trend_max_age_hours: 3.0              # skip exec si H2 trend > N heures
+h2_trend_margin_pct: 0.0                 # marge prix vs nuage (0 = strict)
+flat_eod_enabled: true                   # P-MTF-9 : flat all à HH:23:45 UTC
+flat_eod_minute_utc: 45                  # minute UTC du flat EOD (default 23:45 UTC)
+
 # Compat ascendant (utilisé seulement si settings.symbols absent)
 symbol: "BTC/USDT"
 max_leverage: 125
