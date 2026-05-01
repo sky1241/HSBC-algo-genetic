@@ -1,0 +1,15 @@
+[Unit]
+Description=HSBC execution runner 15m indexé tendance H2 (P-MTF-5)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ludov/HSBC-algo-genetic/binance_bot
+ExecStart=/home/ludov/HSBC-algo-genetic/binance_bot/systemd/hsbc-bot-runner.sh routines.execution_runner_15m
+StandardOutput=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/execution_15m.log
+StandardError=append:/home/ludov/HSBC-algo-genetic/binance_bot/logs/execution_15m.log
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target
