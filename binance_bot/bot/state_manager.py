@@ -139,6 +139,27 @@ class StateManager:
             self.ensure_symbol(symbol)
             return self.state["symbols"][symbol].get(key, [])
         return self.state.get(key, [])
+
+    # P-MTF-4 — helpers pour persister données arbitraires par symbole
+    # (h2_trend, vpin_state, etc.). save() automatique pour cohérence avec
+    # add_position/remove_position.
+    def set_symbol_data(self, symbol: str, key: str, value: Any) -> None:
+        """Set une clé arbitraire sur la section state['symbols'][symbol].
+
+        Utilisé par h2_trend_runner pour persister le snapshot tendance H2,
+        par vpin_live_collector pour vpin_state, etc.
+        """
+        self.ensure_symbol(symbol)
+        self.state["symbols"][symbol][key] = value
+        self.save()
+
+    def get_symbol_data(self, symbol: str, key: str, default: Any = None) -> Any:
+        """Get une clé arbitraire de state['symbols'][symbol]."""
+        if "symbols" not in self.state:
+            return default
+        if symbol not in self.state["symbols"]:
+            return default
+        return self.state["symbols"][symbol].get(key, default)
     
     def update_equity(self, new_equity: float):
         """Met à jour equity et max drawdown."""
